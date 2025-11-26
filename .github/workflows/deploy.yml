@@ -3,7 +3,7 @@ name: Deploy to ISPConfig
 on:
   push:
     branches:
-      - main  # Ou 'master' selon le nom de ta branche principale
+      - main
 
 jobs:
   deploy:
@@ -19,7 +19,7 @@ jobs:
         host: ${{ secrets.HOST }}
         username: ${{ secrets.USERNAME }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
-        port: 22 # Change si ton port SSH n'est pas 22
+        port: 22
         script: |
           # On va dans le dossier
           cd ${{ secrets.TARGET_DIR }}
@@ -31,5 +31,4 @@ jobs:
           npm install --production
           
           # On redémarre l'app via PM2 pour prendre en compte les changements
-          # Remplace "mon-site-node" par le nom que tu as donné dans PM2
           pm2 restart "draw-it" || pm2 start server/server.js --name "draw-it"
