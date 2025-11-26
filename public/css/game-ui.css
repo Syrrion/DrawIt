@@ -293,6 +293,7 @@ canvas {
     letter-spacing: 5px;
     color: var(--primary);
     text-shadow: 0 0 10px var(--primary-glow);
+    white-space: pre;
 }
 
 .round-info {

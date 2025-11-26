@@ -32,7 +32,10 @@ function shuffle(array) {
 function getRandomWords(count) {
     const words = [];
     for (let i = 0; i < count; i++) {
-        words.push(dictionary[Math.floor(Math.random() * dictionary.length)]);
+        let word = dictionary[Math.floor(Math.random() * dictionary.length)];
+        // Replace special characters like œ
+        word = word.replace(/œ/g, 'oe').replace(/Œ/g, 'OE');
+        words.push(word);
     }
     return words;
 }
@@ -73,7 +76,8 @@ io.on('connection', (socket) => {
                     drawTime: 80,
                     wordChoiceTime: 20,
                     wordChoices: 3,
-                    rounds: 3
+                    rounds: 3,
+                    allowFuzzy: false
                 },
                 readyPlayers: [],
                 readyCheckTimer: null,
@@ -577,7 +581,22 @@ io.on('connection', (socket) => {
                 // Drawer chatting
             } else if (!room.game.guessedPlayers.includes(socket.id)) {
                 // Check guess
-                if (message.trim().toUpperCase() === room.game.currentWord) {
+                let isCorrect = false;
+                const guess = message.trim().toUpperCase();
+                const target = room.game.currentWord;
+
+                if (room.settings.allowFuzzy) {
+                    const normalize = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                    if (normalize(guess) === normalize(target)) {
+                        isCorrect = true;
+                    }
+                } else {
+                    if (guess === target) {
+                        isCorrect = true;
+                    }
+                }
+
+                if (isCorrect) {
                     // Correct Guess!
                     const totalTime = room.settings.drawTime;
                     

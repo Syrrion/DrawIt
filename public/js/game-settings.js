@@ -13,6 +13,7 @@ export function initGameSettings(socket, isLeaderFn, getRoomCode, getPlayerCount
     const wordChoiceTimeInput = document.getElementById('setting-wordchoicetime');
     const wordChoicesInput = document.getElementById('setting-wordchoices');
     const roundsInput = document.getElementById('setting-rounds');
+    const fuzzyInput = document.getElementById('setting-fuzzy');
     const guessWordSettings = document.getElementById('settings-guess-word');
     
     // Actions
@@ -60,6 +61,7 @@ export function initGameSettings(socket, isLeaderFn, getRoomCode, getPlayerCount
         wordChoiceTimeInput.disabled = disabled;
         wordChoicesInput.disabled = disabled;
         roundsInput.disabled = disabled;
+        if (fuzzyInput) fuzzyInput.disabled = disabled;
         
         // Cards interaction
         cards.forEach(card => {
@@ -86,7 +88,8 @@ export function initGameSettings(socket, isLeaderFn, getRoomCode, getPlayerCount
             drawTime: parseInt(timeInput.value),
             wordChoiceTime: parseInt(wordChoiceTimeInput.value),
             wordChoices: parseInt(wordChoicesInput.value),
-            rounds: parseInt(roundsInput.value)
+            rounds: parseInt(roundsInput.value),
+            allowFuzzy: fuzzyInput ? fuzzyInput.checked : false
         };
 
         socket.emit('updateSettings', {
@@ -115,6 +118,7 @@ export function initGameSettings(socket, isLeaderFn, getRoomCode, getPlayerCount
     wordChoiceTimeInput.addEventListener('change', emitSettingsUpdate);
     wordChoicesInput.addEventListener('change', emitSettingsUpdate);
     roundsInput.addEventListener('change', emitSettingsUpdate);
+    if (fuzzyInput) fuzzyInput.addEventListener('change', emitSettingsUpdate);
 
     // Start Game
     startBtn.addEventListener('click', () => {
@@ -138,6 +142,7 @@ export function initGameSettings(socket, isLeaderFn, getRoomCode, getPlayerCount
         if (wordChoiceTimeInput.value != settings.wordChoiceTime) wordChoiceTimeInput.value = settings.wordChoiceTime;
         if (wordChoicesInput.value != settings.wordChoices) wordChoicesInput.value = settings.wordChoices;
         if (roundsInput.value != settings.rounds) roundsInput.value = settings.rounds;
+        if (fuzzyInput && fuzzyInput.checked !== settings.allowFuzzy) fuzzyInput.checked = settings.allowFuzzy;
     });
 
     socket.on('gameStateChanged', (state) => {
