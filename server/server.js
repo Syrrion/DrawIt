@@ -156,7 +156,9 @@ io.on('connection', (socket) => {
             io.to(roomCode).emit('gameStateChanged', 'READY_CHECK');
             io.to(roomCode).emit('readyCheckStarted', {
                 totalPlayers: room.users.length,
-                timeout: 60
+                timeout: 60,
+                settings: room.settings,
+                users: room.users
             });
 
             // Start 60s timer
@@ -188,7 +190,7 @@ io.on('connection', (socket) => {
                 io.to(roomCode).emit('updateReadyStatus', {
                     readyCount: room.readyPlayers.length,
                     totalPlayers: room.users.length,
-                    readyPlayers: readyPlayersData
+                    readyPlayerIds: room.readyPlayers
                 });
 
                 // Check if everyone is ready
@@ -211,6 +213,21 @@ io.on('connection', (socket) => {
                     }, 1000);
                 }
             }
+        }
+    });
+
+    socket.on('playerRefused', (roomCode) => {
+        const room = rooms[roomCode];
+        if (room && room.gameState === 'READY_CHECK') {
+             // Cancel game
+             if (room.readyCheckTimer) clearTimeout(room.readyCheckTimer);
+             room.gameState = 'LOBBY';
+             
+             const user = room.users.find(u => u.id === socket.id);
+             const username = user ? user.username : 'Un joueur';
+
+             io.to(roomCode).emit('gameCancelled', `Partie annulée : ${username} a refusé.`);
+             io.to(roomCode).emit('gameStateChanged', 'LOBBY');
         }
     });
 
@@ -291,7 +308,7 @@ io.on('connection', (socket) => {
                         io.to(targetRoomCode).emit('updateReadyStatus', {
                             readyCount: room.readyPlayers.length,
                             totalPlayers: room.users.length,
-                            readyPlayers: readyPlayersData
+                            readyPlayerIds: room.readyPlayers
                         });
                         
                         // Check if everyone remaining is ready

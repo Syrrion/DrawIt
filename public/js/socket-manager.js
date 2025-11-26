@@ -394,6 +394,35 @@ export function initSocketManager(
     socket.on('readyCheckStarted', (data) => {
         readyCheckModal.classList.remove('hidden');
         
+        // Display Settings
+        const modeDisplay = document.getElementById('ready-mode-display');
+        const settingsDisplay = document.getElementById('ready-settings-display');
+        
+        // Dynamic Mode Configuration
+        const modeConfigs = {
+            'guess-word': {
+                label: 'Devine le dessin',
+                getDetails: (s) => {
+                    const fuzzyText = s.allowFuzzy ? '• Accents cool' : '• Accents stricts';
+                    return `${s.drawTime}s • ${s.rounds} Tours ${fuzzyText}`;
+                }
+            }
+            // Add other modes here
+        };
+
+        const config = modeConfigs[data.settings.mode] || { 
+            label: data.settings.mode, 
+            getDetails: () => '' 
+        };
+
+        if (modeDisplay) {
+            modeDisplay.textContent = `Mode : ${config.label}`;
+        }
+        
+        if (settingsDisplay) {
+            settingsDisplay.textContent = config.getDetails(data.settings);
+        }
+
         const readyStatus = document.querySelector('.ready-status');
         if (readyStatus) {
             readyStatus.innerHTML = `
@@ -408,6 +437,25 @@ export function initSocketManager(
         if (readyPlayersList) {
             readyPlayersList.classList.remove('hidden');
             readyPlayersList.innerHTML = '';
+            
+            // Render ALL players (not ready state)
+            data.users.forEach(user => {
+                const chip = document.createElement('div');
+                chip.className = 'ready-player-chip not-ready';
+                chip.id = `ready-chip-${user.id}`;
+                
+                let avatarHtml = '';
+                if (user.avatar && user.avatar.type === 'image') {
+                    avatarHtml = `<img src="${user.avatar.value}" class="player-avatar-small">`;
+                } else {
+                    const color = (user.avatar && user.avatar.color) || '#3498db';
+                    const emoji = (user.avatar && user.avatar.emoji) || '🎨';
+                    avatarHtml = `<div class="player-avatar-small" style="background-color: ${color}; display: flex; align-items: center; justify-content: center; font-size: 14px;">${emoji}</div>`;
+                }
+
+                chip.innerHTML = `${avatarHtml}<span>${user.username}</span>`;
+                readyPlayersList.appendChild(chip);
+            });
         }
         
         const readyTimer = document.querySelector('.ready-timer');
@@ -461,24 +509,18 @@ export function initSocketManager(
         if (currentReadyCountVal) currentReadyCountVal.textContent = data.readyCount;
         if (currentReadyTotalVal) currentReadyTotalVal.textContent = data.totalPlayers;
 
-        const readyPlayersList = document.getElementById('ready-players-list');
-        if (readyPlayersList && data.readyPlayers) {
-            readyPlayersList.innerHTML = '';
-            data.readyPlayers.forEach(player => {
-                const chip = document.createElement('div');
-                chip.className = 'ready-player-chip';
-                
-                let avatarHtml = '';
-                if (player.avatar && player.avatar.type === 'image') {
-                    avatarHtml = `<img src="${player.avatar.value}" class="player-avatar-small">`;
+        if (data.readyPlayerIds) {
+            // Update visual state of chips
+            const chips = document.querySelectorAll('.ready-player-chip');
+            chips.forEach(chip => {
+                const userId = chip.id.replace('ready-chip-', '');
+                if (data.readyPlayerIds.includes(userId)) {
+                    chip.classList.remove('not-ready');
+                    chip.classList.add('is-ready');
                 } else {
-                    const color = (player.avatar && player.avatar.color) || '#3498db';
-                    const emoji = (player.avatar && player.avatar.emoji) || '🎨';
-                    avatarHtml = `<div class="player-avatar-small" style="background-color: ${color}; display: flex; align-items: center; justify-content: center; font-size: 14px;">${emoji}</div>`;
+                    chip.classList.add('not-ready');
+                    chip.classList.remove('is-ready');
                 }
-
-                chip.innerHTML = `${avatarHtml}<span>${player.username}</span>`;
-                readyPlayersList.appendChild(chip);
             });
         }
     });

@@ -182,12 +182,23 @@
             <div id="ready-check-modal" class="modal hidden">
                 <div class="modal-content ready-check-content">
                     <h2><i class="fas fa-check-circle"></i> Êtes-vous prêt ?</h2>
+                    
+                    <div class="ready-game-info">
+                        <div id="ready-mode-display" class="ready-mode">Mode: Devine le dessin</div>
+                        <div id="ready-settings-display" class="ready-settings"></div>
+                    </div>
+
                     <div class="ready-status">
                         <div class="ready-count"><span id="ready-count-val">0</span>/<span id="ready-total-val">0</span></div>
                         <div>joueurs prêts</div>
                     </div>
                     <div id="ready-players-list" class="ready-players-list"></div>
-                    <button id="btn-i-am-ready" class="btn-ready">JE SUIS PRÊT !</button>
+                    
+                    <div class="ready-actions">
+                        <button id="btn-refuse-game" class="btn-danger-outline">REFUSER</button>
+                        <button id="btn-i-am-ready" class="btn-ready">JE SUIS PRÊT !</button>
+                    </div>
+                    
                     <div class="ready-timer">Annulation dans <span id="ready-timer-val">60</span>s</div>
                 </div>
             </div>
@@ -213,7 +224,7 @@
                         </div>
                     </div>
                     
-                    <div id="settings-guess-word">
+                    <div id="settings-guess-word" class="mode-settings">
                         <div class="setting-group">
                             <label>Temps de dessin (sec)</label>
                             <input type="number" id="setting-drawtime" value="80" min="30" max="300">

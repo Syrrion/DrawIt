@@ -5,7 +5,7 @@ import {
     alertModal, alertTitle, alertMessage, alertOkBtn,
     confirmationModal, confirmOkBtn, confirmCancelBtn,
     btnReturnLobby, gameEndModal,
-    btnIamReady, readyCheckModal,
+    btnIamReady, btnRefuseGame, readyCheckModal,
     socket
 } from './dom-elements.js';
 import { state } from './state.js';
@@ -172,4 +172,10 @@ export function initUIManager(avatarManager, animationSystem, gameSettingsManage
         btnIamReady.textContent = 'En attente des autres...';
         btnIamReady.disabled = true;
     });
+
+    if (btnRefuseGame) {
+        btnRefuseGame.addEventListener('click', () => {
+            socket.emit('playerRefused', state.currentRoom);
+        });
+    }
 }

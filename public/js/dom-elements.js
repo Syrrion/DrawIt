@@ -75,6 +75,7 @@ export const btnReturnLobby = document.getElementById('btn-return-lobby');
 
 export const readyCheckModal = document.getElementById('ready-check-modal');
 export const btnIamReady = document.getElementById('btn-i-am-ready');
+export const btnRefuseGame = document.getElementById('btn-refuse-game');
 export const readyCountVal = document.getElementById('ready-count-val');
 export const readyTotalVal = document.getElementById('ready-total-val');
 export const readyTimerVal = document.getElementById('ready-timer-val');

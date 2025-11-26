@@ -45,8 +45,14 @@ export function initGameSettings(socket, isLeaderFn, getRoomCode, getPlayerCount
         
         currentMode = mode;
         
-        if (mode === 'guess-word') {
-            guessWordSettings.classList.remove('hidden');
+        // Hide all settings sections first
+        const allSettings = document.querySelectorAll('[id^="settings-"]');
+        allSettings.forEach(el => el.classList.add('hidden'));
+
+        // Show the selected mode settings
+        const targetSettings = document.getElementById(`settings-${mode}`);
+        if (targetSettings) {
+            targetSettings.classList.remove('hidden');
         }
     }
 
