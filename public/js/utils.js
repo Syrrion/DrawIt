@@ -114,3 +114,43 @@ export function generateRandomUsername() {
     
     return `${adj}${noun}${num}`;
 }
+
+export function copyToClipboard(text) {
+    if (!text) return Promise.reject('No text to copy');
+
+    // Try modern API first
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(text).catch(err => {
+            console.warn('Clipboard API failed, trying fallback...', err);
+            return fallbackCopy(text);
+        });
+    } else {
+        return fallbackCopy(text);
+    }
+}
+
+function fallbackCopy(text) {
+    return new Promise((resolve, reject) => {
+        try {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            
+            // Ensure it's not visible but part of DOM
+            textArea.style.position = "fixed";
+            textArea.style.left = "-9999px";
+            textArea.style.top = "0";
+            
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            const successful = document.execCommand('copy');
+            document.body.removeChild(textArea);
+            
+            if (successful) resolve();
+            else reject(new Error('execCommand returned false'));
+        } catch (err) {
+            reject(err);
+        }
+    });
+}

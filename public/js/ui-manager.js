@@ -9,7 +9,7 @@ import {
     socket
 } from './dom-elements.js';
 import { state } from './state.js';
-import { showToast, generateRandomUsername } from './utils.js';
+import { showToast, generateRandomUsername, copyToClipboard } from './utils.js';
 
 export function initUIManager(avatarManager, animationSystem, gameSettingsManager, render) {
     // Pre-fill random username
@@ -78,8 +78,12 @@ export function initUIManager(avatarManager, animationSystem, gameSettingsManage
 
     if (copyCodeBtn) {
         copyCodeBtn.addEventListener('click', () => {
-            navigator.clipboard.writeText(state.currentRoom);
-            showToast('Code copié !', 'success');
+            copyToClipboard(state.currentRoom)
+                .then(() => showToast('Code copié !', 'success'))
+                .catch(err => {
+                    console.error('Copy failed:', err);
+                    showToast('Erreur lors de la copie', 'error');
+                });
         });
     }
 
