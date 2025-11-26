@@ -870,8 +870,13 @@
                 <div class="timer-display">
                     <i class="fas fa-clock"></i> <span id="timer-value">0</span>
                 </div>
-                <div class="word-display" id="word-display">
-                    _ _ _ _ _
+                <div class="word-display-container" style="display:flex; align-items:center; gap:15px;">
+                    <div class="word-display" id="word-display">
+                        _ _ _ _ _
+                    </div>
+                    <button id="btn-use-hint" class="hint-btn hidden" title="Utiliser un indice (20s cooldown)">
+                        <i class="fas fa-lightbulb"></i> <span id="hints-count">3</span>
+                    </button>
                 </div>
                 <div class="round-info">
                     Round <span id="round-current">1</span>/<span id="round-total">3</span>
@@ -979,6 +984,17 @@
                         <div class="setting-group checkbox-group">
                             <input type="checkbox" id="setting-fuzzy">
                             <label for="setting-fuzzy">Autoriser les accents approximatifs</label>
+                        </div>
+                        <div class="setting-group checkbox-group">
+                            <input type="checkbox" id="setting-hints" checked>
+                            <label for="setting-hints">Activer les indices progressifs</label>
+                        </div>
+                        <div class="setting-group" style="margin-top: 10px;">
+                            <label>Indices personnels (Total)</label>
+                            <div class="slider-container">
+                                <input type="range" id="setting-personal-hints" min="0" max="10" value="3" class="slider">
+                                <span id="setting-personal-hints-val" style="margin-left: 10px; font-weight: bold; color: var(--primary);">3</span>
+                            </div>
                         </div>
                     </div>
 

@@ -128,7 +128,9 @@ io.on('connection', (socket) => {
                     wordChoiceTime: 20,
                     wordChoices: 3,
                     rounds: 3,
-                    allowFuzzy: false
+                    allowFuzzy: false,
+                    hintsEnabled: true,
+                    personalHints: 3
                 },
                 readyPlayers: [],
                 readyCheckTimer: null,
@@ -202,8 +204,18 @@ io.on('connection', (socket) => {
                 totalRounds: room.game.totalRounds,
                 currentDrawerIndex: room.game.currentDrawerIndex,
                 turnOrder: room.game.turnOrder,
-                guessedPlayers: room.game.guessedPlayers
+                guessedPlayers: room.game.guessedPlayers,
+                personalHints: room.game.personalHints[socket.id] || 0
             };
+
+            // Calculate current hint for this user
+            if (room.game.currentWord) {
+                const userRevealed = room.game.userRevealedIndices[socket.id] || [];
+                const allRevealed = [...room.game.revealedIndices, ...userRevealed];
+                roomState.game.currentHint = generateHint(room.game.currentWord, allRevealed);
+                roomState.game.timeLeft = room.game.timeLeft;
+                roomState.game.totalTime = room.settings.drawTime;
+            }
         }
 
         socket.emit('roomJoined', roomState);
@@ -374,11 +386,17 @@ io.on('connection', (socket) => {
             room.game.totalRounds = room.settings.rounds;
             room.game.scores = {};
             room.game.roundScores = {};
+            room.game.personalHints = {}; // Remaining hints per user
+            room.game.hintCooldowns = {}; // Last hint time per user
+            room.game.userRevealedIndices = {}; // Indices revealed per user
             
             room.users.forEach(u => {
                 u.score = 0;
                 room.game.scores[u.id] = 0;
                 room.game.roundScores[u.id] = 0;
+                room.game.personalHints[u.id] = room.settings.personalHints;
+                room.game.hintCooldowns[u.id] = 0;
+                room.game.userRevealedIndices[u.id] = [];
             });
 
             // Notify players of the order and scores
@@ -386,7 +404,8 @@ io.on('connection', (socket) => {
                 turnOrder: room.game.turnOrder,
                 scores: room.game.scores,
                 currentRound: room.game.currentRound,
-                totalRounds: room.game.totalRounds
+                totalRounds: room.game.totalRounds,
+                personalHints: room.settings.personalHints
             });
 
             startTurn(roomCode);
@@ -510,9 +529,10 @@ io.on('connection', (socket) => {
         room.game.revealedIndices = [];
         room.game.guessedPlayers = [];
         
-        // Reset round scores for this turn
+        // Reset round scores and user revealed indices for this turn
         room.users.forEach(u => {
             room.game.roundScores[u.id] = 0;
+            room.game.userRevealedIndices[u.id] = [];
         });
 
         clearInterval(room.game.timerInterval);
@@ -580,7 +600,7 @@ io.on('connection', (socket) => {
             room.game.timeLeft--;
 
             // Check for hint reveal
-            if (room.game.timeLeft <= nextHintTime && room.game.timeLeft > 0) {
+            if (room.settings.hintsEnabled !== false && room.game.timeLeft <= nextHintTime && room.game.timeLeft > 0) {
                 // Reveal a random unrevealed letter
                 const unrevealed = [];
                 for (let i = 0; i < room.game.currentWord.length; i++) {
@@ -593,9 +613,16 @@ io.on('connection', (socket) => {
                     const randomIndex = unrevealed[Math.floor(Math.random() * unrevealed.length)];
                     room.game.revealedIndices.push(randomIndex);
                     
-                    // Send to everyone EXCEPT drawer
-                    io.to(roomCode).except(drawerId).emit('updateHint', {
-                        hint: generateHint(room.game.currentWord, room.game.revealedIndices)
+                    // Send customized hint to each user
+                    room.users.forEach(u => {
+                        if (u.id === drawerId) return;
+                        
+                        const userRevealed = room.game.userRevealedIndices[u.id] || [];
+                        const allRevealed = [...room.game.revealedIndices, ...userRevealed];
+                        
+                        io.to(u.id).emit('updateHint', {
+                            hint: generateHint(room.game.currentWord, allRevealed)
+                        });
                     });
                 }
                 nextHintTime -= hintInterval;
@@ -1014,6 +1041,79 @@ io.on('connection', (socket) => {
                 break; // User is usually in one room at a time in this simple version
             }
         }
+    });
+
+    socket.on('requestHint', (roomCode) => {
+        const room = rooms[roomCode];
+        if (!room || room.gameState !== 'PLAYING' || !room.game.currentWord) return;
+
+        // Check if spectator
+        const user = room.users.find(u => u.id === socket.id);
+        if (user && user.isSpectator) return;
+
+        // Check if drawer
+        const drawerId = room.game.turnOrder[room.game.currentDrawerIndex];
+        if (socket.id === drawerId) return;
+
+        // Check if already guessed
+        if (room.game.guessedPlayers.includes(socket.id)) return;
+
+        // Check remaining hints
+        if (!room.game.personalHints[socket.id] || room.game.personalHints[socket.id] <= 0) {
+            socket.emit('error', 'Aucun indice restant !');
+            return;
+        }
+
+        // Check cooldown (20s)
+        const now = Date.now();
+        const lastHintTime = room.game.hintCooldowns[socket.id] || 0;
+        if (now - lastHintTime < 20000) {
+            const remaining = Math.ceil((20000 - (now - lastHintTime)) / 1000);
+            socket.emit('error', `Attendez ${remaining}s avant le prochain indice.`);
+            return;
+        }
+
+        // Find unrevealed letter
+        const word = room.game.currentWord;
+        const globalRevealed = room.game.revealedIndices;
+        const userRevealed = room.game.userRevealedIndices[socket.id] || [];
+        
+        const unrevealed = [];
+        for (let i = 0; i < word.length; i++) {
+            if (word[i] !== ' ' && word[i] !== '-' && 
+                !globalRevealed.includes(i) && 
+                !userRevealed.includes(i)) {
+                unrevealed.push(i);
+            }
+        }
+
+        if (unrevealed.length === 0) {
+            socket.emit('error', 'Toutes les lettres sont déjà révélées !');
+            return;
+        }
+
+        // Reveal letter
+        const randomIndex = unrevealed[Math.floor(Math.random() * unrevealed.length)];
+        
+        if (!room.game.userRevealedIndices[socket.id]) {
+            room.game.userRevealedIndices[socket.id] = [];
+        }
+        room.game.userRevealedIndices[socket.id].push(randomIndex);
+        
+        // Update state
+        room.game.personalHints[socket.id]--;
+        room.game.hintCooldowns[socket.id] = now;
+
+        // Send hint to user
+        // Combine global and user revealed indices
+        const allRevealed = [...globalRevealed, ...room.game.userRevealedIndices[socket.id]];
+        const hint = generateHint(word, allRevealed);
+
+        socket.emit('hintRevealed', {
+            hint: hint,
+            remainingHints: room.game.personalHints[socket.id],
+            cooldown: 20
+        });
     });
 });
 

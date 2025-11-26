@@ -14,6 +14,8 @@ export function initGameSettings(socket, isLeaderFn, getRoomCode, getPlayerCount
     const wordChoicesInput = document.getElementById('setting-wordchoices');
     const roundsInput = document.getElementById('setting-rounds');
     const fuzzyInput = document.getElementById('setting-fuzzy');
+    const hintsInput = document.getElementById('setting-hints');
+    const personalHintsInput = document.getElementById('setting-personal-hints');
     const guessWordSettings = document.getElementById('settings-guess-word');
     
     // Actions
@@ -68,6 +70,8 @@ export function initGameSettings(socket, isLeaderFn, getRoomCode, getPlayerCount
         wordChoicesInput.disabled = disabled;
         roundsInput.disabled = disabled;
         if (fuzzyInput) fuzzyInput.disabled = disabled;
+        if (hintsInput) hintsInput.disabled = disabled;
+        if (personalHintsInput) personalHintsInput.disabled = disabled;
         
         // Cards interaction
         cards.forEach(card => {
@@ -95,7 +99,9 @@ export function initGameSettings(socket, isLeaderFn, getRoomCode, getPlayerCount
             wordChoiceTime: parseInt(wordChoiceTimeInput.value),
             wordChoices: parseInt(wordChoicesInput.value),
             rounds: parseInt(roundsInput.value),
-            allowFuzzy: fuzzyInput ? fuzzyInput.checked : false
+            allowFuzzy: fuzzyInput ? fuzzyInput.checked : false,
+            hintsEnabled: hintsInput ? hintsInput.checked : true,
+            personalHints: personalHintsInput ? parseInt(personalHintsInput.value) : 3
         };
 
         socket.emit('updateSettings', {
@@ -125,6 +131,13 @@ export function initGameSettings(socket, isLeaderFn, getRoomCode, getPlayerCount
     wordChoicesInput.addEventListener('change', emitSettingsUpdate);
     roundsInput.addEventListener('change', emitSettingsUpdate);
     if (fuzzyInput) fuzzyInput.addEventListener('change', emitSettingsUpdate);
+    if (hintsInput) hintsInput.addEventListener('change', emitSettingsUpdate);
+    if (personalHintsInput) {
+        personalHintsInput.addEventListener('input', (e) => {
+            document.getElementById('personal-hints-value').textContent = e.target.value;
+        });
+        personalHintsInput.addEventListener('change', emitSettingsUpdate);
+    }
 
     // Start Game
     startBtn.addEventListener('click', () => {
@@ -149,6 +162,11 @@ export function initGameSettings(socket, isLeaderFn, getRoomCode, getPlayerCount
         if (wordChoicesInput.value != settings.wordChoices) wordChoicesInput.value = settings.wordChoices;
         if (roundsInput.value != settings.rounds) roundsInput.value = settings.rounds;
         if (fuzzyInput && fuzzyInput.checked !== settings.allowFuzzy) fuzzyInput.checked = settings.allowFuzzy;
+        if (hintsInput && settings.hintsEnabled !== undefined && hintsInput.checked !== settings.hintsEnabled) hintsInput.checked = settings.hintsEnabled;
+        if (personalHintsInput && settings.personalHints !== undefined) {
+            personalHintsInput.value = settings.personalHints;
+            document.getElementById('personal-hints-value').textContent = settings.personalHints;
+        }
     });
 
     socket.on('gameStateChanged', (state) => {

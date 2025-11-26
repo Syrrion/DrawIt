@@ -36,8 +36,11 @@ export function initUIManager(avatarManager, animationSystem, gameSettingsManage
         });
     });
 
-    // Pre-fill random username
-    if (usernameInput && !usernameInput.value) {
+    // Pre-fill random username or load from storage
+    const savedUsername = localStorage.getItem('drawit_username');
+    if (savedUsername) {
+        if (usernameInput) usernameInput.value = savedUsername;
+    } else if (usernameInput && !usernameInput.value) {
         usernameInput.value = generateRandomUsername();
     }
 
@@ -159,7 +162,12 @@ export function initUIManager(avatarManager, animationSystem, gameSettingsManage
         state.user.username = username;
         state.currentRoom = roomCode;
         
+        // Save username
+        localStorage.setItem('drawit_username', username);
+        
         const avatarData = avatarManager.getAvatarData();
+        // Save avatar
+        avatarManager.saveAvatarToStorage();
 
         socket.emit('joinRoom', {
             username: state.user.username,

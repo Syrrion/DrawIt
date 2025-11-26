@@ -110,6 +110,8 @@ export const timerValue = document.getElementById('timer-value');
 export const wordDisplay = document.getElementById('word-display');
 export const roundCurrent = document.getElementById('round-current');
 export const roundTotal = document.getElementById('round-total');
+export const btnUseHint = document.getElementById('btn-use-hint');
+export const hintsCount = document.getElementById('hints-count');
 
 // Room Code Toggle
 export const toggleCodeBtn = document.getElementById('toggle-code-btn');

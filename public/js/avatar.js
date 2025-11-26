@@ -434,8 +434,45 @@ export function initAvatarManager() {
         btnRandomAvatar.addEventListener('click', randomizeAvatar);
     }
 
-    // Initial Randomization
-    randomizeAvatar();
+    // Initial Randomization or Load
+    const savedAvatar = localStorage.getItem('drawit_avatar');
+    if (savedAvatar) {
+        try {
+            const data = JSON.parse(savedAvatar);
+            if (data.type === 'emoji') {
+                switchAvatarMode('emoji');
+                emojiState.emoji = data.emoji;
+                emojiState.color = data.color;
+                currentAvatarColor = data.color;
+                
+                // Update UI
+                avatarPreview.style.backgroundColor = data.color;
+                avatarEmojiDisplay.textContent = data.emoji;
+                if (currentEmojiSpan) currentEmojiSpan.textContent = data.emoji;
+                if (emojiColorPreview) emojiColorPreview.style.backgroundColor = data.color;
+                if (avatarColorPreview) avatarColorPreview.style.backgroundColor = data.color;
+                
+                // Update selected emoji in list
+                emojiOptionElements.forEach(o => {
+                    if (o.dataset.value === data.emoji) o.classList.add('selected');
+                    else o.classList.remove('selected');
+                });
+            } else if (data.type === 'image') {
+                switchAvatarMode('draw'); // Default to draw mode if image type, but could be upload
+                // For simplicity, we load it into the canvas
+                const img = new Image();
+                img.onload = () => {
+                    avatarCtx.drawImage(img, 0, 0);
+                };
+                img.src = data.value;
+            }
+        } catch (e) {
+            console.error('Failed to load avatar', e);
+            randomizeAvatar();
+        }
+    } else {
+        randomizeAvatar();
+    }
 
     return {
         setAvatarColor: (color) => { 
@@ -458,6 +495,12 @@ export function initAvatarManager() {
                     value: avatarCanvas.toDataURL() 
                 };
             }
+        },
+        saveAvatarToStorage: () => {
+            const data = avatarMode === 'emoji' ? 
+                { type: 'emoji', emoji: emojiState.emoji, color: emojiState.color } :
+                { type: 'image', value: avatarCanvas.toDataURL() };
+            localStorage.setItem('drawit_avatar', JSON.stringify(data));
         }
     };
 }

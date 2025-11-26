@@ -1,4 +1,4 @@
-import { socket, gameTopBar, wordChoiceModal, wordChoicesContainer, timerValue, wordDisplay, roundCurrent, roundTotal, roundResultOverlay, roundResultTitle, roundResultWord, roundResultScores, gameEndModal, gameEndScores, readyCheckModal, btnIamReady, btnRefuseGame, readyCountVal, readyTotalVal, readyTimerVal, readyPlayersList, canvas, helpModal, lobbySettingsModal, confirmationModal, kickModal, alertModal, roomPrivacyBadge } from './dom-elements.js';
+import { socket, gameTopBar, wordChoiceModal, wordChoicesContainer, timerValue, wordDisplay, roundCurrent, roundTotal, roundResultOverlay, roundResultTitle, roundResultWord, roundResultScores, gameEndModal, gameEndScores, readyCheckModal, btnIamReady, btnRefuseGame, readyCountVal, readyTotalVal, readyTimerVal, readyPlayersList, canvas, helpModal, lobbySettingsModal, confirmationModal, kickModal, alertModal, roomPrivacyBadge, btnUseHint, hintsCount } from './dom-elements.js';
 import { state } from './state.js';
 import { showToast } from './utils.js';
 import { performDraw, performFloodFill, performMoveSelection, performClearRect } from './draw.js';
@@ -105,6 +105,28 @@ export function initSocketManager(
 
         if (data.game && data.game.turnOrder && data.game.currentDrawerIndex !== undefined) {
             state.currentDrawerId = data.game.turnOrder[data.game.currentDrawerIndex];
+            
+            // Update Hints Count
+            if (data.game.personalHints !== undefined && hintsCount) {
+                hintsCount.textContent = data.game.personalHints;
+            }
+
+            // Update Word Display and Timer if joining mid-game
+            if (data.game.currentHint) {
+                gameTopBar.classList.remove('hidden');
+                wordDisplay.textContent = data.game.currentHint;
+            }
+            if (data.game.timeLeft !== undefined) {
+                timerValue.textContent = data.game.timeLeft;
+                // Start local timer
+                if (window.currentTimerInterval) clearInterval(window.currentTimerInterval);
+                let timeLeft = data.game.timeLeft;
+                window.currentTimerInterval = setInterval(() => {
+                    timeLeft--;
+                    if (timeLeft >= 0) timerValue.textContent = timeLeft;
+                    else clearInterval(window.currentTimerInterval);
+                }, 1000);
+            }
         }
 
         playerListManager.updatePlayerList(data.users, data.leaderId, data.gameState, data.roomCode);
@@ -296,6 +318,28 @@ export function initSocketManager(
         timerValue.textContent = data.duration;
         wordDisplay.textContent = data.hint;
         
+        // Show/Hide Hint Button
+        if (state.currentDrawerId === socket.id || state.isSpectator) {
+            if (btnUseHint) btnUseHint.classList.add('hidden');
+        } else {
+            if (btnUseHint) {
+                btnUseHint.classList.remove('hidden');
+                // Check if disabled (0 hints)
+                if (hintsCount && parseInt(hintsCount.textContent) <= 0) {
+                    btnUseHint.disabled = true;
+                } else {
+                    // If we were in cooldown, we might want to keep it? 
+                    // For simplicity, let's assume cooldown resets on new round or just persists?
+                    // The server checks cooldown based on timestamp.
+                    // The client visual cooldown might be out of sync if we reload.
+                    // But for now, let's just enable it if we have hints.
+                    // Ideally we should get the cooldown state from server.
+                    btnUseHint.disabled = false;
+                    btnUseHint.classList.remove('cooldown');
+                }
+            }
+        }
+
         if (state.currentDrawerName) {
             showToast(`C'est au tour de ${state.currentDrawerName} de dessiner !`, 'info');
         }
@@ -641,6 +685,10 @@ export function initSocketManager(
         gameEndModal.classList.add('hidden');
         
         if (readyTimerInterval) clearInterval(readyTimerInterval);
+
+        if (hintsCount && data.personalHints !== undefined) {
+            hintsCount.textContent = data.personalHints;
+        }
     });
 
     socket.on('kicked', () => {
@@ -653,5 +701,51 @@ export function initSocketManager(
         window.showAlert('Déconnexion', 'La connexion au serveur a été perdue.', () => {
             window.location.reload();
         });
+    });
+
+    // Hint Button
+    if (btnUseHint) {
+        btnUseHint.addEventListener('click', () => {
+            if (state.currentGameState === 'PLAYING' && !btnUseHint.disabled) {
+                socket.emit('requestHint', state.currentRoom);
+            }
+        });
+    }
+
+    socket.on('hintRevealed', (data) => {
+        wordDisplay.textContent = data.hint;
+        if (hintsCount) hintsCount.textContent = data.remainingHints;
+        
+        if (data.remainingHints <= 0) {
+            btnUseHint.disabled = true;
+            btnUseHint.classList.add('disabled');
+        } else {
+            // Start Cooldown
+            btnUseHint.disabled = true;
+            btnUseHint.classList.add('cooldown');
+            
+            let cooldown = data.cooldown;
+            const originalText = hintsCount.textContent;
+            hintsCount.textContent = cooldown;
+            
+            const interval = setInterval(() => {
+                cooldown--;
+                if (cooldown > 0) {
+                    hintsCount.textContent = cooldown;
+                } else {
+                    clearInterval(interval);
+                    btnUseHint.disabled = false;
+                    btnUseHint.classList.remove('cooldown');
+                    hintsCount.textContent = data.remainingHints;
+                }
+            }, 1000);
+        }
+    });
+
+    socket.on('playerGuessed', (playerId) => {
+        if (playerId === socket.id) {
+            if (btnUseHint) btnUseHint.classList.add('hidden');
+        }
+        // ... existing code ...
     });
 }
