@@ -6,10 +6,10 @@ import {
     confirmationModal, confirmOkBtn, confirmCancelBtn,
     btnReturnLobby, gameEndModal,
     btnIamReady, btnRefuseGame, readyCheckModal,
-    socket
+    socket, spectatorCheckbox, btnJoinRandom, activeGamesCount, privateRoomCheckbox
 } from './dom-elements.js';
 import { state } from './state.js';
-import { showToast, generateRandomUsername, copyToClipboard } from './utils.js';
+import { showToast, generateRandomUsername, copyToClipboard, escapeHtml } from './utils.js';
 
 export function initUIManager(avatarManager, animationSystem, gameSettingsManager, render) {
     // Pre-fill random username
@@ -17,10 +17,66 @@ export function initUIManager(avatarManager, animationSystem, gameSettingsManage
         usernameInput.value = generateRandomUsername();
     }
 
+    // Active Games Count
+    function initGameCount() {
+        socket.emit('getPublicGameCount');
+
+        socket.on('updatePublicGameCount', (count) => {
+            if (activeGamesCount) {
+                if (count === 0) {
+                    activeGamesCount.textContent = "Aucune";
+                } else {
+                    activeGamesCount.textContent = count;
+                }
+                
+                const suffix = count > 1 ? ' rooms disponibles' : ' room disponible';
+                if (activeGamesCount.nextSibling) {
+                    activeGamesCount.nextSibling.textContent = ` ${suffix}`;
+                }
+            }
+        });
+        
+        setInterval(() => {
+            if (!state.currentRoom) {
+                socket.emit('getPublicGameCount');
+            }
+        }, 5000);
+    }
+    initGameCount();
+
+    // Random Join
+    if (btnJoinRandom) {
+        btnJoinRandom.addEventListener('click', () => {
+            let username = usernameInput.value.trim();
+            const isSpectator = spectatorCheckbox.checked;
+            
+            if (!username) {
+                username = generateRandomUsername();
+                usernameInput.value = username;
+            }
+            
+            // Sanitize username
+            username = escapeHtml(username);
+            
+            state.user.username = username;
+            socket.emit('joinRandomRoom', { username, isSpectator });
+        });
+    }
+
+    socket.on('randomRoomFound', (roomCode) => {
+        const isSpectator = spectatorCheckbox.checked;
+        joinRoom(roomCode, state.user.username, isSpectator);
+    });
+
+    socket.on('error', (msg) => {
+        showToast(msg, 'error');
+    });
+
     // Navigation
     joinBtn.addEventListener('click', () => {
         let username = usernameInput.value.trim();
-        const roomCode = roomCodeInput.value.trim();
+        let roomCode = roomCodeInput.value.trim();
+        const isSpectator = spectatorCheckbox.checked;
         
         if (!username) {
             username = generateRandomUsername();
@@ -28,14 +84,25 @@ export function initUIManager(avatarManager, animationSystem, gameSettingsManage
         }
 
         if (roomCode && username) {
-            joinRoom(roomCode, username);
+            // Sanitize
+            username = escapeHtml(username);
+            roomCode = escapeHtml(roomCode);
+            
+            joinRoom(roomCode, username, isSpectator);
         } else {
             showToast('Merci de remplir le pseudo et le code de la room', 'error');
         }
     });
 
     createBtn.addEventListener('click', () => {
+        // Check if spectator mode is enabled
+        if (spectatorCheckbox && spectatorCheckbox.checked) {
+            showToast('Les observateurs ne peuvent pas créer de partie.', 'error');
+            return;
+        }
+
         let username = usernameInput.value.trim();
+        const isPrivate = privateRoomCheckbox ? privateRoomCheckbox.checked : false;
         
         if (!username) {
             username = generateRandomUsername();
@@ -43,14 +110,17 @@ export function initUIManager(avatarManager, animationSystem, gameSettingsManage
         }
 
         if (username) {
+            // Sanitize
+            username = escapeHtml(username);
+            
             const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-            joinRoom(roomCode, username);
+            joinRoom(roomCode, username, false, isPrivate);
         } else {
             showToast('Merci de choisir un pseudo', 'error');
         }
     });
 
-    function joinRoom(roomCode, username) {
+    function joinRoom(roomCode, username, isSpectator = false, isPrivate = false) {
         state.user.username = username;
         state.currentRoom = roomCode;
         
@@ -59,7 +129,9 @@ export function initUIManager(avatarManager, animationSystem, gameSettingsManage
         socket.emit('joinRoom', {
             username: state.user.username,
             avatar: avatarData,
-            roomCode: state.currentRoom
+            roomCode: state.currentRoom,
+            isSpectator,
+            isPrivate
         });
 
         loginScreen.classList.add('hidden');
@@ -169,7 +241,7 @@ export function initUIManager(avatarManager, animationSystem, gameSettingsManage
     btnIamReady.addEventListener('click', () => {
         socket.emit('playerReady', state.currentRoom);
         btnIamReady.classList.add('waiting');
-        btnIamReady.textContent = 'En attente des autres...';
+        btnIamReady.textContent = 'EN ATTENTE...';
         btnIamReady.disabled = true;
     });
 

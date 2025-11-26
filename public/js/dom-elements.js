@@ -13,6 +13,10 @@ export const displayRoomCode = document.getElementById('display-room-code');
 export const playersList = document.getElementById('players-list');
 export const lobbyControls = document.getElementById('lobby-controls');
 export const waitingMessage = document.getElementById('waiting-message');
+export const spectatorCheckbox = document.getElementById('spectator-checkbox');
+export const btnJoinRandom = document.getElementById('btn-join-random');
+export const activeGamesCount = document.getElementById('active-games-count');
+export const privateRoomCheckbox = document.getElementById('private-room-checkbox');
 
 // Canvas Area
 export const canvas = document.getElementById('drawing-board');
@@ -38,14 +42,20 @@ export const toolEraserBtn = document.getElementById('tool-eraser');
 export const toolFillBtn = document.getElementById('tool-fill');
 export const toolSmudgeBtn = document.getElementById('tool-smudge');
 export const toolAirbrushBtn = document.getElementById('tool-airbrush');
+export const toolPipetteBtn = document.getElementById('tool-pipette');
+export const toolSelectionBtn = document.getElementById('tool-selection');
 export const toolRectBtn = document.getElementById('tool-rect');
 export const toolCircleBtn = document.getElementById('tool-circle');
 export const toolTriangleBtn = document.getElementById('tool-triangle');
 export const toolLineBtn = document.getElementById('tool-line');
 export const clearBtn = document.getElementById('clear-btn');
 export const btnUndo = document.getElementById('btn-undo');
+export const btnRedo = document.getElementById('btn-redo');
+export const btnHelp = document.getElementById('btn-help');
 
 // Modals
+export const helpModal = document.getElementById('help-modal');
+export const btnCloseHelp = document.getElementById('btn-close-help');
 export const confirmationModal = document.getElementById('confirmation-modal');
 export const confirmOkBtn = document.getElementById('confirm-ok');
 export const confirmCancelBtn = document.getElementById('confirm-cancel');
@@ -98,12 +108,20 @@ export const toggleCodeBtn = document.getElementById('toggle-code-btn');
 export const iconEye = document.getElementById('icon-eye');
 export const iconEyeOff = document.getElementById('icon-eye-off');
 export const copyCodeBtn = document.getElementById('copy-code-btn');
+export const roomPrivacyBadge = document.getElementById('room-privacy-badge');
 
 // Avatar
 export const avatarColorTrigger = document.getElementById('avatar-color-trigger');
 export const avatarColorPreview = document.getElementById('avatar-color-preview');
+export const emojiColorTrigger = document.getElementById('emoji-color-trigger');
+export const emojiColorPreview = document.getElementById('emoji-color-preview');
 
 // Chat
 export const chatMessages = document.getElementById('chat-messages');
 export const chatForm = document.getElementById('chat-form');
 export const chatInput = document.getElementById('chat-input');
+
+// Custom Cursor
+export const localCursor = document.getElementById('local-cursor');
+export const cursorBrushPreview = document.getElementById('cursor-brush-preview');
+export const cursorIcon = document.getElementById('cursor-icon');

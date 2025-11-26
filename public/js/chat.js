@@ -1,3 +1,5 @@
+import { escapeHtml } from './utils.js';
+
 export function initChat(socket, getRoomCode, getUsername, getPlayerAvatar) {
     const chatForm = document.getElementById('chat-form');
     const chatInput = document.getElementById('chat-input');
@@ -12,10 +14,12 @@ export function initChat(socket, getRoomCode, getUsername, getPlayerAvatar) {
         const username = getUsername();
 
         if (message && roomCode && username) {
+            // Sanitize before sending (optional but good practice)
+            // We will also sanitize on display
             socket.emit('chatMessage', {
                 roomCode: roomCode,
                 username: username,
-                message
+                message: message // Send raw, sanitize on display/server
             });
             chatInput.value = '';
         }
@@ -23,6 +27,8 @@ export function initChat(socket, getRoomCode, getUsername, getPlayerAvatar) {
 
     socket.on('chatMessage', ({ username, message, type }) => {
         const isSelf = username === getUsername();
+        const safeMessage = escapeHtml(message);
+        const safeUsername = escapeHtml(username);
         
         if (username === 'System') {
             const div = document.createElement('div');
@@ -35,7 +41,7 @@ export function initChat(socket, getRoomCode, getUsername, getPlayerAvatar) {
                 div.style.color = 'orange';
             }
             
-            div.innerHTML = `${message}`;
+            div.innerHTML = `${safeMessage}`;
             chatMessages.appendChild(div);
         } else {
             const row = document.createElement('div');
@@ -51,6 +57,9 @@ export function initChat(socket, getRoomCode, getUsername, getPlayerAvatar) {
                 
                 if (player && player.avatar) {
                     if (player.avatar.type === 'image') {
+                        // Images are URLs, we assume they are safe or we should validate them. 
+                        // For now, we trust the avatar value structure but we should be careful.
+                        // Ideally we should validate the URL.
                         avatarHtml = `<img src="${player.avatar.value}" class="chat-avatar-img">`;
                     } else {
                         const color = player.avatar.color || '#3498db';
@@ -74,9 +83,9 @@ export function initChat(socket, getRoomCode, getUsername, getPlayerAvatar) {
             }
 
             if (isSelf) {
-                bubble.innerHTML = `${message}`;
+                bubble.innerHTML = `${safeMessage}`;
             } else {
-                bubble.innerHTML = `<div class="message-name">${username}</div><div class="message-content">${message}</div>`;
+                bubble.innerHTML = `<div class="message-name">${safeUsername}</div><div class="message-content">${safeMessage}</div>`;
             }
             
             row.appendChild(bubble);
@@ -89,7 +98,7 @@ export function initChat(socket, getRoomCode, getUsername, getPlayerAvatar) {
     function addSeparator(text) {
         const div = document.createElement('div');
         div.className = 'chat-separator';
-        div.innerHTML = `<span>${text}</span>`;
+        div.innerHTML = `<span>${escapeHtml(text)}</span>`;
         chatMessages.appendChild(div);
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
@@ -104,7 +113,7 @@ export function initChat(socket, getRoomCode, getUsername, getPlayerAvatar) {
             div.style.color = 'orange';
         }
         
-        div.innerHTML = `${message}`;
+        div.innerHTML = `${escapeHtml(message)}`;
         chatMessages.appendChild(div);
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }

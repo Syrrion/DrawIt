@@ -20,5 +20,6 @@ export const state = {
     canvasSnapshot: null,
     leaderId: null,
     activeColorTarget: 'game', // 'game' or 'avatar'
-    currentDrawerName: null
+    currentDrawerName: null,
+    isSpectator: false
 };

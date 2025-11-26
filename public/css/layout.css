@@ -23,12 +23,14 @@
     width: 350px;
     flex-shrink: 0;
     height: 100%;
-    background: var(--bg-glass);
-    border-right: 1px solid var(--border-color);
+    background: rgba(18, 18, 24, 0.6);
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
     display: flex;
     flex-direction: column;
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     z-index: 10;
+    box-shadow: 5px 0 30px rgba(0, 0, 0, 0.2);
 }
 
 /* Main Area */
@@ -39,10 +41,10 @@
     display: flex;
     flex-direction: column;
     background-image: 
-        radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.05) 0%, transparent 50%),
-        linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-    background-size: 100% 100%, 30px 30px, 30px 30px;
+        radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.08) 0%, transparent 60%),
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    background-size: 100% 100%, 40px 40px, 40px 40px;
     position: relative;
 }
 
@@ -51,10 +53,12 @@
     width: 350px;
     flex-shrink: 0;
     height: 100%;
-    background: var(--bg-glass);
-    border-left: 1px solid var(--border-color);
+    background: rgba(18, 18, 24, 0.6);
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
     display: flex;
     flex-direction: column;
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     z-index: 10;
+    box-shadow: -5px 0 30px rgba(0, 0, 0, 0.2);
 }

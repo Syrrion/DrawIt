@@ -1,0 +1,15 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "append_css",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\t.repain\\Documents\\Personnel\\DrawIt\\DrawIt\\public\\css\\modals.css",
+				"\n/* Help Modal */\n.help-content {\n    max-width: 700px;\n    text-align: left;\n}\n\n.help-grid {\n    display: grid;\n    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));\n    gap: 2rem;\n}\n\n.help-section h4 {\n    color: var(--primary);\n    border-bottom: 1px solid var(--border-color);\n    padding-bottom: 0.5rem;\n    margin-bottom: 1rem;\n    font-size: 1.1rem;\n}\n\n.help-section.full-width {\n    grid-column: 1 / -1;\n}\n\n.shortcut-list {\n    list-style: none;\n    padding: 0;\n    margin: 0;\n    display: flex;\n    flex-direction: column;\n    gap: 0.8rem;\n}\n\n.shortcut-list.two-col {\n    display: grid;\n    grid-template-columns: 1fr 1fr;\n    gap: 1rem;\n}\n\n.shortcut-list li {\n    display: flex;\n    align-items: center;\n    gap: 0.8rem;\n    color: var(--text-main);\n    font-size: 0.95rem;\n}\n\n.key {\n    background: rgba(255, 255, 255, 0.1);\n    border: 1px solid var(--border-color);\n    border-radius: 4px;\n    padding: 2px 8px;\n    font-family: monospace;\n    font-weight: bold;\n    color: var(--primary);\n    box-shadow: 0 2px 0 rgba(0,0,0,0.5);\n    min-width: 24px;\n    text-align: center;\n    font-size: 0.9rem;\n}\n"
+			],
+			"group": "build"
+		}
+	]
+}

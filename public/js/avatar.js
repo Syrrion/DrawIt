@@ -6,7 +6,7 @@ export function initAvatarManager() {
     const avatarCtx = avatarCanvas.getContext('2d', { willReadFrequently: true });
     const avatarPreview = document.getElementById('avatar-preview');
     const avatarColorInput = document.getElementById('avatar-color');
-    const avatarEmojiSelect = document.getElementById('avatar-emoji-select');
+    // const avatarEmojiSelect = document.getElementById('avatar-emoji-select'); // Removed
     const avatarEmojiDisplay = document.getElementById('avatar-emoji');
     const avatarClearBtn = document.getElementById('avatar-clear-btn');
     const avatarUpload = document.getElementById('avatar-upload');
@@ -16,6 +16,7 @@ export function initAvatarManager() {
     // New Elements for Image Mode
     const avatarZoomInput = document.getElementById('avatar-zoom');
     const avatarImageControls = document.getElementById('avatar-image-controls');
+    const btnTriggerUpload = document.getElementById('btn-trigger-upload');
 
     // Tabs
     const tabEmoji = document.getElementById('tab-emoji');
@@ -56,6 +57,53 @@ export function initAvatarManager() {
         color: '#3498db',
         emoji: '🎨'
     };
+
+    // Custom Emoji Picker Logic
+    const emojiTrigger = document.getElementById('emoji-picker-trigger');
+    const emojiOptions = document.getElementById('emoji-options');
+    const currentEmojiSpan = emojiTrigger ? emojiTrigger.querySelector('.current-emoji') : null;
+    const emojiOptionElements = document.querySelectorAll('.emoji-option');
+
+    if (emojiTrigger && emojiOptions) {
+        emojiTrigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            emojiOptions.classList.toggle('hidden');
+
+            if (!emojiOptions.classList.contains('hidden')) {
+                // Check available space
+                const rect = emojiTrigger.getBoundingClientRect();
+                const pickerHeight = 320; // Max height + padding
+                const spaceBelow = window.innerHeight - rect.bottom;
+                
+                if (spaceBelow < pickerHeight) {
+                    emojiOptions.classList.add('open-up');
+                } else {
+                    emojiOptions.classList.remove('open-up');
+                }
+            }
+        });
+
+        // Close emoji picker when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!emojiPickerWrapper.contains(e.target)) {
+                emojiOptions.classList.add('hidden');
+            }
+        });
+
+        emojiOptionElements.forEach(opt => {
+            opt.addEventListener('click', () => {
+                const val = opt.dataset.value;
+                emojiState.emoji = val;
+                avatarEmojiDisplay.textContent = val;
+                if (currentEmojiSpan) currentEmojiSpan.textContent = val;
+                emojiOptions.classList.add('hidden');
+                
+                // Update selected visual
+                emojiOptionElements.forEach(o => o.classList.remove('selected'));
+                opt.classList.add('selected');
+            });
+        });
+    }
 
     // Initialize avatar canvas
     avatarCtx.fillStyle = '#ffffff';
@@ -108,13 +156,6 @@ export function initAvatarManager() {
         });
     }
 
-    if (avatarEmojiSelect) {
-        avatarEmojiSelect.addEventListener('change', (e) => {
-            emojiState.emoji = e.target.value;
-            avatarEmojiDisplay.textContent = e.target.value;
-        });
-    }
-
     // --- Drawing Logic ---
     function updateAvatarTool(activeBtn) {
         [avatarToolPen, avatarToolFill, avatarToolEraser].forEach(btn => btn.classList.remove('active'));
@@ -149,7 +190,10 @@ export function initAvatarManager() {
 
     avatarCanvas.addEventListener('mousedown', (e) => {
         if (avatarMode === 'upload') {
-            if (!imgState.img) return;
+            if (!imgState.img) {
+                avatarUpload.click();
+                return;
+            }
             imgState.isPanning = true;
             imgState.lastPanX = e.clientX;
             imgState.lastPanY = e.clientY;
@@ -235,12 +279,35 @@ export function initAvatarManager() {
     avatarCanvas.addEventListener('touchmove', handleAvatarTouch, { passive: false });
     avatarCanvas.addEventListener('touchend', handleAvatarTouch, { passive: false });
 
+    avatarCanvas.addEventListener('wheel', (e) => {
+        if (avatarMode === 'upload' && imgState.img) {
+            e.preventDefault();
+            const delta = -Math.sign(e.deltaY) * 0.1;
+            let newScale = imgState.scale + delta;
+            
+            // Clamp scale
+            const maxZoom = parseFloat(avatarZoomInput.max) || 3;
+            const minZoom = parseFloat(avatarZoomInput.min) || 0.1;
+            newScale = Math.max(minZoom, Math.min(maxZoom, newScale));
+            
+            imgState.scale = newScale;
+            if (avatarZoomInput) avatarZoomInput.value = newScale;
+            drawAvatarImage();
+        }
+    }, { passive: false });
+
     avatarClearBtn.addEventListener('click', () => {
         avatarCtx.fillStyle = '#ffffff';
         avatarCtx.fillRect(0, 0, 100, 100);
     });
 
     // --- Upload Logic ---
+    if (btnTriggerUpload) {
+        btnTriggerUpload.addEventListener('click', () => {
+            avatarUpload.click();
+        });
+    }
+
     function drawAvatarImage() {
         if (!imgState.img) return;
         
@@ -309,8 +376,68 @@ export function initAvatarManager() {
         });
     }
 
+    // Randomize Avatar on Init
+    function randomizeAvatar() {
+        // Random Color (Pastel to Dark)
+        // Hue: 0-360, Saturation: 50-90%, Lightness: 20-80%
+        const h = Math.floor(Math.random() * 360);
+        const s = Math.floor(Math.random() * 40) + 50; // 50-90%
+        const l = Math.floor(Math.random() * 60) + 20; // 20-80%
+        
+        // Convert HSL to Hex
+        const hslToHex = (h, s, l) => {
+            l /= 100;
+            const a = s * Math.min(l, 1 - l) / 100;
+            const f = n => {
+                const k = (n + h / 30) % 12;
+                const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+                return Math.round(255 * color).toString(16).padStart(2, '0');
+            };
+            return `#${f(0)}${f(8)}${f(4)}`;
+        };
+
+        const randomColor = hslToHex(h, s, l);
+        
+        // Random Emoji
+        if (emojiOptionElements.length > 0) {
+            const randomIndex = Math.floor(Math.random() * emojiOptionElements.length);
+            const randomOption = emojiOptionElements[randomIndex];
+            const val = randomOption.dataset.value;
+            
+            // Update State
+            emojiState.color = randomColor;
+            emojiState.emoji = val;
+            currentAvatarColor = randomColor;
+            
+            // Update UI
+            avatarPreview.style.backgroundColor = randomColor;
+            avatarEmojiDisplay.textContent = val;
+            if (currentEmojiSpan) currentEmojiSpan.textContent = val;
+            
+            // Update Color Picker Preview if exists
+            const emojiColorPreview = document.getElementById('emoji-color-preview');
+            if (emojiColorPreview) emojiColorPreview.style.backgroundColor = randomColor;
+            
+            // Update Selected Class
+            emojiOptionElements.forEach(o => o.classList.remove('selected'));
+            randomOption.classList.add('selected');
+        }
+    }
+
+    const btnRandomAvatar = document.getElementById('btn-random-avatar');
+    if (btnRandomAvatar) {
+        btnRandomAvatar.addEventListener('click', randomizeAvatar);
+    }
+
+    // Initial Randomization
+    randomizeAvatar();
+
     return {
-        setAvatarColor: (color) => { currentAvatarColor = color; },
+        setAvatarColor: (color) => { 
+            currentAvatarColor = color; 
+            emojiState.color = color;
+            if (avatarPreview) avatarPreview.style.backgroundColor = color;
+        },
         getAvatarData: () => {
             if (avatarMode === 'emoji') {
                 return { 

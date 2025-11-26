@@ -1,7 +1,7 @@
-import { socket, gameTopBar, wordChoiceModal, wordChoicesContainer, timerValue, wordDisplay, roundCurrent, roundTotal, roundResultOverlay, roundResultTitle, roundResultWord, roundResultScores, gameEndModal, gameEndScores, readyCheckModal, btnIamReady, readyCountVal, readyTotalVal, readyTimerVal, readyPlayersList, canvas } from './dom-elements.js';
+import { socket, gameTopBar, wordChoiceModal, wordChoicesContainer, timerValue, wordDisplay, roundCurrent, roundTotal, roundResultOverlay, roundResultTitle, roundResultWord, roundResultScores, gameEndModal, gameEndScores, readyCheckModal, btnIamReady, btnRefuseGame, readyCountVal, readyTotalVal, readyTimerVal, readyPlayersList, canvas, helpModal, lobbySettingsModal, confirmationModal, kickModal, alertModal, roomPrivacyBadge } from './dom-elements.js';
 import { state } from './state.js';
 import { showToast } from './utils.js';
-import { performDraw, performFloodFill } from './draw.js';
+import { performDraw, performFloodFill, performMoveSelection, performClearRect } from './draw.js';
 
 export function initSocketManager(
     gameSettingsManager, 
@@ -29,6 +29,15 @@ export function initSocketManager(
             state.leaderId = data.leaderId;
             gameSettingsManager.updateControlsState();
         }
+
+        // Remove cursors for spectators
+        if (data.users) {
+            data.users.forEach(user => {
+                if (user.isSpectator) {
+                    cursorManager.removeCursor(user.id);
+                }
+            });
+        }
     });
 
     socket.on('userLeft', (data) => {
@@ -43,11 +52,47 @@ export function initSocketManager(
 
     socket.on('roomJoined', (data) => {
         state.currentGameState = data.gameState;
+        state.isSpectator = data.isSpectator;
+
+        // Update Privacy Badge
+        if (roomPrivacyBadge) {
+            if (data.isPrivate) {
+                roomPrivacyBadge.textContent = 'Privée';
+                roomPrivacyBadge.className = 'privacy-badge private';
+            } else {
+                roomPrivacyBadge.textContent = 'Publique';
+                roomPrivacyBadge.className = 'privacy-badge public';
+            }
+        }
+
+        if (data.isSpectator) {
+            // Disable Chat
+            const chatInput = document.getElementById('chat-input');
+            if (chatInput) {
+                chatInput.disabled = true;
+                chatInput.placeholder = "Mode Observateur (Chat désactivé)";
+            }
+            
+            // Hide Toolbar
+            const toolbar = document.querySelector('.toolbar');
+            if (toolbar) toolbar.style.display = 'none';
+            
+            showToast('Vous avez rejoint en mode observateur', 'info');
+        } else {
+             const chatInput = document.getElementById('chat-input');
+             if (chatInput) {
+                 chatInput.disabled = false;
+                 chatInput.placeholder = "Ecrire un message";
+             }
+             const toolbar = document.querySelector('.toolbar');
+             if (toolbar) toolbar.style.display = 'flex';
+        }
+
         if (data.game && data.game.turnOrder && data.game.currentDrawerIndex !== undefined) {
             state.currentDrawerId = data.game.turnOrder[data.game.currentDrawerIndex];
         }
 
-        playerListManager.updatePlayerList(data.users, data.leaderId);
+        playerListManager.updatePlayerList(data.users, data.leaderId, data.gameState, data.roomCode);
         state.leaderId = data.leaderId;
         
         if (data.gameState === 'LOBBY') {
@@ -83,6 +128,10 @@ export function initSocketManager(
                     const targetCtx = state.layerCanvases[targetLayerId].ctx;
                     if (action.tool === 'fill') {
                         performFloodFill(targetCtx, canvas.width, canvas.height, action.x0, action.y0, action.color);
+                    } else if (action.tool === 'move-selection') {
+                        performMoveSelection(targetCtx, action.srcX, action.srcY, action.w, action.h, action.destX, action.destY);
+                    } else if (action.tool === 'clear-rect') {
+                        performClearRect(targetCtx, action.x, action.y, action.w, action.h);
                     } else {
                         performDraw(targetCtx, action.x0, action.y0, action.x1, action.y1, action.color, action.size, action.opacity, action.tool);
                     }
@@ -144,6 +193,10 @@ export function initSocketManager(
                 const targetCtx = state.layerCanvases[targetLayerId].ctx;
                 if (action.tool === 'fill') {
                     performFloodFill(targetCtx, 800, 600, action.x0, action.y0, action.color);
+                } else if (action.tool === 'move-selection') {
+                    performMoveSelection(targetCtx, action.srcX, action.srcY, action.w, action.h, action.destX, action.destY);
+                } else if (action.tool === 'clear-rect') {
+                    performClearRect(targetCtx, action.x, action.y, action.w, action.h);
                 } else {
                     performDraw(targetCtx, action.x0, action.y0, action.x1, action.y1, action.color, action.size, action.opacity, action.tool);
                 }
@@ -158,6 +211,10 @@ export function initSocketManager(
             const targetCtx = state.layerCanvases[targetLayerId].ctx;
             if (data.tool === 'fill') {
                 performFloodFill(targetCtx, 800, 600, data.x0, data.y0, data.color);
+            } else if (data.tool === 'move-selection') {
+                performMoveSelection(targetCtx, data.srcX, data.srcY, data.w, data.h, data.destX, data.destY);
+            } else if (data.tool === 'clear-rect') {
+                performClearRect(targetCtx, data.x, data.y, data.w, data.h);
             } else {
                 performDraw(targetCtx, data.x0, data.y0, data.x1, data.y1, data.color, data.size, data.opacity, data.tool);
             }
@@ -326,18 +383,33 @@ export function initSocketManager(
     });
 
     socket.on('gameEnded', (data) => {
+        // Clear any active timers
+        if (window.wordChoiceTimerInterval) clearInterval(window.wordChoiceTimerInterval);
+        if (window.currentTimerInterval) clearInterval(window.currentTimerInterval);
+
+        // Hide game UI elements
+        wordChoiceModal.classList.add('hidden');
+        roundResultOverlay.classList.add('hidden');
         gameTopBar.classList.add('hidden');
+        
         chatManager.addSeparator('Partie terminée');
 
         gameEndScores.innerHTML = '';
-        const sortedPlayers = Object.keys(data.scores).sort((a, b) => data.scores[b] - data.scores[a]);
         
-        sortedPlayers.forEach((playerId, index) => {
-            const player = playerListManager.getPlayer(playerId);
-            if (!player) return;
-            
+        let sortedPlayers = [];
+        if (data.results) {
+            sortedPlayers = data.results.sort((a, b) => b.score - a.score);
+        } else {
+            sortedPlayers = Object.keys(data.scores).map(id => {
+                const p = playerListManager.getPlayer(id);
+                return p ? { ...p, score: data.scores[id] } : null;
+            }).filter(p => p).sort((a, b) => b.score - a.score);
+        }
+        
+        sortedPlayers.forEach((player, index) => {
             const row = document.createElement('div');
             row.className = 'score-row';
+            if (player.isDisconnected) row.classList.add('disconnected');
             
             if (index === 0) row.classList.add('rank-1');
             if (index === 1) row.classList.add('rank-2');
@@ -361,11 +433,12 @@ export function initSocketManager(
 
             const nameSpan = document.createElement('span');
             nameSpan.className = 'score-name';
-            nameSpan.textContent = player.username;
+            nameSpan.textContent = player.username + (player.isDisconnected ? ' (Déconnecté)' : '');
+            if (player.isDisconnected) nameSpan.style.fontStyle = 'italic';
             
             const totalSpan = document.createElement('span');
             totalSpan.className = 'score-total';
-            totalSpan.textContent = `${data.scores[playerId]} pts`;
+            totalSpan.textContent = `${player.score} pts`;
             
             const leftGroup = document.createElement('div');
             leftGroup.style.display = 'flex';
@@ -466,6 +539,8 @@ export function initSocketManager(
         btnIamReady.textContent = 'JE SUIS PRÊT !';
         btnIamReady.disabled = false;
 
+        if (btnRefuseGame) btnRefuseGame.classList.remove('hidden');
+
         const newReadyCountVal = document.getElementById('ready-count-val');
         const newReadyTotalVal = document.getElementById('ready-total-val');
         const newReadyTimerVal = document.getElementById('ready-timer-val');
@@ -499,6 +574,7 @@ export function initSocketManager(
         
         if (readyPlayersList) readyPlayersList.classList.add('hidden');
         if (btnIamReady) btnIamReady.classList.add('hidden');
+        if (btnRefuseGame) btnRefuseGame.classList.add('hidden');
         if (readyTimer) readyTimer.classList.add('hidden');
     });
 
@@ -533,6 +609,13 @@ export function initSocketManager(
 
     socket.on('gameStarted', (data) => {
         readyCheckModal.classList.add('hidden');
+        helpModal.classList.add('hidden');
+        lobbySettingsModal.classList.add('hidden');
+        confirmationModal.classList.add('hidden');
+        kickModal.classList.add('hidden');
+        alertModal.classList.add('hidden');
+        gameEndModal.classList.add('hidden');
+        
         if (readyTimerInterval) clearInterval(readyTimerInterval);
     });
 

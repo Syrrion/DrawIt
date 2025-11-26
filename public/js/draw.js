@@ -202,3 +202,24 @@ export function performFloodFill(targetCtx, width, height, startX, startY, fillC
 
     targetCtx.putImageData(imageData, 0, 0);
 }
+
+export function performMoveSelection(targetCtx, srcX, srcY, w, h, destX, destY) {
+    // 1. Capture content from src
+    const content = targetCtx.getImageData(srcX, srcY, w, h);
+    
+    // 2. Clear src
+    targetCtx.clearRect(srcX, srcY, w, h);
+    
+    // 3. Draw content at dest
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = w;
+    tempCanvas.height = h;
+    tempCanvas.getContext('2d').putImageData(content, 0, 0);
+    
+    targetCtx.globalCompositeOperation = 'source-over';
+    targetCtx.drawImage(tempCanvas, destX, destY);
+}
+
+export function performClearRect(targetCtx, x, y, w, h) {
+    targetCtx.clearRect(x, y, w, h);
+}

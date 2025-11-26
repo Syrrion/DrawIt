@@ -1,4 +1,4 @@
-import { socket, penColorInput, colorGrid, colorTrigger, colorPopover, currentColorPreview, avatarColorTrigger, avatarColorPreview, cursorsLayer, playersList, canvasWrapper, zoomLevelDisplay, layersList, chatMessages, chatForm, chatInput } from './js/dom-elements.js';
+import { socket, penColorInput, colorGrid, colorTrigger, colorPopover, currentColorPreview, avatarColorTrigger, avatarColorPreview, emojiColorTrigger, emojiColorPreview, cursorsLayer, playersList, canvasWrapper, zoomLevelDisplay, layersList, chatMessages, chatForm, chatInput, cursorIcon } from './js/dom-elements.js';
 import { state } from './js/state.js';
 import { showToast } from './js/utils.js';
 import { initLayerManagement } from './js/layers.js';
@@ -30,11 +30,16 @@ initColorPicker(
     currentColorPreview, 
     avatarColorTrigger, 
     avatarColorPreview, 
+    emojiColorTrigger,
+    emojiColorPreview,
     (color) => avatarManager.setAvatarColor(color), 
     () => state.activeColorTarget, 
     (target) => state.activeColorTarget = target,
     (color) => {
         // Callback when color changes
+        if (state.activeColorTarget === 'game' && cursorIcon) {
+            cursorIcon.style.backgroundColor = color;
+        }
     }
 );
 

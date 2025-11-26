@@ -129,6 +129,16 @@ export function copyToClipboard(text) {
     }
 }
 
+export function escapeHtml(text) {
+    if (!text) return text;
+    return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 function fallbackCopy(text) {
     return new Promise((resolve, reject) => {
         try {

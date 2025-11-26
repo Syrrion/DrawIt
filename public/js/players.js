@@ -4,11 +4,17 @@ export function initPlayerList(socket, playersListElement, onKickRequest) {
     let currentScores = {};
     let currentDrawerId = null;
     let currentTurnOrder = [];
+    let currentGameState = 'LOBBY';
+    let currentRoomCode = null;
 
     function render() {
         playersListElement.innerHTML = '';
-        // Sort by score descending if scores exist
+        // Sort by score descending if scores exist, but spectators always last
         const sortedUsers = [...currentUsers].sort((a, b) => {
+            // Spectators go to the bottom
+            if (a.isSpectator && !b.isSpectator) return 1;
+            if (!a.isSpectator && b.isSpectator) return -1;
+
             const scoreA = currentScores[a.id] || 0;
             const scoreB = currentScores[b.id] || 0;
             return scoreB - scoreA;
@@ -17,6 +23,10 @@ export function initPlayerList(socket, playersListElement, onKickRequest) {
         sortedUsers.forEach(u => {
             const div = document.createElement('div');
             div.className = 'player-card';
+            if (u.isSpectator) {
+                div.classList.add('is-spectator');
+                div.style.opacity = '0.7';
+            }
             if (u.id === currentDrawerId) {
                 div.classList.add('is-drawing');
             }
@@ -36,15 +46,29 @@ export function initPlayerList(socket, playersListElement, onKickRequest) {
             const isLeader = u.id === currentLeaderId;
             const leaderIcon = isLeader ? '<i class="fas fa-crown leader-crown"></i>' : '';
             const drawerIcon = u.id === currentDrawerId ? '<i class="fas fa-pencil-alt drawing-icon" style="margin-left:5px; color:var(--accent);"></i>' : '';
-            const score = currentScores[u.id] !== undefined ? `<div class="player-score">${currentScores[u.id]} pts</div>` : '';
+            const spectatorIcon = u.isSpectator ? '<i class="fas fa-eye" style="margin-left:5px; color:var(--text-dim);" title="Observateur"></i>' : '';
+            const score = currentScores[u.id] !== undefined && !u.isSpectator ? `<div class="player-score">${currentScores[u.id]} pts</div>` : '';
 
-            // Turn Order Badge
+            // Turn Order Badge (only for non-spectators)
             let turnOrderBadge = '';
-            if (currentTurnOrder && currentTurnOrder.length > 0) {
+            if (!u.isSpectator && currentTurnOrder && currentTurnOrder.length > 0) {
                 const index = currentTurnOrder.indexOf(u.id);
                 if (index !== -1) {
                     turnOrderBadge = `<span style="font-size: 0.7rem; background: rgba(255,255,255,0.1); padding: 2px 5px; border-radius: 4px; margin-right: 5px; color: var(--text-dim);">#${index + 1}</span>`;
                 }
+            }
+
+            // Switch Role Button Logic
+            let switchRoleBtn = '';
+            // Show button if: It's me, I'm NOT the leader, and we are in LOBBY
+            if (u.id === socket.id && u.id !== currentLeaderId && currentGameState === 'LOBBY') {
+                const icon = u.isSpectator ? 'fa-user-plus' : 'fa-eye';
+                const title = u.isSpectator ? 'Devenir Joueur' : 'Devenir Observateur';
+                switchRoleBtn = `
+                    <button class="switch-role-btn secondary small-btn" title="${title}" style="margin-left: 5px; padding: 2px 6px; font-size: 0.8rem;">
+                        <i class="fas ${icon}"></i>
+                    </button>
+                `;
             }
 
             // Kick Button Logic
@@ -61,12 +85,28 @@ export function initPlayerList(socket, playersListElement, onKickRequest) {
                 ${turnOrderBadge}
                 ${avatarHtml}
                 <div class="player-info" style="flex:1;">
-                    <div class="player-name" style="font-weight:bold;">${leaderIcon}${u.username} ${drawerIcon}</div>
+                    <div class="player-name" style="font-weight:bold;">
+                        ${leaderIcon}${u.username} ${drawerIcon} ${spectatorIcon}
+                        ${switchRoleBtn}
+                    </div>
                     ${score}
                 </div>
                 ${kickBtn}
             `;
             
+            // Add event listener for switch role button
+            if (switchRoleBtn) {
+                const btn = div.querySelector('.switch-role-btn');
+                if (btn) {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        if (currentRoomCode) {
+                            socket.emit('switchRole', currentRoomCode);
+                        }
+                    });
+                }
+            }
+
             // Add event listener for kick button
             if (kickBtn) {
                 const btn = div.querySelector('.kick-btn');
@@ -78,6 +118,38 @@ export function initPlayerList(socket, playersListElement, onKickRequest) {
                         }
                     });
                 }
+            }
+
+            // Avatar Hover Logic
+            const avatarEl = div.querySelector('.player-avatar') || div.querySelector('.player-avatar-img');
+            if (avatarEl) {
+                avatarEl.addEventListener('mouseenter', (e) => {
+                    const tooltip = document.getElementById('avatar-tooltip');
+                    if (!tooltip) return;
+
+                    // Set content
+                    if (u.avatar && u.avatar.type === 'image') {
+                        tooltip.innerHTML = `<img src="${u.avatar.value}">`;
+                        tooltip.style.backgroundColor = 'transparent';
+                    } else {
+                        const color = (u.avatar && u.avatar.color) || '#3498db';
+                        const emoji = (u.avatar && u.avatar.emoji) || '🎨';
+                        tooltip.innerHTML = emoji;
+                        tooltip.style.backgroundColor = color;
+                    }
+
+                    // Position
+                    const rect = avatarEl.getBoundingClientRect();
+                    tooltip.style.top = (rect.top + rect.height / 2) + 'px';
+                    tooltip.style.left = (rect.right + 10) + 'px';
+                    
+                    tooltip.classList.remove('hidden');
+                });
+
+                avatarEl.addEventListener('mouseleave', () => {
+                    const tooltip = document.getElementById('avatar-tooltip');
+                    if (tooltip) tooltip.classList.add('hidden');
+                });
             }
 
             playersListElement.appendChild(div);
@@ -130,6 +202,9 @@ export function initPlayerList(socket, playersListElement, onKickRequest) {
     socket.on('roomJoined', (data) => {
         currentUsers = data.users;
         currentLeaderId = data.leaderId;
+        if (data.roomCode) currentRoomCode = data.roomCode;
+        if (data.gameState) currentGameState = data.gameState;
+        
         // If joining mid-game, we might need scores, but usually roomJoined sends basic info.
         // Ideally roomJoined should send scores too.
         if (data.game) {
@@ -139,10 +214,17 @@ export function initPlayerList(socket, playersListElement, onKickRequest) {
         render();
     });
 
+    socket.on('gameStateChanged', (state) => {
+        currentGameState = state;
+        render();
+    });
+
     return {
-        updatePlayerList: (users, leaderId) => {
+        updatePlayerList: (users, leaderId, gameState, roomCode) => {
             currentUsers = users;
             currentLeaderId = leaderId;
+            if (gameState) currentGameState = gameState;
+            if (roomCode) currentRoomCode = roomCode;
             render();
         },
         getPlayer: (id) => {

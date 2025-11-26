@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DrawIt - Jeu de dessin multijoueur</title>
+    <title>Draw-it</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
@@ -23,109 +23,824 @@
 </head>
 <body>
     <div id="app">
+        <div id="local-cursor" class="custom-cursor hidden">
+            <div id="cursor-brush-preview" class="cursor-brush-preview"></div>
+            <div id="cursor-icon" class="cursor-icon"></div>
+        </div>
         <div id="toast-container"></div>
         <!-- Login Screen -->
         <div id="login-screen" class="screen">
             <div class="card">
-                <h1>DrawIt</h1>
+                <div class="game-logo">
+                    <div class="logo-icon">
+                        <i class="fas fa-pencil-alt"></i>
+                    </div>
+                    <h1>Draw-it</h1>
+                </div>
                 
-                <div class="avatar-section">
-                    <h3>Crée ton Avatar</h3>
-                    
-                    <div class="avatar-tabs">
-                        <button id="tab-emoji" class="tab-btn active">Emoji</button>
-                        <button id="tab-draw" class="tab-btn">Dessin</button>
-                        <button id="tab-upload" class="tab-btn">Image</button>
-                    </div>
+                <div class="login-content">
+                    <div class="login-avatar-side">
+                        <div class="avatar-section">
+                            <h3>Crée ton Avatar</h3>
+                            
+                            <div class="avatar-tabs">
+                                <button id="tab-emoji" class="tab-btn active">Emoji</button>
+                                <button id="tab-draw" class="tab-btn">Dessin</button>
+                                <button id="tab-upload" class="tab-btn">Image</button>
+                            </div>
 
-                    <div id="avatar-preview-container">
-                        <div id="avatar-preview" class="avatar">
-                            <span id="avatar-emoji">🎨</span>
-                        </div>
-                        <canvas id="avatar-canvas" width="100" height="100" class="avatar hidden"></canvas>
-                    </div>
-
-                    <div id="mode-emoji" class="avatar-mode-content">
-                        <div class="controls">
-                            <label>Couleur de fond:</label>
-                            <input type="color" id="avatar-color" value="#3498db">
-                            <label>Emoji:</label>
-                            <select id="avatar-emoji-select">
-                                <option value="🎨">🎨</option>
-                                <option value="😎">😎</option>
-                                <option value="🐱">🐱</option>
-                                <option value="🚀">🚀</option>
-                                <option value="👻">👻</option>
-                                <option value="🤖">🤖</option>
-                                <option value="🦄">🦄</option>
-                                <option value="🍕">🍕</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div id="mode-draw" class="avatar-mode-content hidden">
-                        <div class="controls">
-                            <div class="mini-toolbar">
-                                <div class="avatar-tools-row">
-                                    <button id="avatar-tool-pen" class="tool-btn small-btn active" title="Crayon">
-                                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
-                                    </button>
-                                    <button id="avatar-tool-fill" class="tool-btn small-btn" data-tooltip="Remplir">
-                                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                            <rect x="4" y="4" width="16" height="6" rx="1"></rect>
-                                            <path d="M18 10v3a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-3"></path>
-                                            <path d="M12 15v6"></path>
-                                        </svg>
-                                    </button>
-                                    <button id="avatar-tool-eraser" class="tool-btn small-btn" data-tooltip="Gomme">
-                                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                            <path d="M15.5 3.5 L20.5 8.5 L8.5 20.5 L3.5 15.5 Z"></path>
-                                            <line x1="11" y1="8" x2="16" y2="13"></line>
-                                        </svg>
-                                    </button>
-                                    <div class="separator"></div>
-                                    <div class="color-trigger small" id="avatar-color-trigger">
-                                        <div id="avatar-color-preview" style="background-color: #000000;"></div>
-                                    </div>
-                                    <button id="avatar-clear-btn" class="secondary small-btn" data-tooltip="Effacer">
-                                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                                    </button>
+                            <div id="avatar-preview-container">
+                                <div id="avatar-preview" class="avatar">
+                                    <span id="avatar-emoji">🎨</span>
                                 </div>
-                                <div class="avatar-sliders">
-                                    <div class="slider-row compact">
-                                        <label>Taille</label>
-                                        <input type="range" id="avatar-size" min="1" max="20" value="3">
+                                <canvas id="avatar-canvas" width="100" height="100" class="avatar hidden"></canvas>
+                            </div>
+
+                            <div id="mode-emoji" class="avatar-mode-content">
+                                <div class="controls">
+                                    <div class="control-row">
+                                        <label>Couleur:</label>
+                                        <div class="color-trigger" id="emoji-color-trigger">
+                                            <div id="emoji-color-preview" style="background-color: #3498db;"></div>
+                                        </div>
+                                    </div>
+                                    <div class="control-row">
+                                        <label>Emoji:</label>
+                                        <div style="display: flex; gap: 10px; align-items: center;">
+                                            <div class="emoji-picker-wrapper" id="emoji-picker-wrapper">
+                                                <div class="emoji-picker-trigger" id="emoji-picker-trigger">
+                                                    <span class="current-emoji">🎨</span>
+                                                    <i class="fas fa-chevron-down"></i>
+                                                </div>
+                                                <div class="emoji-options hidden" id="emoji-options">
+                                                    <!-- Visages -->
+                                                    <div class="emoji-category-header">Visages</div>
+                                                    <div class="emoji-option selected" data-value="🎨">🎨</div>
+                                                    <div class="emoji-option" data-value="😀">😀</div>
+                                                    <div class="emoji-option" data-value="😎">😎</div>
+                                                    <div class="emoji-option" data-value="🥳">🥳</div>
+                                                    <div class="emoji-option" data-value="🤯">🤯</div>
+                                                    <div class="emoji-option" data-value="🥶">🥶</div>
+                                                    <div class="emoji-option" data-value="🤠">🤠</div>
+                                                    <div class="emoji-option" data-value="🤡">🤡</div>
+                                                    <div class="emoji-option" data-value="👻">👻</div>
+                                                    <div class="emoji-option" data-value="👽">👽</div>
+                                                    <div class="emoji-option" data-value="🤖">🤖</div>
+                                                    <div class="emoji-option" data-value="💩">💩</div>
+                                                    <div class="emoji-option" data-value="👺">👺</div>
+                                                    <div class="emoji-option" data-value="👹">👹</div>
+                                                    <div class="emoji-option" data-value="👿">👿</div>
+                                                    <div class="emoji-option" data-value="💀">💀</div>
+                                                    <div class="emoji-option" data-value="😷">😷</div>
+                                                    <div class="emoji-option" data-value="🤒">🤒</div>
+                                                    <div class="emoji-option" data-value="🤕">🤕</div>
+                                                    <div class="emoji-option" data-value="🤢">🤢</div>
+                                                    <div class="emoji-option" data-value="🤮">🤮</div>
+                                                    <div class="emoji-option" data-value="🤧">🤧</div>
+                                                    <div class="emoji-option" data-value="🥵">🥵</div>
+                                                    <div class="emoji-option" data-value="🥶">🥶</div>
+                                                    <div class="emoji-option" data-value="🥴">🥴</div>
+                                                    <div class="emoji-option" data-value="😵">😵</div>
+                                                    <div class="emoji-option" data-value="🤯">🤯</div>
+                                                    <div class="emoji-option" data-value="🤠">🤠</div>
+                                                    <div class="emoji-option" data-value="🥳">🥳</div>
+                                                    <div class="emoji-option" data-value="😎">😎</div>
+                                                    <div class="emoji-option" data-value="🤓">🤓</div>
+                                                    <div class="emoji-option" data-value="🧐">🧐</div>
+                                                    <div class="emoji-option" data-value="😕">😕</div>
+                                                    <div class="emoji-option" data-value="😟">😟</div>
+                                                    <div class="emoji-option" data-value="🙁">🙁</div>
+                                                    <div class="emoji-option" data-value="😮">😮</div>
+                                                    <div class="emoji-option" data-value="😯">😯</div>
+                                                    <div class="emoji-option" data-value="😲">😲</div>
+                                                    <div class="emoji-option" data-value="😳">😳</div>
+                                                    <div class="emoji-option" data-value="🥺">🥺</div>
+                                                    <div class="emoji-option" data-value="😦">😦</div>
+                                                    <div class="emoji-option" data-value="😧">😧</div>
+                                                    <div class="emoji-option" data-value="😨">😨</div>
+                                                    <div class="emoji-option" data-value="😰">😰</div>
+                                                    <div class="emoji-option" data-value="😥">😥</div>
+                                                    <div class="emoji-option" data-value="😢">😢</div>
+                                                    <div class="emoji-option" data-value="😭">😭</div>
+                                                    <div class="emoji-option" data-value="😱">😱</div>
+                                                    <div class="emoji-option" data-value="😖">😖</div>
+                                                    <div class="emoji-option" data-value="😣">😣</div>
+                                                    <div class="emoji-option" data-value="😞">😞</div>
+                                                    <div class="emoji-option" data-value="😓">😓</div>
+                                                    <div class="emoji-option" data-value="😩">😩</div>
+                                                    <div class="emoji-option" data-value="😫">😫</div>
+                                                    <div class="emoji-option" data-value="🥱">🥱</div>
+                                                    <div class="emoji-option" data-value="😤">😤</div>
+                                                    <div class="emoji-option" data-value="😡">😡</div>
+                                                    <div class="emoji-option" data-value="😠">😠</div>
+                                                    <div class="emoji-option" data-value="🤬">🤬</div>
+                                                    <div class="emoji-option" data-value="😈">😈</div>
+                                                    <div class="emoji-option" data-value="👿">👿</div>
+                                                    <div class="emoji-option" data-value="💀">💀</div>
+                                                    <div class="emoji-option" data-value="☠">☠</div>
+
+                                                    <!-- Animaux -->
+                                                    <div class="emoji-category-header">Animaux</div>
+                                                    <div class="emoji-option" data-value="🐶">🐶</div>
+                                                    <div class="emoji-option" data-value="🐱">🐱</div>
+                                                    <div class="emoji-option" data-value="🐭">🐭</div>
+                                                    <div class="emoji-option" data-value="🐹">🐹</div>
+                                                    <div class="emoji-option" data-value="🐰">🐰</div>
+                                                    <div class="emoji-option" data-value="🦊">🦊</div>
+                                                    <div class="emoji-option" data-value="🐻">🐻</div>
+                                                    <div class="emoji-option" data-value="🐼">🐼</div>
+                                                    <div class="emoji-option" data-value="🐨">🐨</div>
+                                                    <div class="emoji-option" data-value="🐯">🐯</div>
+                                                    <div class="emoji-option" data-value="🦁">🦁</div>
+                                                    <div class="emoji-option" data-value="🐮">🐮</div>
+                                                    <div class="emoji-option" data-value="🐷">🐷</div>
+                                                    <div class="emoji-option" data-value="🐸">🐸</div>
+                                                    <div class="emoji-option" data-value="🐵">🐵</div>
+                                                    <div class="emoji-option" data-value="🐔">🐔</div>
+                                                    <div class="emoji-option" data-value="🐧">🐧</div>
+                                                    <div class="emoji-option" data-value="🐦">🐦</div>
+                                                    <div class="emoji-option" data-value="🐤">🐤</div>
+                                                    <div class="emoji-option" data-value="🦆">🦆</div>
+                                                    <div class="emoji-option" data-value="🦅">🦅</div>
+                                                    <div class="emoji-option" data-value="🦉">🦉</div>
+                                                    <div class="emoji-option" data-value="🦇">🦇</div>
+                                                    <div class="emoji-option" data-value="🐺">🐺</div>
+                                                    <div class="emoji-option" data-value="🐗">🐗</div>
+                                                    <div class="emoji-option" data-value="🐴">🐴</div>
+                                                    <div class="emoji-option" data-value="🦄">🦄</div>
+                                                    <div class="emoji-option" data-value="🐝">🐝</div>
+                                                    <div class="emoji-option" data-value="🐛">🐛</div>
+                                                    <div class="emoji-option" data-value="🦋">🦋</div>
+                                                    <div class="emoji-option" data-value="🐌">🐌</div>
+                                                    <div class="emoji-option" data-value="🐞">🐞</div>
+                                                    <div class="emoji-option" data-value="🐜">🐜</div>
+                                                    <div class="emoji-option" data-value="🦟">🦟</div>
+                                                    <div class="emoji-option" data-value="🦗">🦗</div>
+                                                    <div class="emoji-option" data-value="🕷">🕷</div>
+                                                    <div class="emoji-option" data-value="🦂">🦂</div>
+                                                    <div class="emoji-option" data-value="🐢">🐢</div>
+                                                    <div class="emoji-option" data-value="🐍">🐍</div>
+                                                    <div class="emoji-option" data-value="🦎">🦎</div>
+                                                    <div class="emoji-option" data-value="🦖">🦖</div>
+                                                    <div class="emoji-option" data-value="🦕">🦕</div>
+                                                    <div class="emoji-option" data-value="🐙">🐙</div>
+                                                    <div class="emoji-option" data-value="🦑">🦑</div>
+                                                    <div class="emoji-option" data-value="🦐">🦐</div>
+                                                    <div class="emoji-option" data-value="🦞">🦞</div>
+                                                    <div class="emoji-option" data-value="🦀">🦀</div>
+                                                    <div class="emoji-option" data-value="🐡">🐡</div>
+                                                    <div class="emoji-option" data-value="🐠">🐠</div>
+                                                    <div class="emoji-option" data-value="🐟">🐟</div>
+                                                    <div class="emoji-option" data-value="🐬">🐬</div>
+                                                    <div class="emoji-option" data-value="🐳">🐳</div>
+                                                    <div class="emoji-option" data-value="🐋">🐋</div>
+                                                    <div class="emoji-option" data-value="🦈">🦈</div>
+                                                    <div class="emoji-option" data-value="🐊">🐊</div>
+                                                    <div class="emoji-option" data-value="🐅">🐅</div>
+                                                    <div class="emoji-option" data-value="🐆">🐆</div>
+                                                    <div class="emoji-option" data-value="🦓">🦓</div>
+                                                    <div class="emoji-option" data-value="🦍">🦍</div>
+                                                    <div class="emoji-option" data-value="🦧">🦧</div>
+                                                    <div class="emoji-option" data-value="🐘">🐘</div>
+                                                    <div class="emoji-option" data-value="🦛">🦛</div>
+                                                    <div class="emoji-option" data-value="🦏">🦏</div>
+                                                    <div class="emoji-option" data-value="🐪">🐪</div>
+                                                    <div class="emoji-option" data-value="🐫">🐫</div>
+                                                    <div class="emoji-option" data-value="🦒">🦒</div>
+                                                    <div class="emoji-option" data-value="🦘">🦘</div>
+                                                    <div class="emoji-option" data-value="🐃">🐃</div>
+                                                    <div class="emoji-option" data-value="🐂">🐂</div>
+                                                    <div class="emoji-option" data-value="🐄">🐄</div>
+                                                    <div class="emoji-option" data-value="🐎">🐎</div>
+                                                    <div class="emoji-option" data-value="🐖">🐖</div>
+                                                    <div class="emoji-option" data-value="🐏">🐏</div>
+                                                    <div class="emoji-option" data-value="🐑">🐑</div>
+                                                    <div class="emoji-option" data-value="🦙">🦙</div>
+                                                    <div class="emoji-option" data-value="🐐">🐐</div>
+                                                    <div class="emoji-option" data-value="🦌">🦌</div>
+                                                    <div class="emoji-option" data-value="🐕">🐕</div>
+                                                    <div class="emoji-option" data-value="🐩">🐩</div>
+                                                    <div class="emoji-option" data-value="🦮">🦮</div>
+                                                    <div class="emoji-option" data-value="🐕‍🦺">🐕‍🦺</div>
+                                                    <div class="emoji-option" data-value="🐈">🐈</div>
+                                                    <div class="emoji-option" data-value="🐓">🐓</div>
+                                                    <div class="emoji-option" data-value="🦃">🦃</div>
+                                                    <div class="emoji-option" data-value="🦚">🦚</div>
+                                                    <div class="emoji-option" data-value="🦜">🦜</div>
+                                                    <div class="emoji-option" data-value="🦢">🦢</div>
+                                                    <div class="emoji-option" data-value="🦩">🦩</div>
+                                                    <div class="emoji-option" data-value="🕊">🕊</div>
+                                                    <div class="emoji-option" data-value="🐇">🐇</div>
+                                                    <div class="emoji-option" data-value="🦝">🦝</div>
+                                                    <div class="emoji-option" data-value="🦨">🦨</div>
+                                                    <div class="emoji-option" data-value="🦡">🦡</div>
+                                                    <div class="emoji-option" data-value="🦦">🦦</div>
+                                                    <div class="emoji-option" data-value="🦥">🦥</div>
+                                                    <div class="emoji-option" data-value="🐁">🐁</div>
+                                                    <div class="emoji-option" data-value="🐀">🐀</div>
+                                                    <div class="emoji-option" data-value="🐿">🐿</div>
+                                                    <div class="emoji-option" data-value="🦔">🦔</div>
+                                                    <div class="emoji-option" data-value="🐉">🐉</div>
+                                                    <div class="emoji-option" data-value="🐲">🐲</div>
+
+                                                    <!-- Nourriture -->
+                                                    <div class="emoji-category-header">Nourriture</div>
+                                                    <div class="emoji-option" data-value="🍏">🍏</div>
+                                                    <div class="emoji-option" data-value="🍎">🍎</div>
+                                                    <div class="emoji-option" data-value="🍐">🍐</div>
+                                                    <div class="emoji-option" data-value="🍊">🍊</div>
+                                                    <div class="emoji-option" data-value="🍋">🍋</div>
+                                                    <div class="emoji-option" data-value="🍌">🍌</div>
+                                                    <div class="emoji-option" data-value="🍉">🍉</div>
+                                                    <div class="emoji-option" data-value="🍇">🍇</div>
+                                                    <div class="emoji-option" data-value="🍓">🍓</div>
+                                                    <div class="emoji-option" data-value="🍈">🍈</div>
+                                                    <div class="emoji-option" data-value="🍒">🍒</div>
+                                                    <div class="emoji-option" data-value="🍑">🍑</div>
+                                                    <div class="emoji-option" data-value="🥭">🥭</div>
+                                                    <div class="emoji-option" data-value="🍍">🍍</div>
+                                                    <div class="emoji-option" data-value="🥥">🥥</div>
+                                                    <div class="emoji-option" data-value="🥝">🥝</div>
+                                                    <div class="emoji-option" data-value="🍅">🍅</div>
+                                                    <div class="emoji-option" data-value="🍆">🍆</div>
+                                                    <div class="emoji-option" data-value="🥑">🥑</div>
+                                                    <div class="emoji-option" data-value="🥦">🥦</div>
+                                                    <div class="emoji-option" data-value="🥬">🥬</div>
+                                                    <div class="emoji-option" data-value="🥒">🥒</div>
+                                                    <div class="emoji-option" data-value="🌶">🌶</div>
+                                                    <div class="emoji-option" data-value="🌽">🌽</div>
+                                                    <div class="emoji-option" data-value="🥕">🥕</div>
+                                                    <div class="emoji-option" data-value="🧄">🧄</div>
+                                                    <div class="emoji-option" data-value="🧅">🧅</div>
+                                                    <div class="emoji-option" data-value="🥔">🥔</div>
+                                                    <div class="emoji-option" data-value="🍠">🍠</div>
+                                                    <div class="emoji-option" data-value="🥐">🥐</div>
+                                                    <div class="emoji-option" data-value="🥯">🥯</div>
+                                                    <div class="emoji-option" data-value="🍞">🍞</div>
+                                                    <div class="emoji-option" data-value="🥖">🥖</div>
+                                                    <div class="emoji-option" data-value="🥨">🥨</div>
+                                                    <div class="emoji-option" data-value="🧀">🧀</div>
+                                                    <div class="emoji-option" data-value="🥚">🥚</div>
+                                                    <div class="emoji-option" data-value="🍳">🍳</div>
+                                                    <div class="emoji-option" data-value="🧈">🧈</div>
+                                                    <div class="emoji-option" data-value="🥞">🥞</div>
+                                                    <div class="emoji-option" data-value="🧇">🧇</div>
+                                                    <div class="emoji-option" data-value="🥓">🥓</div>
+                                                    <div class="emoji-option" data-value="🥩">🥩</div>
+                                                    <div class="emoji-option" data-value="🍗">🍗</div>
+                                                    <div class="emoji-option" data-value="🍖">🍖</div>
+                                                    <div class="emoji-option" data-value="🦴">🦴</div>
+                                                    <div class="emoji-option" data-value="🌭">🌭</div>
+                                                    <div class="emoji-option" data-value="🍔">🍔</div>
+                                                    <div class="emoji-option" data-value="🍟">🍟</div>
+                                                    <div class="emoji-option" data-value="🍕">🍕</div>
+                                                    <div class="emoji-option" data-value="🥪">🥪</div>
+                                                    <div class="emoji-option" data-value="🥙">🥙</div>
+                                                    <div class="emoji-option" data-value="🧆">🧆</div>
+                                                    <div class="emoji-option" data-value="🌮">🌮</div>
+                                                    <div class="emoji-option" data-value="🌯">🌯</div>
+                                                    <div class="emoji-option" data-value="🥗">🥗</div>
+                                                    <div class="emoji-option" data-value="🥘">🥘</div>
+                                                    <div class="emoji-option" data-value="🥫">🥫</div>
+                                                    <div class="emoji-option" data-value="🍝">🍝</div>
+                                                    <div class="emoji-option" data-value="🍜">🍜</div>
+                                                    <div class="emoji-option" data-value="🍲">🍲</div>
+                                                    <div class="emoji-option" data-value="🍛">🍛</div>
+                                                    <div class="emoji-option" data-value="🍣">🍣</div>
+                                                    <div class="emoji-option" data-value="🍱">🍱</div>
+                                                    <div class="emoji-option" data-value="🥟">🥟</div>
+                                                    <div class="emoji-option" data-value="🦪">🦪</div>
+                                                    <div class="emoji-option" data-value="🍤">🍤</div>
+                                                    <div class="emoji-option" data-value="🍙">🍙</div>
+                                                    <div class="emoji-option" data-value="🍚">🍚</div>
+                                                    <div class="emoji-option" data-value="🍘">🍘</div>
+                                                    <div class="emoji-option" data-value="🍥">🍥</div>
+                                                    <div class="emoji-option" data-value="🥠">🥠</div>
+                                                    <div class="emoji-option" data-value="🥮">🥮</div>
+                                                    <div class="emoji-option" data-value="🍢">🍢</div>
+                                                    <div class="emoji-option" data-value="🍡">🍡</div>
+                                                    <div class="emoji-option" data-value="🍧">🍧</div>
+                                                    <div class="emoji-option" data-value="🍨">🍨</div>
+                                                    <div class="emoji-option" data-value="🍦">🍦</div>
+                                                    <div class="emoji-option" data-value="🥧">🥧</div>
+                                                    <div class="emoji-option" data-value="🧁">🧁</div>
+                                                    <div class="emoji-option" data-value="🍰">🍰</div>
+                                                    <div class="emoji-option" data-value="🎂">🎂</div>
+                                                    <div class="emoji-option" data-value="🍮">🍮</div>
+                                                    <div class="emoji-option" data-value="🍭">🍭</div>
+                                                    <div class="emoji-option" data-value="🍬">🍬</div>
+                                                    <div class="emoji-option" data-value="🍫">🍫</div>
+                                                    <div class="emoji-option" data-value="🍿">🍿</div>
+                                                    <div class="emoji-option" data-value="🍩">🍩</div>
+                                                    <div class="emoji-option" data-value="🍪">🍪</div>
+                                                    <div class="emoji-option" data-value="🌰">🌰</div>
+                                                    <div class="emoji-option" data-value="🥜">🥜</div>
+                                                    <div class="emoji-option" data-value="🍯">🍯</div>
+                                                    <div class="emoji-option" data-value="🥛">🥛</div>
+                                                    <div class="emoji-option" data-value="🍼">🍼</div>
+                                                    <div class="emoji-option" data-value="☕">☕</div>
+                                                    <div class="emoji-option" data-value="🍵">🍵</div>
+                                                    <div class="emoji-option" data-value="🧃">🧃</div>
+                                                    <div class="emoji-option" data-value="🥤">🥤</div>
+                                                    <div class="emoji-option" data-value="🍶">🍶</div>
+                                                    <div class="emoji-option" data-value="🍺">🍺</div>
+                                                    <div class="emoji-option" data-value="🍻">🍻</div>
+                                                    <div class="emoji-option" data-value="🥂">🥂</div>
+                                                    <div class="emoji-option" data-value="🍷">🍷</div>
+                                                    <div class="emoji-option" data-value="🥃">🥃</div>
+                                                    <div class="emoji-option" data-value="🍸">🍸</div>
+                                                    <div class="emoji-option" data-value="🍹">🍹</div>
+                                                    <div class="emoji-option" data-value="🧉">🧉</div>
+                                                    <div class="emoji-option" data-value="🍾">🍾</div>
+                                                    <div class="emoji-option" data-value="🧊">🧊</div>
+                                                    <div class="emoji-option" data-value="🥄">🥄</div>
+                                                    <div class="emoji-option" data-value="🍴">🍴</div>
+                                                    <div class="emoji-option" data-value="🍽">🍽</div>
+                                                    <div class="emoji-option" data-value="🥣">🥣</div>
+                                                    <div class="emoji-option" data-value="🥡">🥡</div>
+                                                    <div class="emoji-option" data-value="🥢">🥢</div>
+                                                    <div class="emoji-option" data-value="🧂">🧂</div>
+
+                                                    <!-- Activités -->
+                                                    <div class="emoji-category-header">Activités</div>
+                                                    <div class="emoji-option" data-value="⚽">⚽</div>
+                                                    <div class="emoji-option" data-value="🏀">🏀</div>
+                                                    <div class="emoji-option" data-value="🏈">🏈</div>
+                                                    <div class="emoji-option" data-value="⚾">⚾</div>
+                                                    <div class="emoji-option" data-value="🥎">🥎</div>
+                                                    <div class="emoji-option" data-value="🎾">🎾</div>
+                                                    <div class="emoji-option" data-value="🏐">🏐</div>
+                                                    <div class="emoji-option" data-value="🏉">🏉</div>
+                                                    <div class="emoji-option" data-value="🥏">🥏</div>
+                                                    <div class="emoji-option" data-value="🎱">🎱</div>
+                                                    <div class="emoji-option" data-value="🪀">🪀</div>
+                                                    <div class="emoji-option" data-value="🏓">🏓</div>
+                                                    <div class="emoji-option" data-value="🏸">🏸</div>
+                                                    <div class="emoji-option" data-value="🏒">🏒</div>
+                                                    <div class="emoji-option" data-value="🏑">🏑</div>
+                                                    <div class="emoji-option" data-value="🥍">🥍</div>
+                                                    <div class="emoji-option" data-value="🏏">🏏</div>
+                                                    <div class="emoji-option" data-value="🥅">🥅</div>
+                                                    <div class="emoji-option" data-value="⛳">⛳</div>
+                                                    <div class="emoji-option" data-value="🪁">🪁</div>
+                                                    <div class="emoji-option" data-value="🏹">🏹</div>
+                                                    <div class="emoji-option" data-value="🎣">🎣</div>
+                                                    <div class="emoji-option" data-value="🤿">🤿</div>
+                                                    <div class="emoji-option" data-value="🥊">🥊</div>
+                                                    <div class="emoji-option" data-value="🥋">🥋</div>
+                                                    <div class="emoji-option" data-value="🎽">🎽</div>
+                                                    <div class="emoji-option" data-value="🛹">🛹</div>
+                                                    <div class="emoji-option" data-value="🛷">🛷</div>
+                                                    <div class="emoji-option" data-value="⛸">⛸</div>
+                                                    <div class="emoji-option" data-value="🥌">🥌</div>
+                                                    <div class="emoji-option" data-value="🎿">🎿</div>
+                                                    <div class="emoji-option" data-value="⛷">⛷</div>
+                                                    <div class="emoji-option" data-value="🏂">🏂</div>
+                                                    <div class="emoji-option" data-value="🪂">🪂</div>
+                                                    <div class="emoji-option" data-value="🏋">🏋</div>
+                                                    <div class="emoji-option" data-value="🤼">🤼</div>
+                                                    <div class="emoji-option" data-value="🤸">🤸</div>
+                                                    <div class="emoji-option" data-value="⛹">⛹</div>
+                                                    <div class="emoji-option" data-value="🤺">🤺</div>
+                                                    <div class="emoji-option" data-value="🤾">🤾</div>
+                                                    <div class="emoji-option" data-value="🏌">🏌</div>
+                                                    <div class="emoji-option" data-value="🏇">🏇</div>
+                                                    <div class="emoji-option" data-value="🧘">🧘</div>
+                                                    <div class="emoji-option" data-value="🏄">🏄</div>
+                                                    <div class="emoji-option" data-value="🏊">🏊</div>
+                                                    <div class="emoji-option" data-value="🤽">🤽</div>
+                                                    <div class="emoji-option" data-value="🚣">🚣</div>
+                                                    <div class="emoji-option" data-value="🧗">🧗</div>
+                                                    <div class="emoji-option" data-value="🚵">🚵</div>
+                                                    <div class="emoji-option" data-value="🚴">🚴</div>
+                                                    <div class="emoji-option" data-value="🏆">🏆</div>
+                                                    <div class="emoji-option" data-value="🥇">🥇</div>
+                                                    <div class="emoji-option" data-value="🥈">🥈</div>
+                                                    <div class="emoji-option" data-value="🥉">🥉</div>
+                                                    <div class="emoji-option" data-value="🏅">🏅</div>
+                                                    <div class="emoji-option" data-value="🎖">🎖</div>
+                                                    <div class="emoji-option" data-value="🏵">🏵</div>
+                                                    <div class="emoji-option" data-value="🎗">🎗</div>
+                                                    <div class="emoji-option" data-value="🎫">🎫</div>
+                                                    <div class="emoji-option" data-value="🎟">🎟</div>
+                                                    <div class="emoji-option" data-value="🎪">🎪</div>
+                                                    <div class="emoji-option" data-value="🤹">🤹</div>
+                                                    <div class="emoji-option" data-value="🎭">🎭</div>
+                                                    <div class="emoji-option" data-value="🩰">🩰</div>
+                                                    <div class="emoji-option" data-value="🎨">🎨</div>
+                                                    <div class="emoji-option" data-value="🎬">🎬</div>
+                                                    <div class="emoji-option" data-value="🎤">🎤</div>
+                                                    <div class="emoji-option" data-value="🎧">🎧</div>
+                                                    <div class="emoji-option" data-value="🎼">🎼</div>
+                                                    <div class="emoji-option" data-value="🎹">🎹</div>
+                                                    <div class="emoji-option" data-value="🥁">🥁</div>
+                                                    <div class="emoji-option" data-value="🎷">🎷</div>
+                                                    <div class="emoji-option" data-value="🎺">🎺</div>
+                                                    <div class="emoji-option" data-value="🎸">🎸</div>
+                                                    <div class="emoji-option" data-value="🪕">🪕</div>
+                                                    <div class="emoji-option" data-value="🎻">🎻</div>
+                                                    <div class="emoji-option" data-value="🎲">🎲</div>
+                                                    <div class="emoji-option" data-value="♟">♟</div>
+                                                    <div class="emoji-option" data-value="🎯">🎯</div>
+                                                    <div class="emoji-option" data-value="🎳">🎳</div>
+                                                    <div class="emoji-option" data-value="🎮">🎮</div>
+                                                    <div class="emoji-option" data-value="🎰">🎰</div>
+                                                    <div class="emoji-option" data-value="🧩">🧩</div>
+
+                                                    <!-- Objets -->
+                                                    <div class="emoji-category-header">Objets</div>
+                                                    <div class="emoji-option" data-value="🚀">🚀</div>
+                                                    <div class="emoji-option" data-value="🛸">🛸</div>
+                                                    <div class="emoji-option" data-value="🚁">🚁</div>
+                                                    <div class="emoji-option" data-value="🛶">🛶</div>
+                                                    <div class="emoji-option" data-value="⛵">⛵</div>
+                                                    <div class="emoji-option" data-value="🚤">🚤</div>
+                                                    <div class="emoji-option" data-value="🛥">🛥</div>
+                                                    <div class="emoji-option" data-value="🛳">🛳</div>
+                                                    <div class="emoji-option" data-value="⛴">⛴</div>
+                                                    <div class="emoji-option" data-value="🚢">🚢</div>
+                                                    <div class="emoji-option" data-value="⚓">⚓</div>
+                                                    <div class="emoji-option" data-value="⛽">⛽</div>
+                                                    <div class="emoji-option" data-value="🚧">🚧</div>
+                                                    <div class="emoji-option" data-value="🚦">🚦</div>
+                                                    <div class="emoji-option" data-value="🚥">🚥</div>
+                                                    <div class="emoji-option" data-value="🚏">🚏</div>
+                                                    <div class="emoji-option" data-value="🗺">🗺</div>
+                                                    <div class="emoji-option" data-value="🗿">🗿</div>
+                                                    <div class="emoji-option" data-value="🗽">🗽</div>
+                                                    <div class="emoji-option" data-value="🗼">🗼</div>
+                                                    <div class="emoji-option" data-value="🏰">🏰</div>
+                                                    <div class="emoji-option" data-value="🏯">🏯</div>
+                                                    <div class="emoji-option" data-value="🏟">🏟</div>
+                                                    <div class="emoji-option" data-value="🎡">🎡</div>
+                                                    <div class="emoji-option" data-value="🎢">🎢</div>
+                                                    <div class="emoji-option" data-value="🎠">🎠</div>
+                                                    <div class="emoji-option" data-value="⛲">⛲</div>
+                                                    <div class="emoji-option" data-value="⛱">⛱</div>
+                                                    <div class="emoji-option" data-value="🏖">🏖</div>
+                                                    <div class="emoji-option" data-value="🏝">🏝</div>
+                                                    <div class="emoji-option" data-value="🏜">🏜</div>
+                                                    <div class="emoji-option" data-value="🌋">🌋</div>
+                                                    <div class="emoji-option" data-value="⛰">⛰</div>
+                                                    <div class="emoji-option" data-value="🏔">🏔</div>
+                                                    <div class="emoji-option" data-value="🗻">🗻</div>
+                                                    <div class="emoji-option" data-value="🏕">🏕</div>
+                                                    <div class="emoji-option" data-value="⛺">⛺</div>
+                                                    <div class="emoji-option" data-value="🏠">🏠</div>
+                                                    <div class="emoji-option" data-value="🏡">🏡</div>
+                                                    <div class="emoji-option" data-value="🏘">🏘</div>
+                                                    <div class="emoji-option" data-value="🏚">🏚</div>
+                                                    <div class="emoji-option" data-value="🏗">🏗</div>
+                                                    <div class="emoji-option" data-value="🏭">🏭</div>
+                                                    <div class="emoji-option" data-value="🏢">🏢</div>
+                                                    <div class="emoji-option" data-value="🏬">🏬</div>
+                                                    <div class="emoji-option" data-value="🏣">🏣</div>
+                                                    <div class="emoji-option" data-value="🏤">🏤</div>
+                                                    <div class="emoji-option" data-value="🏥">🏥</div>
+                                                    <div class="emoji-option" data-value="🏦">🏦</div>
+                                                    <div class="emoji-option" data-value="🏨">🏨</div>
+                                                    <div class="emoji-option" data-value="🏪">🏪</div>
+                                                    <div class="emoji-option" data-value="🏫">🏫</div>
+                                                    <div class="emoji-option" data-value="🏩">🏩</div>
+                                                    <div class="emoji-option" data-value="💒">💒</div>
+                                                    <div class="emoji-option" data-value="🏛">🏛</div>
+                                                    <div class="emoji-option" data-value="⛪">⛪</div>
+                                                    <div class="emoji-option" data-value="🕌">🕌</div>
+                                                    <div class="emoji-option" data-value="🕍">🕍</div>
+                                                    <div class="emoji-option" data-value="🛕">🛕</div>
+                                                    <div class="emoji-option" data-value="🕋">🕋</div>
+                                                    <div class="emoji-option" data-value="⛩">⛩</div>
+                                                    <div class="emoji-option" data-value="🛤">🛤</div>
+                                                    <div class="emoji-option" data-value="🛣">🛣</div>
+                                                    <div class="emoji-option" data-value="🗾">🗾</div>
+                                                    <div class="emoji-option" data-value="🎑">🎑</div>
+                                                    <div class="emoji-option" data-value="🏞">🏞</div>
+                                                    <div class="emoji-option" data-value="🌅">🌅</div>
+                                                    <div class="emoji-option" data-value="🌄">🌄</div>
+                                                    <div class="emoji-option" data-value="🌠">🌠</div>
+                                                    <div class="emoji-option" data-value="🎇">🎇</div>
+                                                    <div class="emoji-option" data-value="🎆">🎆</div>
+                                                    <div class="emoji-option" data-value="🌇">🌇</div>
+                                                    <div class="emoji-option" data-value="🌆">🌆</div>
+                                                    <div class="emoji-option" data-value="🏙">🏙</div>
+                                                    <div class="emoji-option" data-value="🌃">🌃</div>
+                                                    <div class="emoji-option" data-value="🌌">🌌</div>
+                                                    <div class="emoji-option" data-value="🌉">🌉</div>
+                                                    <div class="emoji-option" data-value="🌁">🌁</div>
+                                                    <div class="emoji-option" data-value="⌚">⌚</div>
+                                                    <div class="emoji-option" data-value="📱">📱</div>
+                                                    <div class="emoji-option" data-value="📲">📲</div>
+                                                    <div class="emoji-option" data-value="💻">💻</div>
+                                                    <div class="emoji-option" data-value="⌨">⌨</div>
+                                                    <div class="emoji-option" data-value="🖥">🖥</div>
+                                                    <div class="emoji-option" data-value="🖨">🖨</div>
+                                                    <div class="emoji-option" data-value="🖱">🖱</div>
+                                                    <div class="emoji-option" data-value="🖲">🖲</div>
+                                                    <div class="emoji-option" data-value="🕹">🕹</div>
+                                                    <div class="emoji-option" data-value="🗜">🗜</div>
+                                                    <div class="emoji-option" data-value="💽">💽</div>
+                                                    <div class="emoji-option" data-value="💾">💾</div>
+                                                    <div class="emoji-option" data-value="💿">💿</div>
+                                                    <div class="emoji-option" data-value="📀">📀</div>
+                                                    <div class="emoji-option" data-value="📼">📼</div>
+                                                    <div class="emoji-option" data-value="📷">📷</div>
+                                                    <div class="emoji-option" data-value="📸">📸</div>
+                                                    <div class="emoji-option" data-value="📹">📹</div>
+                                                    <div class="emoji-option" data-value="🎥">🎥</div>
+                                                    <div class="emoji-option" data-value="📽">📽</div>
+                                                    <div class="emoji-option" data-value="🎞">🎞</div>
+                                                    <div class="emoji-option" data-value="📞">📞</div>
+                                                    <div class="emoji-option" data-value="☎">☎</div>
+                                                    <div class="emoji-option" data-value="📟">📟</div>
+                                                    <div class="emoji-option" data-value="📠">📠</div>
+                                                    <div class="emoji-option" data-value="📺">📺</div>
+                                                    <div class="emoji-option" data-value="📻">📻</div>
+                                                    <div class="emoji-option" data-value="🎙">🎙</div>
+                                                    <div class="emoji-option" data-value="🎚">🎚</div>
+                                                    <div class="emoji-option" data-value="🎛">🎛</div>
+                                                    <div class="emoji-option" data-value="🧭">🧭</div>
+                                                    <div class="emoji-option" data-value="⏱">⏱</div>
+                                                    <div class="emoji-option" data-value="⏲">⏲</div>
+                                                    <div class="emoji-option" data-value="⏰">⏰</div>
+                                                    <div class="emoji-option" data-value="🕰">🕰</div>
+                                                    <div class="emoji-option" data-value="⌛">⌛</div>
+                                                    <div class="emoji-option" data-value="⏳">⏳</div>
+                                                    <div class="emoji-option" data-value="📡">📡</div>
+                                                    <div class="emoji-option" data-value="🔋">🔋</div>
+                                                    <div class="emoji-option" data-value="🔌">🔌</div>
+                                                    <div class="emoji-option" data-value="💡">💡</div>
+                                                    <div class="emoji-option" data-value="🔦">🔦</div>
+                                                    <div class="emoji-option" data-value="🕯">🕯</div>
+                                                    <div class="emoji-option" data-value="🪔">🪔</div>
+                                                    <div class="emoji-option" data-value="🧯">🧯</div>
+                                                    <div class="emoji-option" data-value="🛢">🛢</div>
+                                                    <div class="emoji-option" data-value="💸">💸</div>
+                                                    <div class="emoji-option" data-value="💵">💵</div>
+                                                    <div class="emoji-option" data-value="💴">💴</div>
+                                                    <div class="emoji-option" data-value="💶">💶</div>
+                                                    <div class="emoji-option" data-value="💷">💷</div>
+                                                    <div class="emoji-option" data-value="💰">💰</div>
+                                                    <div class="emoji-option" data-value="💳">💳</div>
+                                                    <div class="emoji-option" data-value="💎">💎</div>
+                                                    <div class="emoji-option" data-value="⚖">⚖</div>
+                                                    <div class="emoji-option" data-value="🧰">🧰</div>
+                                                    <div class="emoji-option" data-value="🔧">🔧</div>
+                                                    <div class="emoji-option" data-value="🔨">🔨</div>
+                                                    <div class="emoji-option" data-value="⚒">⚒</div>
+                                                    <div class="emoji-option" data-value="🛠">🛠</div>
+                                                    <div class="emoji-option" data-value="⛏">⛏</div>
+                                                    <div class="emoji-option" data-value="🔩">🔩</div>
+                                                    <div class="emoji-option" data-value="⚙">⚙</div>
+                                                    <div class="emoji-option" data-value="🧱">🧱</div>
+                                                    <div class="emoji-option" data-value="⛓">⛓</div>
+                                                    <div class="emoji-option" data-value="🧲">🧲</div>
+                                                    <div class="emoji-option" data-value="🔫">🔫</div>
+                                                    <div class="emoji-option" data-value="💣">💣</div>
+                                                    <div class="emoji-option" data-value="🧨">🧨</div>
+                                                    <div class="emoji-option" data-value="🪓">🪓</div>
+                                                    <div class="emoji-option" data-value="🔪">🔪</div>
+                                                    <div class="emoji-option" data-value="🗡">🗡</div>
+                                                    <div class="emoji-option" data-value="⚔">⚔</div>
+                                                    <div class="emoji-option" data-value="🛡">🛡</div>
+                                                    <div class="emoji-option" data-value="🚬">🚬</div>
+                                                    <div class="emoji-option" data-value="⚰">⚰</div>
+                                                    <div class="emoji-option" data-value="⚱">⚱</div>
+                                                    <div class="emoji-option" data-value="🏺">🏺</div>
+                                                    <div class="emoji-option" data-value="🔮">🔮</div>
+                                                    <div class="emoji-option" data-value="📿">📿</div>
+                                                    <div class="emoji-option" data-value="🧿">🧿</div>
+                                                    <div class="emoji-option" data-value="💈">💈</div>
+                                                    <div class="emoji-option" data-value="⚗">⚗</div>
+                                                    <div class="emoji-option" data-value="🔭">🔭</div>
+                                                    <div class="emoji-option" data-value="🔬">🔬</div>
+                                                    <div class="emoji-option" data-value="🕳">🕳</div>
+                                                    <div class="emoji-option" data-value="🩹">🩹</div>
+                                                    <div class="emoji-option" data-value="🩺">🩺</div>
+                                                    <div class="emoji-option" data-value="💊">💊</div>
+                                                    <div class="emoji-option" data-value="💉">💉</div>
+                                                    <div class="emoji-option" data-value="🩸">🩸</div>
+                                                    <div class="emoji-option" data-value="🧬">🧬</div>
+                                                    <div class="emoji-option" data-value="🦠">🦠</div>
+                                                    <div class="emoji-option" data-value="🧫">🧫</div>
+                                                    <div class="emoji-option" data-value="🧪">🧪</div>
+                                                    <div class="emoji-option" data-value="🌡">🌡</div>
+                                                    <div class="emoji-option" data-value="🧹">🧹</div>
+                                                    <div class="emoji-option" data-value="🧺">🧺</div>
+                                                    <div class="emoji-option" data-value="🧻">🧻</div>
+                                                    <div class="emoji-option" data-value="🚽">🚽</div>
+                                                    <div class="emoji-option" data-value="🚰">🚰</div>
+                                                    <div class="emoji-option" data-value="🚿">🚿</div>
+                                                    <div class="emoji-option" data-value="🛁">🛁</div>
+                                                    <div class="emoji-option" data-value="🛀">🛀</div>
+                                                    <div class="emoji-option" data-value="🧼">🧼</div>
+                                                    <div class="emoji-option" data-value="🪒">🪒</div>
+                                                    <div class="emoji-option" data-value="🧽">🧽</div>
+                                                    <div class="emoji-option" data-value="🧴">🧴</div>
+                                                    <div class="emoji-option" data-value="🛎">🛎</div>
+                                                    <div class="emoji-option" data-value="🔑">🔑</div>
+                                                    <div class="emoji-option" data-value="🗝">🗝</div>
+                                                    <div class="emoji-option" data-value="🚪">🚪</div>
+                                                    <div class="emoji-option" data-value="🪑">🪑</div>
+                                                    <div class="emoji-option" data-value="🛋">🛋</div>
+                                                    <div class="emoji-option" data-value="🛏">🛏</div>
+                                                    <div class="emoji-option" data-value="🛌">🛌</div>
+                                                    <div class="emoji-option" data-value="🧸">🧸</div>
+                                                    <div class="emoji-option" data-value="🖼">🖼</div>
+                                                    <div class="emoji-option" data-value="🛍">🛍</div>
+                                                    <div class="emoji-option" data-value="🛒">🛒</div>
+                                                    <div class="emoji-option" data-value="🎁">🎁</div>
+                                                    <div class="emoji-option" data-value="🎈">🎈</div>
+                                                    <div class="emoji-option" data-value="🎏">🎏</div>
+                                                    <div class="emoji-option" data-value="🎀">🎀</div>
+                                                    <div class="emoji-option" data-value="🎊">🎊</div>
+                                                    <div class="emoji-option" data-value="🎉">🎉</div>
+                                                    <div class="emoji-option" data-value="🎎">🎎</div>
+                                                    <div class="emoji-option" data-value="🏮">🏮</div>
+                                                    <div class="emoji-option" data-value="🎐">🎐</div>
+                                                    <div class="emoji-option" data-value="🧧">🧧</div>
+                                                    <div class="emoji-option" data-value="✉">✉</div>
+                                                    <div class="emoji-option" data-value="📩">📩</div>
+                                                    <div class="emoji-option" data-value="📨">📨</div>
+                                                    <div class="emoji-option" data-value="📧">📧</div>
+                                                    <div class="emoji-option" data-value="💌">💌</div>
+                                                    <div class="emoji-option" data-value="📥">📥</div>
+                                                    <div class="emoji-option" data-value="📤">📤</div>
+                                                    <div class="emoji-option" data-value="📦">📦</div>
+                                                    <div class="emoji-option" data-value="🏷">🏷</div>
+                                                    <div class="emoji-option" data-value="📪">📪</div>
+                                                    <div class="emoji-option" data-value="📫">📫</div>
+                                                    <div class="emoji-option" data-value="📬">📬</div>
+                                                    <div class="emoji-option" data-value="📭">📭</div>
+                                                    <div class="emoji-option" data-value="📮">📮</div>
+                                                    <div class="emoji-option" data-value="📯">📯</div>
+                                                    <div class="emoji-option" data-value="📜">📜</div>
+                                                    <div class="emoji-option" data-value="📃">📃</div>
+                                                    <div class="emoji-option" data-value="📄">📄</div>
+                                                    <div class="emoji-option" data-value="📑">📑</div>
+                                                    <div class="emoji-option" data-value="🧾">🧾</div>
+                                                    <div class="emoji-option" data-value="📊">📊</div>
+                                                    <div class="emoji-option" data-value="📈">📈</div>
+                                                    <div class="emoji-option" data-value="📉">📉</div>
+                                                    <div class="emoji-option" data-value="🗒">🗒</div>
+                                                    <div class="emoji-option" data-value="🗓">🗓</div>
+                                                    <div class="emoji-option" data-value="📆">📆</div>
+                                                    <div class="emoji-option" data-value="📅">📅</div>
+                                                    <div class="emoji-option" data-value="🗑">🗑</div>
+                                                    <div class="emoji-option" data-value="📇">📇</div>
+                                                    <div class="emoji-option" data-value="🗃">🗃</div>
+                                                    <div class="emoji-option" data-value="🗳">🗳</div>
+                                                    <div class="emoji-option" data-value="🗄">🗄</div>
+                                                    <div class="emoji-option" data-value="📋">📋</div>
+                                                    <div class="emoji-option" data-value="📁">📁</div>
+                                                    <div class="emoji-option" data-value="📂">📂</div>
+                                                    <div class="emoji-option" data-value="🗂">🗂</div>
+                                                    <div class="emoji-option" data-value="🗞">🗞</div>
+                                                    <div class="emoji-option" data-value="📰">📰</div>
+                                                    <div class="emoji-option" data-value="📓">📓</div>
+                                                    <div class="emoji-option" data-value="📔">📔</div>
+                                                    <div class="emoji-option" data-value="📒">📒</div>
+                                                    <div class="emoji-option" data-value="📕">📕</div>
+                                                    <div class="emoji-option" data-value="📗">📗</div>
+                                                    <div class="emoji-option" data-value="📘">📘</div>
+                                                    <div class="emoji-option" data-value="📙">📙</div>
+                                                    <div class="emoji-option" data-value="📚">📚</div>
+                                                    <div class="emoji-option" data-value="📖">📖</div>
+                                                    <div class="emoji-option" data-value="🔖">🔖</div>
+                                                    <div class="emoji-option" data-value="🧷">🧷</div>
+                                                    <div class="emoji-option" data-value="🔗">🔗</div>
+                                                    <div class="emoji-option" data-value="📎">📎</div>
+                                                    <div class="emoji-option" data-value="🖇">🖇</div>
+                                                    <div class="emoji-option" data-value="📐">📐</div>
+                                                    <div class="emoji-option" data-value="📏">📏</div>
+                                                    <div class="emoji-option" data-value="🧮">🧮</div>
+                                                    <div class="emoji-option" data-value="📌">📌</div>
+                                                    <div class="emoji-option" data-value="📍">📍</div>
+                                                    <div class="emoji-option" data-value="✂">✂</div>
+                                                    <div class="emoji-option" data-value="🖊">🖊</div>
+                                                    <div class="emoji-option" data-value="🖋">🖋</div>
+                                                    <div class="emoji-option" data-value="✒">✒</div>
+                                                    <div class="emoji-option" data-value="🖌">🖌</div>
+                                                    <div class="emoji-option" data-value="🖍">🖍</div>
+                                                    <div class="emoji-option" data-value="📝">📝</div>
+                                                    <div class="emoji-option" data-value="✏">✏</div>
+                                                    <div class="emoji-option" data-value="🔍">🔍</div>
+                                                    <div class="emoji-option" data-value="🔎">🔎</div>
+                                                    <div class="emoji-option" data-value="🔏">🔏</div>
+                                                    <div class="emoji-option" data-value="🔐">🔐</div>
+                                                    <div class="emoji-option" data-value="🔒">🔒</div>
+                                                    <div class="emoji-option" data-value="🔓">🔓</div>
+                                                </div>
+                                            </div>
+                                            <button id="btn-random-avatar" class="secondary small-btn" title="Aléatoire">
+                                                <i class="fas fa-dice"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="mode-draw" class="avatar-mode-content hidden">
+                                <div class="controls">
+                                    <div class="mini-toolbar">
+                                        <div class="avatar-tools-row">
+                                            <button id="avatar-tool-pen" class="tool-btn small-btn active" title="Crayon">
+                                                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                                            </button>
+                                            <button id="avatar-tool-fill" class="tool-btn small-btn" data-tooltip="Remplir">
+                                                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                                    <rect x="4" y="4" width="16" height="6" rx="1"></rect>
+                                                    <path d="M18 10v3a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-3"></path>
+                                                    <path d="M12 15v6"></path>
+                                                </svg>
+                                            </button>
+                                            <button id="avatar-tool-eraser" class="tool-btn small-btn" data-tooltip="Gomme">
+                                                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                                    <path d="M15.5 3.5 L20.5 8.5 L8.5 20.5 L3.5 15.5 Z"></path>
+                                                    <line x1="11" y1="8" x2="16" y2="13"></line>
+                                                </svg>
+                                            </button>
+                                            <div class="separator"></div>
+                                            <div class="color-trigger small" id="avatar-color-trigger">
+                                                <div id="avatar-color-preview" style="background-color: #000000;"></div>
+                                            </div>
+                                            <button id="avatar-clear-btn" class="secondary small-btn" data-tooltip="Effacer">
+                                                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                            </button>
+                                        </div>
+                                        <div class="avatar-sliders">
+                                            <div class="slider-row compact">
+                                                <label>Taille</label>
+                                                <input type="range" id="avatar-size" min="1" max="20" value="3">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="mode-upload" class="avatar-mode-content hidden">
+                                <div class="controls">
+                                    <div class="upload-container">
+                                        <input type="file" id="avatar-upload" accept="image/*" class="hidden">
+                                        <button id="btn-trigger-upload" class="secondary small-btn">
+                                            <i class="fas fa-upload"></i> Choisir une image
+                                        </button>
+                                    </div>
+                                    <div id="avatar-image-controls" class="hidden">
+                                        <div class="slider-row compact zoom-slider">
+                                            <i class="fas fa-search-minus small-icon"></i>
+                                            <input type="range" id="avatar-zoom" min="0.1" max="3" step="0.1" value="1">
+                                            <i class="fas fa-search-plus small-icon"></i>
+                                        </div>
+                                        <p class="help-text"><i class="fas fa-arrows-alt"></i> Glisser pour déplacer • <i class="fas fa-mouse"></i> Scroll pour zoomer</p>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div id="mode-upload" class="avatar-mode-content hidden">
-                        <div class="controls">
-                            <input type="file" id="avatar-upload" accept="image/*">
-                            <div id="avatar-image-controls" class="hidden" style="margin-top: 10px;">
-                                <div class="slider-row compact">
-                                    <label>Zoom</label>
-                                    <input type="range" id="avatar-zoom" min="0.1" max="3" step="0.1" value="1">
-                                </div>
-                                <p style="font-size: 0.8rem; color: var(--text-dim); margin-top: 5px;">Glissez pour déplacer</p>
+                    <div class="login-form-side">
+                        <div class="form-group">
+                            <label for="username">Pseudo</label>
+                            <div class="input-group">
+                                <input type="text" id="username" placeholder="Ton pseudo" maxlength="15">
+                            </div>
+                            <div class="checkbox-group" style="margin-top: 8px; display: flex; align-items: center; gap: 8px;">
+                                <input type="checkbox" id="spectator-checkbox">
+                                <label for="spectator-checkbox" style="margin: 0; font-size: 0.9rem; cursor: pointer;">Mode Observateur</label>
                             </div>
                         </div>
-                    </div>
-                </div>
 
-                <div class="input-group">
-                    <input type="text" id="username" placeholder="Ton pseudo" maxlength="15">
-                </div>
+                        <div class="public-lobbies-section">
+                            <div class="active-games-info" style="text-align: center; margin-bottom: 10px; color: var(--text-dim);">
+                                <span id="active-games-count" style="font-weight: bold; color: var(--primary);">0</span> room disponible
+                            </div>
+                            <button id="btn-join-random" class="secondary full-width">
+                                <i class="fas fa-random"></i> Rejoindre une room aléatoire
+                            </button>
+                        </div>
 
-                <div class="room-controls">
-                    <div class="input-group">
-                        <input type="text" id="room-code-input" placeholder="Code de la room">
-                        <button id="join-btn">Rejoindre</button>
+                        <div class="room-controls">
+                            <div class="form-group">
+                                <label>Rejoindre une partie privée</label>
+                                <div class="input-group">
+                                    <input type="text" id="room-code-input" placeholder="Code de la room">
+                                    <button id="join-btn">Rejoindre</button>
+                                </div>
+                            </div>
+                            
+                            <div class="divider">
+                                <span>OU</span>
+                            </div>
+                            
+                            <div class="create-section">
+                                <div class="checkbox-group" style="margin-bottom: 10px; display: flex; align-items: center; gap: 8px; justify-content: center;">
+                                   <input type="checkbox" id="private-room-checkbox">
+                                   <label for="private-room-checkbox" style="margin: 0; font-size: 0.9rem; cursor: pointer;">Partie Privée</label>
+                               </div>
+                               <button id="create-btn" class="secondary full-width">Créer une room</button>
+                           </div>
+                        </div>
                     </div>
-                    <p>ou</p>
-                    <button id="create-btn" class="secondary">Créer une room privée</button>
                 </div>
             </div>
         </div>
@@ -257,7 +972,7 @@
 
             <div class="sidebar">
                 <div class="room-info">
-                    <h3>Room</h3>
+                    <h3>Room <span id="room-privacy-badge" class="privacy-badge"></span></h3>
                     <div class="room-code-wrapper">
                         <span id="display-room-code" class="code-hidden"></span>
                         <div class="room-actions">
@@ -311,74 +1026,98 @@
                 </div>
 
                 <div class="toolbar">
-                    <div class="tool-group">
-                        <div class="color-picker-wrapper">
-                            <label>Couleur</label>
+                    <!-- Properties Group (Color + Sliders) -->
+                    <div class="tool-group properties-group">
+                        <div class="color-picker-wrapper" title="Couleur">
                             <div class="color-trigger" id="color-trigger">
                                 <div id="current-color-preview"></div>
                             </div>
                         </div>
-                    </div>
-                    
-                    <div class="tool-group sliders-group">
-                        <div class="slider-row">
-                            <label>Taille</label>
-                            <input type="range" id="pen-size" min="1" max="50" value="5">
-                        </div>
-                        <div class="slider-row">
-                            <label>Opacité</label>
-                            <input type="range" id="pen-opacity" min="0.1" max="1" step="0.1" value="1">
+                        
+                        <div class="sliders-compact">
+                            <div class="slider-row" data-tooltip="Taille">
+                                <div class="slider-icon"><i class="fas fa-circle" style="font-size: 0.6rem;"></i></div>
+                                <input type="range" id="pen-size" min="1" max="100" value="5">
+                            </div>
+                            <div class="slider-row" data-tooltip="Opacité">
+                                <div class="slider-icon"><i class="fas fa-adjust" style="font-size: 0.8rem;"></i></div>
+                                <input type="range" id="pen-opacity" min="0.1" max="1" step="0.1" value="1">
+                            </div>
                         </div>
                     </div>
 
+                    <!-- Drawing Tools Group -->
                     <div class="tool-group">
-                        <button id="tool-pen" class="tool-btn active" data-tooltip="Crayon">
-                            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                        <button id="tool-pen" class="tool-btn active" data-tooltip="Crayon (1)">
+                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
                         </button>
-                        <button id="tool-airbrush" class="tool-btn" data-tooltip="Spray">
-                            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="8" width="12" height="13" rx="2"></rect><path d="M15 8V4a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v4"></path><path d="M12 3v1"></path><path d="M10 12h.01"></path><path d="M14 12h.01"></path><path d="M12 15h.01"></path><path d="M10 17h.01"></path><path d="M14 17h.01"></path></svg>
+                        <button id="tool-airbrush" class="tool-btn" data-tooltip="Spray (2)">
+                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="8" width="12" height="13" rx="2"></rect><path d="M15 8V4a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v4"></path><path d="M12 3v1"></path><path d="M10 12h.01"></path><path d="M14 12h.01"></path><path d="M12 15h.01"></path><path d="M10 17h.01"></path><path d="M14 17h.01"></path></svg>
                         </button>
-                        <button id="tool-fill" class="tool-btn" data-tooltip="Remplir">
-                            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                        <button id="tool-fill" class="tool-btn" data-tooltip="Remplir (3)">
+                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
                                 <rect x="4" y="4" width="16" height="6" rx="1"></rect>
                                 <path d="M18 10v3a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-3"></path>
                                 <path d="M12 15v6"></path>
                             </svg>
                         </button>
-                        <button id="tool-smudge" class="tool-btn" data-tooltip="Doigt (Mélange)">
-                            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                        <button id="tool-smudge" class="tool-btn" data-tooltip="Doigt (4)">
+                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"></path>
                                 <path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"></path>
                                 <path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"></path>
                                 <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"></path>
                             </svg>
                         </button>
-                        <button id="tool-eraser" class="tool-btn" data-tooltip="Gomme">
-                            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                        <button id="tool-eraser" class="tool-btn" data-tooltip="Gomme (5)">
+                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M15.5 3.5 L20.5 8.5 L8.5 20.5 L3.5 15.5 Z"></path>
                                 <line x1="11" y1="8" x2="16" y2="13"></line>
                             </svg>
                         </button>
-                        <button id="tool-rect" class="tool-btn" data-tooltip="Carré">
-                            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
+                        <button id="tool-pipette" class="tool-btn" data-tooltip="Pipette (6)">
+                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M2 22l5-1.5L15.5 12l3-3a2.828 2.828 0 1 0-4-4l-3 3L3.5 17 2 22z"></path>
+                                <path d="M13 9l4 4"></path>
+                            </svg>
                         </button>
-                        <button id="tool-circle" class="tool-btn" data-tooltip="Cercle">
-                            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle></svg>
+                        <button id="tool-selection" class="tool-btn" data-tooltip="Sélection (7)">
+                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke-dasharray="4 4"></rect>
+                            </svg>
                         </button>
-                        <button id="tool-triangle" class="tool-btn" data-tooltip="Triangle">
-                            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path></svg>
+                        
+                        <!-- Separator -->
+                        <div class="tool-separator"></div>
+
+                        <!-- Shapes -->
+                        <button id="tool-rect" class="tool-btn" data-tooltip="Carré (8)">
+                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
                         </button>
-                        <button id="tool-line" class="tool-btn" data-tooltip="Trait">
-                            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="19" x2="19" y2="5"></line></svg>
+                        <button id="tool-circle" class="tool-btn" data-tooltip="Cercle (9)">
+                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle></svg>
                         </button>
-                        <button id="btn-undo" class="tool-btn" data-tooltip="Annuler">
-                            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg>
+                        <button id="tool-triangle" class="tool-btn" data-tooltip="Triangle (0)">
+                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path></svg>
+                        </button>
+                        <button id="tool-line" class="tool-btn" data-tooltip="Trait (-)">
+                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="19" x2="19" y2="5"></line></svg>
                         </button>
                     </div>
 
+                    <!-- Actions Group -->
                     <div class="tool-group">
+                        <button id="btn-undo" class="tool-btn" data-tooltip="Annuler (Ctrl+Z)">
+                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg>
+                        </button>
+                        <button id="btn-redo" class="tool-btn" data-tooltip="Rétablir (Ctrl+Y)">
+                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"></path><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"></path></svg>
+                        </button>
                         <button id="clear-btn" class="danger-btn" data-tooltip="Tout effacer">
-                            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        </button>
+                        <button id="btn-help" class="tool-btn" data-tooltip="Aide">
+                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
                         </button>
                     </div>
                 </div>
@@ -435,6 +1174,76 @@
             </div>
         </div>
 
+        <!-- Help Modal -->
+        <div id="help-modal" class="modal hidden">
+            <div class="modal-content help-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-question-circle"></i> Aide & Raccourcis</h3>
+                    <button id="btn-close-help" class="close-btn"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="help-body">
+                    <div class="help-grid">
+                        <div class="help-section">
+                            <h4>Outils</h4>
+                            <ul class="shortcut-list">
+                                <li><span class="key">1</span> Crayon</li>
+                                <li><span class="key">2</span> Spray</li>
+                                <li><span class="key">3</span> Remplir</li>
+                                <li><span class="key">4</span> Doigt</li>
+                                <li><span class="key">5</span> Gomme</li>
+                                <li><span class="key">6</span> Pipette</li>
+                                <li><span class="key">7</span> Sélection</li>
+                            </ul>
+                        </div>
+                        <div class="help-section">
+                            <h4>Formes</h4>
+                            <ul class="shortcut-list">
+                                <li><span class="key">8</span> Carré</li>
+                                <li><span class="key">9</span> Cercle</li>
+                                <li><span class="key">0</span> Triangle</li>
+                                <li><span class="key">-</span> Trait</li>
+                            </ul>
+                        </div>
+                        <div class="help-section full-width">
+                            <h4>Actions</h4>
+                            <ul class="shortcut-list two-col">
+                                <li>
+                                    <span class="key-group">
+                                        <span class="key">Ctrl</span> + <span class="key">Z</span>
+                                    </span>
+                                    Annuler
+                                </li>
+                                <li>
+                                    <span class="key-group">
+                                        <span class="key">Ctrl</span> + <span class="key">Y</span>
+                                    </span>
+                                    Rétablir
+                                </li>
+                                <li>
+                                    <span class="key-group">
+                                        <span class="key">Maj</span>
+                                    </span>
+                                    (Maintenir) Pipette rapide
+                                </li>
+                                <li>
+                                    <span class="key-group">
+                                        <span class="key">Ctrl</span> + <span class="key">Molette</span>
+                                    </span>
+                                    Taille outil
+                                </li>
+                                <li>
+                                    <span class="key-group">
+                                        <span class="key">Alt</span> + <span class="key">Molette</span>
+                                    </span>
+                                    Opacité outil
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div id="color-popover" class="color-popover hidden">
             <div class="color-grid" id="color-grid">
                 <!-- Generated by JS -->
@@ -466,6 +1275,9 @@
                 <input type="hidden" id="pen-color" value="#000000">
             </div>
         </div>
+
+        <!-- Avatar Tooltip -->
+        <div id="avatar-tooltip" class="avatar-tooltip hidden"></div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>

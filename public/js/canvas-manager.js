@@ -1,8 +1,11 @@
 import { 
-    canvas, ctx, penColorInput, penSizeInput, penOpacityInput, socket 
+    canvas, ctx, penColorInput, penSizeInput, penOpacityInput, socket,
+    localCursor
 } from './dom-elements.js';
 import { state } from './state.js';
 import { performDraw, performFloodFill } from './draw.js';
+import { handlePipette } from './tools-manager.js';
+import { handleSelectionMouseDown, handleSelectionMouseMove, handleSelectionMouseUp, drawSelectionOverlay } from './selection-manager.js';
 
 export function render() {
     // Clear screen
@@ -52,6 +55,37 @@ export function initCanvasManager(cursorManager, cameraManager) {
     }
 
     canvas.addEventListener('wheel', (e) => {
+        if (e.ctrlKey) {
+            e.preventDefault();
+            const delta = Math.sign(e.deltaY) * -5; // Up is positive (increase size)
+            let newSize = parseInt(penSizeInput.value) + delta;
+            
+            // Clamp size
+            newSize = Math.max(parseInt(penSizeInput.min), Math.min(parseInt(penSizeInput.max), newSize));
+            
+            penSizeInput.value = newSize;
+            
+            // Trigger input event to update preview
+            penSizeInput.dispatchEvent(new Event('input'));
+            return;
+        }
+        if (e.altKey) {
+            e.preventDefault();
+            const delta = Math.sign(e.deltaY) * -0.1; // Up is positive (increase opacity)
+            let newOpacity = parseFloat(penOpacityInput.value) + delta;
+            
+            // Clamp opacity
+            newOpacity = Math.max(parseFloat(penOpacityInput.min), Math.min(parseFloat(penOpacityInput.max), newOpacity));
+            
+            // Round to 1 decimal place
+            newOpacity = Math.round(newOpacity * 10) / 10;
+
+            penOpacityInput.value = newOpacity;
+            
+            // Trigger input event to update preview
+            penOpacityInput.dispatchEvent(new Event('input'));
+            return;
+        }
         cameraManager.handleWheel(e);
     });
 
@@ -64,13 +98,27 @@ export function initCanvasManager(cursorManager, cameraManager) {
             return;
         }
 
+        // Restriction: Spectators cannot draw
+        if (state.isSpectator) return;
+
         // Restriction: Only drawer can draw during game
         if (state.currentGameState === 'PLAYING' && socket.id !== state.currentDrawerId) {
             return;
         }
 
+        const { x, y } = getMousePos(e);
+
+        if (state.currentTool === 'pipette') {
+            handlePipette(x, y);
+            return;
+        }
+
+        if (state.currentTool === 'selection') {
+            handleSelectionMouseDown(e, x, y);
+            return;
+        }
+
         if (state.currentTool === 'fill') {
-            const { x, y } = getMousePos(e);
             const color = penColorInput.value;
             
             if (state.activeLayerId && state.layerCanvases[state.activeLayerId]) {
@@ -94,7 +142,6 @@ export function initCanvasManager(cursorManager, cameraManager) {
         state.hasMoved = false;
         state.currentStrokeId = Date.now() + Math.random();
         
-        const { x, y } = getMousePos(e);
         state.lastX = x;
         state.lastY = y;
         state.shapeStartX = x;
@@ -104,8 +151,14 @@ export function initCanvasManager(cursorManager, cameraManager) {
     canvas.addEventListener('mousemove', (e) => {
         const { x, y } = getMousePos(e);
         
+        // Update local cursor position
+        if (localCursor) {
+            localCursor.style.left = `${e.clientX}px`;
+            localCursor.style.top = `${e.clientY}px`;
+        }
+
         // Cursor Tracking
-        if (state.currentGameState !== 'PLAYING' || socket.id === state.currentDrawerId) {
+        if (!state.isSpectator && (state.currentGameState !== 'PLAYING' || socket.id === state.currentDrawerId)) {
             cursorManager.emitCursorMove(x, y);
         }
 
@@ -115,6 +168,11 @@ export function initCanvasManager(cursorManager, cameraManager) {
             cameraManager.pan(dx, dy);
             state.startPanX = e.clientX;
             state.startPanY = e.clientY;
+            return;
+        }
+
+        if (state.currentTool === 'selection') {
+            handleSelectionMouseMove(e, x, y);
             return;
         }
 
@@ -140,6 +198,13 @@ export function initCanvasManager(cursorManager, cameraManager) {
 
     window.addEventListener('mouseup', (e) => {
         state.isPanning = false;
+        const { x, y } = getMousePos(e);
+
+        if (state.currentTool === 'selection') {
+            handleSelectionMouseUp(e, x, y);
+            return;
+        }
+
         if (state.isDrawing) {
             const color = penColorInput.value;
             const size = penSizeInput.value;
@@ -147,7 +212,6 @@ export function initCanvasManager(cursorManager, cameraManager) {
 
             if (['rectangle', 'circle', 'triangle', 'line'].includes(state.currentTool) && state.hasMoved) {
                 // Finalize shape
-                const { x, y } = getMousePos(e);
                 drawOnCanvas(state.shapeStartX, state.shapeStartY, x, y, color, size, opacity, state.currentTool, true);
             } else if (!state.hasMoved && state.currentTool !== 'fill' && !['rectangle', 'circle', 'triangle', 'line'].includes(state.currentTool)) {
                 // Dot for pen/eraser
@@ -160,6 +224,11 @@ export function initCanvasManager(cursorManager, cameraManager) {
 
     canvas.addEventListener('mouseout', () => {
         state.isPanning = false;
+        if (localCursor) localCursor.classList.add('hidden');
+    });
+
+    canvas.addEventListener('mouseenter', () => {
+        if (localCursor) localCursor.classList.remove('hidden');
     });
 
     // Touch Support

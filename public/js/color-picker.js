@@ -8,6 +8,8 @@ export function initColorPicker(
     currentColorPreview, 
     avatarColorTrigger, 
     avatarColorPreview, 
+    emojiColorTrigger,
+    emojiColorPreview,
     setAvatarColor,
     getActiveTarget,
     setActiveTarget,
@@ -34,6 +36,7 @@ export function initColorPicker(
     let cpState = { h: 0, s: 0, v: 0 };
     let isDraggingSaturation = false;
     let isDraggingHue = false;
+    let activeTrigger = null;
     // We use the callbacks for external state (activeColorTarget, currentAvatarColor)
 
     function init() {
@@ -56,6 +59,7 @@ export function initColorPicker(
             }
 
             setActiveTarget('game');
+            activeTrigger = colorTrigger;
             // Initialize picker state from current game color
             const rgb = hexToRgb(penColorInput.value);
             if (rgb) {
@@ -70,46 +74,55 @@ export function initColorPicker(
             positionPopover(colorTrigger);
         });
 
-        // Toggle popover for Avatar
+        // Toggle popover for Avatar (Draw Mode)
         if (avatarColorTrigger) {
             avatarColorTrigger.addEventListener('click', (e) => {
                 e.stopPropagation();
-                if (!colorPopover.classList.contains('hidden') && getActiveTarget() === 'avatar') {
+                if (!colorPopover.classList.contains('hidden') && getActiveTarget() === 'avatar' && activeTrigger === avatarColorTrigger) {
                     colorPopover.classList.add('hidden');
                     return;
                 }
 
                 setActiveTarget('avatar');
-                // We need to get the current avatar color. 
-                // Since we don't have a getter for it passed in, we can rely on the preview background color 
-                // or we should have asked for a getter. 
-                // For now, let's use the preview background color if available, or default to black.
-                let currentAvatarColor = '#000000';
-                if (avatarColorPreview) {
-                     // rgbToHex might be needed if style.backgroundColor returns rgb()
-                     // But let's assume we can parse it or it's set as hex.
-                     // Actually style.backgroundColor usually returns rgb(...)
-                     // We can use the helper if needed, but let's try to use the value we set.
-                     // Wait, we don't have access to the variable `currentAvatarColor` from client.js directly.
-                     // We only have `setAvatarColor`.
-                     // Let's assume the preview element has the color.
-                     const styleColor = window.getComputedStyle(avatarColorPreview).backgroundColor;
-                     const hex = rgbToHex(styleColor);
-                     if (hex) currentAvatarColor = hex;
+                activeTrigger = avatarColorTrigger;
+                openAvatarColorPicker(avatarColorTrigger, avatarColorPreview);
+            });
+        }
+
+        // Toggle popover for Avatar (Emoji Mode)
+        if (emojiColorTrigger) {
+            emojiColorTrigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (!colorPopover.classList.contains('hidden') && getActiveTarget() === 'avatar' && activeTrigger === emojiColorTrigger) {
+                    colorPopover.classList.add('hidden');
+                    return;
                 }
 
-                const rgb = hexToRgb(currentAvatarColor);
-                if (rgb) {
-                    cpState = rgbToHsv(rgb.r, rgb.g, rgb.b);
-                    updateColorPickerVisuals();
-                    cpPreviewColor.style.backgroundColor = currentAvatarColor;
-                    cpInputR.value = rgb.r;
-                    cpInputG.value = rgb.g;
-                    cpInputB.value = rgb.b;
-                }
-                colorPopover.classList.remove('hidden');
-                positionPopover(avatarColorTrigger);
+                setActiveTarget('avatar');
+                activeTrigger = emojiColorTrigger;
+                openAvatarColorPicker(emojiColorTrigger, emojiColorPreview);
             });
+        }
+
+        function openAvatarColorPicker(trigger, preview) {
+            let currentAvatarColor = '#000000';
+            if (preview) {
+                 const styleColor = window.getComputedStyle(preview).backgroundColor;
+                 const hex = rgbToHex(styleColor);
+                 if (hex) currentAvatarColor = hex;
+            }
+
+            const rgb = hexToRgb(currentAvatarColor);
+            if (rgb) {
+                cpState = rgbToHsv(rgb.r, rgb.g, rgb.b);
+                updateColorPickerVisuals();
+                cpPreviewColor.style.backgroundColor = currentAvatarColor;
+                cpInputR.value = rgb.r;
+                cpInputG.value = rgb.g;
+                cpInputB.value = rgb.b;
+            }
+            colorPopover.classList.remove('hidden');
+            positionPopover(trigger);
         }
 
         // Close popover when clicking outside
@@ -120,7 +133,8 @@ export function initColorPicker(
 
             if (!colorPopover.contains(e.target) && 
                 !colorTrigger.contains(e.target) && 
-                (!avatarColorTrigger || !avatarColorTrigger.contains(e.target))) {
+                (!avatarColorTrigger || !avatarColorTrigger.contains(e.target)) &&
+                (!emojiColorTrigger || !emojiColorTrigger.contains(e.target))) {
                 colorPopover.classList.add('hidden');
             }
         });
@@ -132,9 +146,8 @@ export function initColorPicker(
 
         // Reposition on resize if open
         window.addEventListener('resize', () => {
-            if (!colorPopover.classList.contains('hidden')) {
-                const trigger = getActiveTarget() === 'game' ? colorTrigger : avatarColorTrigger;
-                if (trigger) positionPopover(trigger);
+            if (!colorPopover.classList.contains('hidden') && activeTrigger) {
+                positionPopover(activeTrigger);
             }
         });
 
@@ -295,6 +308,7 @@ export function initColorPicker(
         } else if (getActiveTarget() === 'avatar') {
             setAvatarColor(hex);
             if (avatarColorPreview) avatarColorPreview.style.backgroundColor = hex;
+            if (emojiColorPreview) emojiColorPreview.style.backgroundColor = hex;
         }
         
         if (onColorChange) onColorChange(hex);
