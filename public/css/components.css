@@ -1,0 +1,135 @@
+/* Buttons & Inputs */
+button {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    padding: 0.8rem 1.5rem;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-radius: var(--radius-md);
+    backdrop-filter: blur(5px);
+}
+
+button:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+    box-shadow: 0 0 15px var(--primary-glow);
+    transform: translateY(-1px);
+}
+
+button.secondary {
+    border-color: var(--border-color);
+}
+
+button.secondary:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--text-main);
+    box-shadow: none;
+}
+
+button.danger-btn:hover {
+    background: var(--danger);
+    border-color: var(--danger);
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
+}
+
+input[type="text"], input[type="number"] {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    outline: none;
+    transition: all 0.3s;
+    width: 100%;
+}
+
+input[type="text"]:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px var(--primary-glow);
+    background: rgba(0, 0, 0, 0.4);
+}
+
+.input-group {
+    margin-bottom: 1rem;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.full-width {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    height: 48px;
+}
+
+/* Toast Notifications */
+#toast-container {
+    position: fixed;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+    pointer-events: none;
+}
+
+.toast {
+    background: rgba(15, 23, 42, 0.95);
+    color: var(--text-main);
+    padding: 1rem 1.5rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 300px;
+    backdrop-filter: blur(10px);
+    animation: slideDown 0.3s ease, fadeOut 0.3s ease 4.7s forwards;
+    opacity: 0;
+    animation-fill-mode: forwards;
+    font-size: 1rem;
+    font-weight: 500;
+    pointer-events: auto;
+}
+
+.toast.info {
+    border-left: 5px solid var(--primary);
+}
+
+.toast.error {
+    border-left: 5px solid var(--danger);
+}
+
+.toast.success {
+    border-left: 5px solid var(--success);
+}
+
+.toast-icon {
+    font-size: 1.2rem;
+}
+
+/* Loading Dots */
+.loading-dots {
+    display: flex;
+    gap: 4px;
+}
+
+.loading-dots span {
+    width: 6px;
+    height: 6px;
+    background: var(--primary);
+    border-radius: 50%;
+    animation: bounce 1.4s infinite ease-in-out both;
+}
+
+.loading-dots span:nth-child(1) { animation-delay: -0.32s; }
+.loading-dots span:nth-child(2) { animation-delay: -0.16s; }

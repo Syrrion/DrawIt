@@ -1,0 +1,204 @@
+// Smudge Tool Helper
+const smudgeCanvas = document.createElement('canvas');
+const smudgeCtx = smudgeCanvas.getContext('2d', { willReadFrequently: true });
+
+import { hexToRgb } from './utils.js';
+
+// Helper function for drawing on any context
+export function performDraw(targetCtx, x0, y0, x1, y1, color, size, opacity, tool) {
+    if (tool === 'airbrush') {
+        const rgb = hexToRgb(color);
+        if (!rgb) return;
+
+        const dist = Math.sqrt((x1 - x0) ** 2 + (y1 - y0) ** 2);
+        const step = Math.max(1, size / 10); 
+        const steps = Math.ceil(dist / step);
+
+        for (let i = 0; i <= steps; i++) {
+            const t = steps === 0 ? 0 : i / steps;
+            const x = x0 + (x1 - x0) * t;
+            const y = y0 + (y1 - y0) * t;
+
+            const rad = size / 2;
+            const grad = targetCtx.createRadialGradient(x, y, 0, x, y, rad);
+            grad.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`);
+            grad.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
+
+            targetCtx.fillStyle = grad;
+            targetCtx.globalCompositeOperation = 'source-over';
+            targetCtx.beginPath();
+            targetCtx.arc(x, y, rad, 0, Math.PI * 2);
+            targetCtx.fill();
+        }
+        return;
+    }
+
+    if (tool === 'smudge') {
+        // Increase size factor for smudge tool to make it larger than other tools
+        const effectiveSize = size * 3;
+        
+        const dist = Math.sqrt((x1 - x0) ** 2 + (y1 - y0) ** 2);
+        // Smoother steps for better finesse
+        const step = Math.max(1, effectiveSize / 8); 
+        const steps = Math.ceil(dist / step);
+        const r = effectiveSize / 2;
+
+        // Resize temp canvas if needed
+        // Use Math.ceil to ensure integer dimensions
+        const canvasSize = Math.ceil(effectiveSize);
+        if (smudgeCanvas.width !== canvasSize || smudgeCanvas.height !== canvasSize) {
+            smudgeCanvas.width = canvasSize;
+            smudgeCanvas.height = canvasSize;
+        }
+
+        // Pre-calculate gradient for soft round brush
+        // Start from 0 for a peak (softer center) instead of a plateau
+        const grad = smudgeCtx.createRadialGradient(r, r, 0, r, r, r);
+        grad.addColorStop(0, 'rgba(0,0,0,1)');
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+
+        let prevX = x0;
+        let prevY = y0;
+
+        for (let i = 1; i <= steps; i++) {
+            const t = i / steps;
+            const currX = x0 + (x1 - x0) * t;
+            const currY = y0 + (y1 - y0) * t;
+
+            // 1. Copy source (from prev position) to temp canvas
+            smudgeCtx.globalCompositeOperation = 'source-over';
+            smudgeCtx.clearRect(0, 0, canvasSize, canvasSize);
+            smudgeCtx.drawImage(
+                targetCtx.canvas,
+                prevX - r, prevY - r, effectiveSize, effectiveSize,
+                0, 0, effectiveSize, effectiveSize
+            );
+
+            // 2. Apply soft round mask
+            smudgeCtx.globalCompositeOperation = 'destination-in';
+            smudgeCtx.fillStyle = grad;
+            smudgeCtx.fillRect(0, 0, canvasSize, canvasSize);
+
+            // 3. Draw to destination
+            targetCtx.globalCompositeOperation = 'source-over';
+            // Apply opacity factor and reduce slightly for a more diffuse effect
+            targetCtx.globalAlpha = opacity * 0.9;
+            targetCtx.drawImage(smudgeCanvas, currX - r, currY - r);
+            targetCtx.globalAlpha = 1;
+
+            prevX = currX;
+            prevY = currY;
+        }
+        return;
+    }
+
+    targetCtx.beginPath();
+    
+    if (tool === 'rectangle') {
+        targetCtx.rect(x0, y0, x1 - x0, y1 - y0);
+    } else if (tool === 'circle') {
+        const radius = Math.sqrt(Math.pow(x1 - x0, 2) + Math.pow(y1 - y0, 2));
+        targetCtx.arc(x0, y0, radius, 0, 2 * Math.PI);
+    } else if (tool === 'triangle') {
+        // Triangle pointing from start (apex) to end (base center)
+        const dx = x1 - x0;
+        const dy = y1 - y0;
+        
+        // Calculate base corners perpendicular to the direction
+        // Base width = length of the direction vector (height)
+        const halfBaseX = -dy * 0.5;
+        const halfBaseY = dx * 0.5;
+        
+        targetCtx.moveTo(x0, y0); // Apex
+        targetCtx.lineTo(x1 + halfBaseX, y1 + halfBaseY); // Corner 1
+        targetCtx.lineTo(x1 - halfBaseX, y1 - halfBaseY); // Corner 2
+        targetCtx.closePath();
+    } else if (tool === 'line') {
+        targetCtx.moveTo(x0, y0);
+        targetCtx.lineTo(x1, y1);
+    } else {
+        // Pen / Eraser
+        targetCtx.moveTo(x0, y0);
+        targetCtx.lineTo(x1, y1);
+    }
+    
+    targetCtx.lineCap = 'round';
+    targetCtx.lineJoin = 'round';
+    targetCtx.lineWidth = size;
+    
+    if (tool === 'eraser') {
+        targetCtx.globalCompositeOperation = 'destination-out';
+        targetCtx.strokeStyle = 'rgba(0,0,0,1)'; 
+        targetCtx.stroke();
+    } else {
+        targetCtx.globalCompositeOperation = 'source-over';
+        targetCtx.strokeStyle = color;
+        targetCtx.globalAlpha = opacity;
+        targetCtx.stroke();
+    }
+
+    targetCtx.globalAlpha = 1;
+}
+
+// Helper function for flood fill on any context
+export function performFloodFill(targetCtx, width, height, startX, startY, fillColor) {
+    // Convert hex color to RGB
+    const r = parseInt(fillColor.slice(1, 3), 16);
+    const g = parseInt(fillColor.slice(3, 5), 16);
+    const b = parseInt(fillColor.slice(5, 7), 16);
+    const a = 255;
+
+    const imageData = targetCtx.getImageData(0, 0, width, height);
+    const { data } = imageData;
+    
+    // Get starting color
+    const startPos = (startY * width + startX) * 4;
+    const startR = data[startPos];
+    const startG = data[startPos + 1];
+    const startB = data[startPos + 2];
+    const startA = data[startPos + 3];
+
+    // Tolerance to handle anti-aliasing artifacts
+    const tolerance = 200;
+
+    function matchesStart(pos) {
+        const dr = Math.abs(data[pos] - startR);
+        const dg = Math.abs(data[pos + 1] - startG);
+        const db = Math.abs(data[pos + 2] - startB);
+        const da = Math.abs(data[pos + 3] - startA);
+        return dr <= tolerance && dg <= tolerance && db <= tolerance && da <= tolerance;
+    }
+
+    function matchesFill(pos) {
+        return data[pos] === r && 
+               data[pos + 1] === g && 
+               data[pos + 2] === b && 
+               data[pos + 3] === a;
+    }
+
+    if (matchesFill(startPos)) return;
+
+    const stack = [[startX, startY]];
+
+    while (stack.length) {
+        const [x, y] = stack.pop();
+        const pos = (y * width + x) * 4;
+
+        if (x < 0 || x >= width || y < 0 || y >= height) continue;
+        
+        if (matchesStart(pos) && !matchesFill(pos)) {
+            // Fill pixel
+            data[pos] = r;
+            data[pos + 1] = g;
+            data[pos + 2] = b;
+            data[pos + 3] = a;
+
+            stack.push([x + 1, y]);
+            stack.push([x - 1, y]);
+            stack.push([x, y + 1]);
+            stack.push([x, y - 1]);
+        }
+    }
+
+    targetCtx.putImageData(imageData, 0, 0);
+}

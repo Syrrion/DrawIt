@@ -1,0 +1,24 @@
+export const state = {
+    isDrawing: false,
+    currentRoom: null,
+    currentGameState: 'LOBBY',
+    currentDrawerId: null,
+    user: { username: '' },
+    currentTool: 'pen',
+    lastX: 0,
+    lastY: 0,
+    currentStrokeId: null,
+    hasMoved: false,
+    isPanning: false,
+    startPanX: 0,
+    startPanY: 0,
+    layers: [],
+    activeLayerId: null,
+    layerCanvases: {},
+    shapeStartX: 0,
+    shapeStartY: 0,
+    canvasSnapshot: null,
+    leaderId: null,
+    activeColorTarget: 'game', // 'game' or 'avatar'
+    currentDrawerName: null
+};

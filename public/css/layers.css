@@ -1,0 +1,171 @@
+/* Layers Panel */
+.layers-panel {
+    border-top: 1px solid var(--border-color);
+    background: rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    height: 40%;
+}
+
+.layers-header {
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.layers-header h3 {
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+}
+
+#add-layer-btn {
+    padding: 0.2rem 0.6rem;
+    font-size: 1.2rem;
+    line-height: 1;
+}
+
+.layers-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.5rem;
+    display: flex;
+    flex-direction: column; /* Stack layers top to bottom visually */
+    gap: 0.5rem;
+}
+
+.layer-item {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    border-left: 3px solid transparent;
+    border-radius: var(--radius-sm);
+    padding: 0.4rem 0.6rem;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    cursor: grab;
+    transition: all 0.2s;
+    position: relative;
+}
+
+.layer-item:active {
+    cursor: grabbing;
+}
+
+.layer-item.active {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: var(--primary);
+    border-left-color: var(--accent);
+}
+
+.layer-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.layer-item.dragging {
+    opacity: 0.4;
+    background: var(--bg-glass);
+    border: 1px dashed var(--text-dim);
+}
+
+.layer-item.over {
+    background: rgba(99, 102, 241, 0.1);
+    border-bottom: 4px solid var(--accent); /* Thicker and more evident indicator */
+    transform: translateY(-2px);
+}
+
+/* Disable pointer events on children during drag for better precision */
+.layers-list.dragging-mode .layer-item > * {
+    pointer-events: none;
+}
+
+.layer-visibility {
+    cursor: pointer;
+    opacity: 0.5;
+    font-size: 1.1rem;
+}
+
+.layer-visibility.visible {
+    opacity: 1;
+}
+
+/* Renaming */
+.layer-name-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    overflow: hidden;
+    min-width: 0;
+}
+
+.layer-name {
+    display: none;
+    width: 100%;
+    padding: 2px 5px;
+    font-size: 0.85rem;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--primary);
+    color: var(--text-main);
+    border-radius: 2px;
+    height: 24px;
+}
+
+.layer-name-display {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.85rem;
+    color: var(--text-main);
+    line-height: 24px;
+}
+
+.layer-controls {
+    display: flex;
+    gap: 2px;
+    margin-left: auto; /* Align right */
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.layer-item:hover .layer-controls,
+.layer-item:hover .edit-layer-btn {
+    opacity: 1;
+}
+
+.layer-btn, .edit-layer-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    min-width: 24px; /* Override global button min-width if any */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: none; /* Remove global button shadow */
+}
+
+.layer-btn:hover, .edit-layer-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-main);
+    transform: none; /* Prevent global button transform */
+    box-shadow: none;
+}
+
+.layer-btn.delete:hover {
+    color: var(--danger);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.edit-layer-btn {
+    opacity: 0;
+    margin-left: 5px;
+}
