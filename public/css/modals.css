@@ -26,6 +26,19 @@
     animation: slideUp 0.3s ease;
 }
 
+/* Custom Word Modal Specific */
+#custom-word-modal .modal-content {
+    max-width: 700px;
+    padding: 3rem;
+}
+
+#custom-word-modal input {
+    font-size: 1.5rem;
+    padding: 1rem;
+    text-align: center;
+    letter-spacing: 1px;
+}
+
 .modal-content h3 {
     color: var(--text-main);
     margin-bottom: 1rem;

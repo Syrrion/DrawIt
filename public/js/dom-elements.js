@@ -75,6 +75,11 @@ export const wordChoiceModal = document.getElementById('word-choice-modal');
 export const wordChoicesContainer = document.getElementById('word-choices-container');
 export const wordChoiceTimerVal = document.getElementById('word-choice-timer-val');
 
+export const customWordModal = document.getElementById('custom-word-modal');
+export const customWordInput = document.getElementById('custom-word-input');
+export const btnSubmitCustomWord = document.getElementById('btn-submit-custom-word');
+export const customWordTimerVal = document.getElementById('custom-word-timer-val');
+
 export const roundResultOverlay = document.getElementById('round-result-overlay');
 export const roundResultTitle = document.getElementById('round-result-title');
 export const roundResultWord = document.getElementById('round-result-word');

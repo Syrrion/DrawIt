@@ -959,6 +959,13 @@
                                     <p>Un joueur dessine, les autres devinent.</p>
                                 </div>
                             </div>
+                            <div class="gamemode-card" data-mode="custom-word">
+                                <div class="card-icon"><i class="fas fa-keyboard"></i></div>
+                                <div class="card-info">
+                                    <h4>Mot personnalisé</h4>
+                                    <p>Le dessinateur choisit son propre mot.</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
@@ -976,6 +983,10 @@
                                 <label>Choix de mots</label>
                                 <input type="number" id="setting-wordchoices" value="3" min="1" max="5">
                             </div>
+                            <div class="setting-group hidden" id="setting-group-max-word-length">
+                                <label>Longueur max du mot (Custom)</label>
+                                <input type="number" id="setting-max-word-length" value="20" min="5" max="30">
+                            </div>
                             <div class="setting-group">
                                 <label>Nombre de tours</label>
                                 <input type="number" id="setting-rounds" value="3" min="1" max="10">
@@ -990,10 +1001,9 @@
                             <label for="setting-hints">Activer les indices progressifs</label>
                         </div>
                         <div class="setting-group" style="margin-top: 10px;">
-                            <label>Indices personnels (Total)</label>
+                            <label for="setting-personal-hints" style="text-align: center; display: block; margin-bottom: 5px;">Indices personnels (Total): <span id="setting-personal-hints-val" style="color: var(--primary); font-weight: bold;">3</span></label>
                             <div class="slider-container">
                                 <input type="range" id="setting-personal-hints" min="0" max="10" value="3" class="slider">
-                                <span id="setting-personal-hints-val" style="margin-left: 10px; font-weight: bold; color: var(--primary);">3</span>
                             </div>
                         </div>
                     </div>
@@ -1342,6 +1352,21 @@
 
         <!-- Avatar Tooltip -->
         <div id="avatar-tooltip" class="avatar-tooltip hidden"></div>
+
+        <!-- Custom Word Modal -->
+        <div id="custom-word-modal" class="modal hidden">
+            <div class="modal-content">
+                <h3>Choisissez un mot à faire deviner</h3>
+                <div class="word-choice-timer">Temps restant : <span id="custom-word-timer-val">20</span>s</div>
+                <div class="form-group">
+                    <input type="text" id="custom-word-input" placeholder="Entrez votre mot (max 20 car.)" maxlength="20" autocomplete="off">
+                    <p class="help-text">Le mot sera caché aux autres joueurs.</p>
+                </div>
+                <div class="modal-actions">
+                    <button id="btn-submit-custom-word" class="btn-primary">Valider</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>

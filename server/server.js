@@ -130,6 +130,7 @@ io.on('connection', (socket) => {
                     rounds: 3,
                     allowFuzzy: false,
                     hintsEnabled: true,
+                    maxWordLength: 20,
                     personalHints: 3
                 },
                 readyPlayers: [],
@@ -378,7 +379,7 @@ io.on('connection', (socket) => {
         io.to(roomCode).emit('gameStateChanged', 'PLAYING');
         
         // Initialize Game
-        if (room.settings.mode === 'guess-word') {
+        if (room.settings.mode === 'guess-word' || room.settings.mode === 'custom-word') {
             // Shuffle players for turn order (exclude spectators)
             room.game.turnOrder = shuffle(room.users.filter(u => !u.isSpectator).map(u => u.id));
             room.game.currentDrawerIndex = 0;
@@ -537,6 +538,12 @@ io.on('connection', (socket) => {
 
         clearInterval(room.game.timerInterval);
 
+        // Reset layers to default
+        room.layers = [
+            { id: 'layer-1', name: 'Calque 1', order: 0, creatorId: null }
+        ];
+        io.to(roomCode).emit('resetLayers', room.layers);
+
         // Clear Canvas
         room.drawHistory = [];
         io.to(roomCode).emit('clearCanvas');
@@ -551,19 +558,36 @@ io.on('connection', (socket) => {
             totalTurns: room.game.turnOrder.length
         });
 
-        // Send word choices to drawer
-        const words = getRandomWords(room.settings.wordChoices);
-        io.to(drawerId).emit('chooseWord', { 
-            words, 
-            timeout: room.settings.wordChoiceTime 
-        });
+        if (room.settings.mode === 'custom-word') {
+            // Ask drawer to type a word
+            io.to(drawerId).emit('typeWord', {
+                timeout: room.settings.wordChoiceTime,
+                maxWordLength: room.settings.maxWordLength || 20
+            });
 
-        // Start Word Choice Timer
-        if (room.game.wordChoiceTimer) clearTimeout(room.game.wordChoiceTimer);
-        room.game.wordChoiceTimer = setTimeout(() => {
-            const randomWord = words[Math.floor(Math.random() * words.length)];
-            handleWordChosen(roomCode, randomWord, drawerId);
-        }, room.settings.wordChoiceTime * 1000);
+            // Start Word Choice Timer
+            if (room.game.wordChoiceTimer) clearTimeout(room.game.wordChoiceTimer);
+            room.game.wordChoiceTimer = setTimeout(() => {
+                // If no word chosen, pick a random one from dictionary as fallback
+                const randomWord = dictionary[Math.floor(Math.random() * dictionary.length)].replace(/œ/g, 'oe').replace(/Œ/g, 'OE');
+                handleWordChosen(roomCode, randomWord, drawerId);
+            }, room.settings.wordChoiceTime * 1000);
+
+        } else {
+            // Send word choices to drawer
+            const words = getRandomWords(room.settings.wordChoices);
+            io.to(drawerId).emit('chooseWord', { 
+                words, 
+                timeout: room.settings.wordChoiceTime 
+            });
+
+            // Start Word Choice Timer
+            if (room.game.wordChoiceTimer) clearTimeout(room.game.wordChoiceTimer);
+            room.game.wordChoiceTimer = setTimeout(() => {
+                const randomWord = words[Math.floor(Math.random() * words.length)];
+                handleWordChosen(roomCode, randomWord, drawerId);
+            }, room.settings.wordChoiceTime * 1000);
+        }
     }
 
     function handleWordChosen(roomCode, word, drawerId) {
@@ -645,6 +669,28 @@ io.on('connection', (socket) => {
         handleWordChosen(roomCode, word, drawerId);
     });
 
+    socket.on('customWordChosen', ({ roomCode, word }) => {
+        const room = rooms[roomCode];
+        if (!room) return;
+        
+        // Verify it's the drawer
+        const drawerId = room.game.turnOrder[room.game.currentDrawerIndex];
+        if (socket.id !== drawerId) return;
+
+        // Validate word
+        if (!word || word.trim().length === 0) return;
+        
+        // Sanitize and format
+        let cleanWord = word.trim().toUpperCase();
+        // Basic validation: only letters, spaces, dashes
+        // cleanWord = cleanWord.replace(/[^A-ZÀ-ÖØ-öø-ÿ \-]/g, ''); 
+        // Actually let's be permissive but maybe limit length
+        const maxLength = room.settings.maxWordLength || 20;
+        if (cleanWord.length > maxLength) cleanWord = cleanWord.substring(0, maxLength);
+
+        handleWordChosen(roomCode, cleanWord, drawerId);
+    });
+
     function endRound(roomCode, reason) {
         const room = rooms[roomCode];
         if (!room) return;
@@ -703,8 +749,8 @@ io.on('connection', (socket) => {
             rooms[roomCode].drawHistory = rooms[roomCode].drawHistory.filter(action => action.layerId !== layerId);
             
             io.to(roomCode).emit('layerDeleted', layerId);
-            // Need to resync canvas state because history changed
-            io.to(roomCode).emit('canvasState', rooms[roomCode].drawHistory);
+            // No need to resync canvas state as layers are independent
+            // io.to(roomCode).emit('canvasState', rooms[roomCode].drawHistory);
         }
     });
 
@@ -733,7 +779,7 @@ io.on('connection', (socket) => {
             if (user && user.isSpectator) return;
 
             // Restriction: Only drawer can draw during game
-            if (room.gameState === 'PLAYING' && room.settings.mode === 'guess-word') {
+            if (room.gameState === 'PLAYING' && (room.settings.mode === 'guess-word' || room.settings.mode === 'custom-word')) {
                 const drawerId = room.game.turnOrder[room.game.currentDrawerIndex];
                 if (socket.id !== drawerId) return;
             }
@@ -826,7 +872,7 @@ io.on('connection', (socket) => {
         if (user && user.isSpectator) return;
 
         // Game Logic for Guess Word
-        if (room.gameState === 'PLAYING' && room.settings.mode === 'guess-word' && room.game.currentWord && !room.game.roundEnded) {
+        if (room.gameState === 'PLAYING' && (room.settings.mode === 'guess-word' || room.settings.mode === 'custom-word') && room.game.currentWord && !room.game.roundEnded) {
             const drawerId = room.game.turnOrder[room.game.currentDrawerIndex];
             
             // If sender is drawer, they can't guess
@@ -865,12 +911,45 @@ io.on('connection', (socket) => {
                     room.game.scores[socket.id] += score;
                     room.game.roundScores[socket.id] += score;
                     
-                    // Drawer gets points too (e.g. 50 per guess)
-                    const drawerPoints = 50;
-                    room.game.scores[drawerId] += drawerPoints;
-                    room.game.roundScores[drawerId] += drawerPoints;
-
                     room.game.guessedPlayers.push(socket.id);
+
+                    // Drawer gets points too
+                    // Formula: 250 / number of people who found the word (excluding drawer)
+                    // We recalculate drawer points every time someone guesses
+                    // But wait, if we add points incrementally, it's tricky because the value changes.
+                    // The request says: "le dessinateur gagne des points selon ce calcul : 250 points / nombre de personne qui a trouvé le bon mot"
+                    // This implies the drawer's TOTAL score for the round depends on the FINAL count of guessers?
+                    // OR does it mean for EACH guess, they get (250 / TotalGuessers)? No, that doesn't make sense because we don't know the total yet.
+                    // Usually in these games, the drawer gets points either:
+                    // 1. A fixed amount per guess.
+                    // 2. A calculated amount at the END of the round based on total guessers.
+                    
+                    // Re-reading: "si il y a trois joueurs dans la partie, le dessinateur touche donc 250 / 2 points (car deux joueurs qui devinent)"
+                    // This example suggests the denominator is the POTENTIAL number of guessers (Total Players - 1).
+                    // So if there are 3 players total (1 drawer + 2 guessers), the drawer gets 250 / 2 = 125 points PER GUESS?
+                    // OR 125 points TOTAL if everyone guesses?
+                    
+                    // "250 points / nombre de personne qui a trouvé le bon mot"
+                    // If 1 person finds it, 250/1 = 250.
+                    // If 2 people find it, 250/2 = 125.
+                    // This phrasing is ambiguous. "nombre de personne qui a trouvé" usually means the count of successful guesses.
+                    // If it means "Drawer score = 250 / Count(SuccessfulGuessers)", then the drawer gets LESS points if MORE people guess? That's counter-intuitive.
+                    // Usually you want MORE points if MORE people guess.
+                    
+                    // Let's look at the example: "si il y a trois joueurs dans la partie, le dessinateur touche donc 250 / 2 points (car deux joueurs qui devinent)"
+                    // In this example, 2 players are the MAX number of guessers.
+                    // If the user means "Drawer gets (250 / MaxGuessers) per successful guess", then:
+                    // With 3 players (2 guessers): Each guess gives 250/2 = 125 pts. Total possible = 250.
+                    // With 5 players (4 guessers): Each guess gives 250/4 = 62.5 -> 62 pts. Total possible = 248.
+                    // This makes the drawer's maximum potential score roughly constant (~250) regardless of player count.
+                    // This seems like the most logical interpretation of "scaling".
+                    
+                    const activePlayersCount = room.users.filter(u => !u.isSpectator).length;
+                    const maxGuessers = Math.max(1, activePlayersCount - 1);
+                    const drawerPointsPerGuess = Math.floor(250 / maxGuessers);
+                    
+                    room.game.scores[drawerId] += drawerPointsPerGuess;
+                    room.game.roundScores[drawerId] += drawerPointsPerGuess;
 
                     // Notify
                     io.to(roomCode).emit('chatMessage', {
@@ -883,7 +962,6 @@ io.on('connection', (socket) => {
                     io.to(roomCode).emit('playerGuessed', socket.id);
 
                     // Check if everyone guessed (excluding drawer)
-                    const activePlayersCount = room.users.filter(u => !u.isSpectator).length;
                     const totalGuessers = activePlayersCount - 1;
                     if (room.game.guessedPlayers.length >= totalGuessers) {
                         endRound(roomCode, 'Tout le monde a trouvé !');
@@ -906,7 +984,7 @@ io.on('connection', (socket) => {
             if (user && user.isSpectator) return;
 
             // Restriction: Only drawer can show cursor during game
-            if (room.gameState === 'PLAYING' && room.settings.mode === 'guess-word') {
+            if (room.gameState === 'PLAYING' && (room.settings.mode === 'guess-word' || room.settings.mode === 'custom-word')) {
                 const drawerId = room.game.turnOrder[room.game.currentDrawerIndex];
                 if (socket.id !== drawerId) return;
             }

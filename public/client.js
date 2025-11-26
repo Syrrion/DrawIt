@@ -56,7 +56,12 @@ const cursorManager = initCursorManager(socket, cursorsLayer, () => state.curren
 const cameraManager = initCamera(canvasWrapper, zoomLevelDisplay);
 
 // Game Settings
-const gameSettingsManager = initGameSettings(socket, () => socket.id === state.leaderId, () => state.currentRoom, () => playerListManager.getPlayerCount());
+const gameSettingsManager = initGameSettings(
+    socket, 
+    () => socket.id === state.leaderId, 
+    () => state.currentRoom, 
+    () => playerListManager.getPlayerList().filter(u => !u.isSpectator).length
+);
 
 // Layers
 const layerManager = initLayerManagement(

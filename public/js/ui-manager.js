@@ -8,7 +8,7 @@ import {
     btnIamReady, btnRefuseGame, readyCheckModal,
     socket, spectatorCheckbox, btnJoinRandom, activeGamesCount, privateRoomCheckbox,
     btnUserSettings, userSettingsModal, btnCloseUserSettings, settingShowCursors, settingShowLayerAvatars,
-    maxPlayersInput
+    maxPlayersInput, btnSubmitCustomWord, customWordInput, customWordModal
 } from './dom-elements.js';
 import { state } from './state.js';
 import { showToast, generateRandomUsername, copyToClipboard, escapeHtml } from './utils.js';
@@ -336,6 +336,28 @@ export function initUIManager(avatarManager, animationSystem, gameSettingsManage
             const isVisible = e.target.checked;
             localStorage.setItem('drawit_show_layer_avatars', isVisible);
             if (layerManager) layerManager.setShowLayerAvatars(isVisible);
+        });
+    }
+
+    // Custom Word Modal
+    if (btnSubmitCustomWord) {
+        btnSubmitCustomWord.addEventListener('click', () => {
+            const word = customWordInput.value.trim();
+            if (word) {
+                socket.emit('customWordChosen', { roomCode: state.currentRoom, word });
+                customWordModal.classList.add('hidden');
+                if (window.customWordTimerInterval) clearInterval(window.customWordTimerInterval);
+            } else {
+                showToast('Veuillez entrer un mot', 'error');
+            }
+        });
+    }
+
+    if (customWordInput) {
+        customWordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                btnSubmitCustomWord.click();
+            }
         });
     }
 }

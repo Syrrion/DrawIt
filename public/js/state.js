@@ -21,5 +21,6 @@ export const state = {
     leaderId: null,
     activeColorTarget: 'game', // 'game' or 'avatar'
     currentDrawerName: null,
-    isSpectator: false
+    isSpectator: false,
+    settings: {}
 };

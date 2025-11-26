@@ -29,7 +29,26 @@ export function initLayerManagement(socket, currentRoom, layers, layerCanvases, 
         }
     }
 
+    function canModifyLayers() {
+        if (globalState.isSpectator) return false;
+        if (globalState.currentGameState === 'LOBBY') return true;
+        if (globalState.currentGameState === 'PLAYING') {
+            return socket.id === globalState.currentDrawerId;
+        }
+        return false;
+    }
+
     function updateLayersUI() {
+        const allowed = canModifyLayers();
+
+        // Update Add Button
+        if (addLayerBtn) {
+            addLayerBtn.disabled = !allowed;
+            addLayerBtn.style.opacity = allowed ? '1' : '0.5';
+            addLayerBtn.style.cursor = allowed ? 'pointer' : 'not-allowed';
+            addLayerBtn.title = allowed ? "Nouveau calque" : "Vous ne pouvez pas modifier les calques pour le moment";
+        }
+
         layersList.innerHTML = '';
         // Render in reverse order (top layer first in UI list)
         const reversedLayers = [...state.layers].reverse();
@@ -41,16 +60,20 @@ export function initLayerManagement(socket, currentRoom, layers, layerCanvases, 
 
             const div = document.createElement('div');
             div.className = `layer-item ${isActive ? 'active' : ''} ${hiddenClass}`;
-            div.draggable = true;
+            if (allowed) {
+                div.draggable = true;
+            }
             div.dataset.layerId = layer.id;
             
             // Drag Events
-            div.addEventListener('dragstart', handleDragStart);
-            div.addEventListener('dragover', handleDragOver);
-            div.addEventListener('drop', handleDrop);
-            div.addEventListener('dragenter', handleDragEnter);
-            div.addEventListener('dragleave', handleDragLeave);
-            div.addEventListener('dragend', handleDragEnd);
+            if (allowed) {
+                div.addEventListener('dragstart', handleDragStart);
+                div.addEventListener('dragover', handleDragOver);
+                div.addEventListener('drop', handleDrop);
+                div.addEventListener('dragenter', handleDragEnter);
+                div.addEventListener('dragleave', handleDragLeave);
+                div.addEventListener('dragend', handleDragEnd);
+            }
 
             div.onclick = (e) => {
                 if (!e.target.closest('button') && !e.target.closest('input') && !e.target.closest('.layer-visibility')) {
@@ -138,22 +161,50 @@ export function initLayerManagement(socket, currentRoom, layers, layerCanvases, 
             visibilityBtn.onclick = () => toggleLayerVisibility(layer.id);
 
             const renameBtn = div.querySelector('[data-action="rename"]');
-            renameBtn.onclick = () => enableRenaming(layer.id);
+            if (!allowed) {
+                renameBtn.disabled = true;
+                renameBtn.style.opacity = '0.3';
+                renameBtn.style.cursor = 'not-allowed';
+            } else {
+                renameBtn.onclick = () => enableRenaming(layer.id);
+            }
 
             const moveUpBtn = div.querySelector('[data-action="move-up"]');
-            moveUpBtn.onclick = () => moveLayerUp(layer.id);
+            if (!allowed) {
+                moveUpBtn.disabled = true;
+                moveUpBtn.style.opacity = '0.3';
+                moveUpBtn.style.cursor = 'not-allowed';
+            } else {
+                moveUpBtn.onclick = () => moveLayerUp(layer.id);
+            }
 
             const moveDownBtn = div.querySelector('[data-action="move-down"]');
-            moveDownBtn.onclick = () => moveLayerDown(layer.id);
+            if (!allowed) {
+                moveDownBtn.disabled = true;
+                moveDownBtn.style.opacity = '0.3';
+                moveDownBtn.style.cursor = 'not-allowed';
+            } else {
+                moveDownBtn.onclick = () => moveLayerDown(layer.id);
+            }
 
             const deleteBtn = div.querySelector('[data-action="delete"]');
-            deleteBtn.onclick = () => deleteLayer(layer.id);
+            if (!allowed) {
+                deleteBtn.disabled = true;
+                deleteBtn.style.opacity = '0.3';
+                deleteBtn.style.cursor = 'not-allowed';
+            } else {
+                deleteBtn.onclick = () => deleteLayer(layer.id);
+            }
 
             const input = div.querySelector(`#name-input-${layer.id}`);
-            input.addEventListener('blur', () => saveLayerName(layer.id, input.value));
-            input.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') saveLayerName(layer.id, input.value);
-            });
+            if (!allowed) {
+                input.disabled = true;
+            } else {
+                input.addEventListener('blur', () => saveLayerName(layer.id, input.value));
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') saveLayerName(layer.id, input.value);
+                });
+            }
         });
     }
 
@@ -281,6 +332,7 @@ export function initLayerManagement(socket, currentRoom, layers, layerCanvases, 
     }
 
     addLayerBtn.addEventListener('click', () => {
+        if (!canModifyLayers()) return;
         if (state.layers.length >= 20) {
             showToast('Limite de 20 calques atteinte', 'error');
             return;

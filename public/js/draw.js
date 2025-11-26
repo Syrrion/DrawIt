@@ -159,7 +159,8 @@ export function performFloodFill(targetCtx, width, height, startX, startY, fillC
     const startA = data[startPos + 3];
 
     // Tolerance to handle anti-aliasing artifacts
-    const tolerance = 200;
+    // Reduced tolerance to make it less permissive (was 200)
+    const tolerance = 50;
 
     function matchesStart(pos) {
         const dr = Math.abs(data[pos] - startR);
@@ -186,7 +187,9 @@ export function performFloodFill(targetCtx, width, height, startX, startY, fillC
 
         if (x < 0 || x >= width || y < 0 || y >= height) continue;
         
-        if (matchesStart(pos) && !matchesFill(pos)) {
+        if (matchesFill(pos)) continue;
+
+        if (matchesStart(pos)) {
             // Fill pixel
             data[pos] = r;
             data[pos + 1] = g;
@@ -197,6 +200,12 @@ export function performFloodFill(targetCtx, width, height, startX, startY, fillC
             stack.push([x - 1, y]);
             stack.push([x, y + 1]);
             stack.push([x, y - 1]);
+        } else {
+            // Paint boundary pixel to cover artifacts
+            data[pos] = r;
+            data[pos + 1] = g;
+            data[pos + 2] = b;
+            data[pos + 3] = a;
         }
     }
 

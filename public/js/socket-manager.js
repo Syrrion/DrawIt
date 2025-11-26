@@ -1,6 +1,6 @@
-import { socket, gameTopBar, wordChoiceModal, wordChoicesContainer, timerValue, wordDisplay, roundCurrent, roundTotal, roundResultOverlay, roundResultTitle, roundResultWord, roundResultScores, gameEndModal, gameEndScores, readyCheckModal, btnIamReady, btnRefuseGame, readyCountVal, readyTotalVal, readyTimerVal, readyPlayersList, canvas, helpModal, lobbySettingsModal, confirmationModal, kickModal, alertModal, roomPrivacyBadge, btnUseHint, hintsCount } from './dom-elements.js';
+import { socket, gameTopBar, wordChoiceModal, wordChoicesContainer, timerValue, wordDisplay, roundCurrent, roundTotal, roundResultOverlay, roundResultTitle, roundResultWord, roundResultScores, gameEndModal, gameEndScores, readyCheckModal, btnIamReady, btnRefuseGame, readyCountVal, readyTotalVal, readyTimerVal, readyPlayersList, canvas, helpModal, lobbySettingsModal, confirmationModal, kickModal, alertModal, roomPrivacyBadge, btnUseHint, hintsCount, customWordModal, customWordInput, customWordTimerVal, btnSubmitCustomWord } from './dom-elements.js';
 import { state } from './state.js';
-import { showToast } from './utils.js';
+import { showToast, playTickSound } from './utils.js';
 import { performDraw, performFloodFill, performMoveSelection, performClearRect } from './draw.js';
 
 export function initSocketManager(
@@ -14,14 +14,12 @@ export function initSocketManager(
 ) {
     // Room & Game State
     socket.on('roomSettingsUpdated', (settings) => {
-        // Handled by gameSettingsManager internally if it listens to socket, 
-        // but here we might need to update UI if gameSettingsManager doesn't do it automatically from socket
-        // Actually gameSettingsManager in original code didn't seem to listen to socket directly, 
-        // but client.js had this empty listener.
+        state.settings = settings;
     });
 
     socket.on('gameStateChanged', (stateVal) => {
         state.currentGameState = stateVal;
+        layerManager.updateLayersUI();
     });
 
     socket.on('userJoined', (data) => {
@@ -60,6 +58,7 @@ export function initSocketManager(
     socket.on('roomJoined', (data) => {
         state.currentGameState = data.gameState;
         state.isSpectator = data.isSpectator;
+        state.settings = data.settings || {};
 
         // Update Privacy Badge
         if (roomPrivacyBadge) {
@@ -115,6 +114,24 @@ export function initSocketManager(
             if (data.game.currentHint) {
                 gameTopBar.classList.remove('hidden');
                 wordDisplay.textContent = data.game.currentHint;
+
+                // Update Hint Button Visibility for mid-game join
+                const progressiveHintsEnabled = state.settings && state.settings.hintsEnabled;
+                const isDrawer = state.currentDrawerId === socket.id;
+                const hasGuessed = data.game.guessedPlayers && data.game.guessedPlayers.includes(socket.id);
+                
+                if (!isDrawer && !state.isSpectator && !progressiveHintsEnabled && !hasGuessed) {
+                    if (btnUseHint) {
+                        btnUseHint.classList.remove('hidden');
+                        if (hintsCount && parseInt(hintsCount.textContent) <= 0) {
+                            btnUseHint.disabled = true;
+                        } else {
+                            btnUseHint.disabled = false;
+                        }
+                    }
+                } else {
+                    if (btnUseHint) btnUseHint.classList.add('hidden');
+                }
             }
             if (data.game.timeLeft !== undefined) {
                 timerValue.textContent = data.game.timeLeft;
@@ -227,6 +244,31 @@ export function initSocketManager(
         render();
     });
 
+    socket.on('resetLayers', (layers) => {
+        // Clear all existing canvases
+        Object.keys(state.layerCanvases).forEach(id => {
+            layerManager.deleteLayerCanvas(id);
+        });
+        
+        // Reset state layers
+        state.layers.length = 0;
+        state.layers.push(...layers);
+        
+        // Re-create canvases for new layers
+        layers.forEach(l => {
+            layerManager.createLayerCanvas(l.id);
+        });
+        
+        // Set active layer
+        if (layers.length > 0) {
+            state.activeLayerId = layers[0].id;
+            layerManager.setActiveLayerId(state.activeLayerId);
+        }
+        
+        layerManager.updateLayersUI();
+        render();
+    });
+
     // Drawing
     socket.on('canvasState', (history) => {
         Object.values(state.layerCanvases).forEach(l => {
@@ -303,7 +345,10 @@ export function initSocketManager(
             window.wordChoiceTimerInterval = setInterval(() => {
                 timeLeft--;
                 timerVal.textContent = timeLeft;
-                if (timeLeft <= 5) timerVal.style.color = 'red';
+                if (timeLeft <= 5) {
+                    timerVal.style.color = 'red';
+                    if (timeLeft > 0) playTickSound();
+                }
                 if (timeLeft <= 0) clearInterval(window.wordChoiceTimerInterval);
             }, 1000);
         }
@@ -319,7 +364,9 @@ export function initSocketManager(
         wordDisplay.textContent = data.hint;
         
         // Show/Hide Hint Button
-        if (state.currentDrawerId === socket.id || state.isSpectator) {
+        const progressiveHintsEnabled = state.settings && state.settings.hintsEnabled;
+        
+        if (state.currentDrawerId === socket.id || state.isSpectator || progressiveHintsEnabled) {
             if (btnUseHint) btnUseHint.classList.add('hidden');
         } else {
             if (btnUseHint) {
@@ -350,6 +397,7 @@ export function initSocketManager(
         window.currentTimerInterval = setInterval(() => {
             timeLeft--;
             if (timeLeft >= 0) timerValue.textContent = timeLeft;
+            if (timeLeft <= 10 && timeLeft > 0) playTickSound();
             else clearInterval(window.currentTimerInterval);
         }, 1000);
     });
@@ -378,6 +426,8 @@ export function initSocketManager(
         timerValue.textContent = '0';
         wordDisplay.textContent = '';
         wordDisplay.style.color = 'var(--primary)';
+        
+        layerManager.updateLayersUI();
     });
 
     socket.on('roundEnd', (data) => {
@@ -547,8 +597,14 @@ export function initSocketManager(
                     const fuzzyText = s.allowFuzzy ? '• Accents cool' : '• Accents stricts';
                     return `${s.drawTime}s • ${s.rounds} Tours ${fuzzyText}`;
                 }
+            },
+            'custom-word': {
+                label: 'Mot personnalisé',
+                getDetails: (s) => {
+                    const fuzzyText = s.allowFuzzy ? '• Accents cool' : '• Accents stricts';
+                    return `${s.drawTime}s • ${s.rounds} Tours ${fuzzyText} • Mot libre`;
+                }
             }
-            // Add other modes here
         };
 
         const config = modeConfigs[data.settings.mode] || { 
@@ -622,11 +678,13 @@ export function initSocketManager(
         readyTimerInterval = setInterval(() => {
             timeLeft--;
             if (newReadyTimerVal) newReadyTimerVal.textContent = timeLeft;
+            if (timeLeft <= 10 && timeLeft > 0) playTickSound();
             if (timeLeft <= 0) clearInterval(readyTimerInterval);
         }, 1000);
     });
 
     socket.on('gameStarting', (count) => {
+        playTickSound();
         const readyStatus = document.querySelector('.ready-status');
         const readyTitle = document.querySelector('.ready-check-content h2');
         const readyTimer = document.querySelector('.ready-timer');
@@ -747,5 +805,40 @@ export function initSocketManager(
             if (btnUseHint) btnUseHint.classList.add('hidden');
         }
         // ... existing code ...
+    });
+
+    socket.on('typeWord', (data) => {
+        const timeout = data.timeout || 20;
+        const maxLen = data.maxWordLength || 20;
+        
+        customWordInput.value = '';
+        customWordInput.maxLength = maxLen;
+        customWordInput.placeholder = `Entrez votre mot (max ${maxLen} car.)`;
+        
+        customWordModal.classList.remove('hidden');
+        customWordInput.focus();
+
+        let timeLeft = timeout;
+        if (customWordTimerVal) {
+            customWordTimerVal.textContent = timeLeft;
+            customWordTimerVal.style.color = '';
+            
+            if (window.customWordTimerInterval) clearInterval(window.customWordTimerInterval);
+            window.customWordTimerInterval = setInterval(() => {
+                timeLeft--;
+                customWordTimerVal.textContent = timeLeft;
+                if (timeLeft <= 5) {
+                    customWordTimerVal.style.color = 'red';
+                    if (timeLeft > 0) playTickSound();
+                }
+                if (timeLeft <= 0) {
+                    clearInterval(window.customWordTimerInterval);
+                    // If time runs out, maybe submit what's there or let server handle it?
+                    // Server will handle timeout by picking random word if not received.
+                    // But we should probably close modal.
+                    customWordModal.classList.add('hidden');
+                }
+            }, 1000);
+        }
     });
 }
