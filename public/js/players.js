@@ -7,6 +7,39 @@ export function initPlayerList(socket, playersListElement, onKickRequest) {
     let currentGameState = 'LOBBY';
     let currentRoomCode = null;
     let currentMaxPlayers = 8; // Default
+    let currentGuessedPlayers = [];
+
+    // Sound Effect
+    const successAudio = new Audio();
+    // Simple beep sound (base64)
+    // successAudio.src = 'data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU...'; 
+    // Better to use Web Audio API for a nice "ding"
+
+    function playSuccessSound() {
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
+            
+            const ctx = new AudioContext();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
+            osc.frequency.exponentialRampToValueAtTime(1046.5, ctx.currentTime + 0.1); // C6
+
+            gain.gain.setValueAtTime(0.3, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+
+            osc.start();
+            osc.stop(ctx.currentTime + 0.5);
+        } catch (e) {
+            console.error("Audio play failed", e);
+        }
+    }
 
     function render() {
         updatePlayerCount();
@@ -31,6 +64,9 @@ export function initPlayerList(socket, playersListElement, onKickRequest) {
             }
             if (u.id === currentDrawerId) {
                 div.classList.add('is-drawing');
+            }
+            if (currentGuessedPlayers.includes(u.id)) {
+                div.classList.add('has-guessed');
             }
             
             let avatarHtml = '';
@@ -196,14 +232,24 @@ export function initPlayerList(socket, playersListElement, onKickRequest) {
         render();
     });
 
+    socket.on('playerGuessed', (playerId) => {
+        if (!currentGuessedPlayers.includes(playerId)) {
+            currentGuessedPlayers.push(playerId);
+            playSuccessSound();
+            render();
+        }
+    });
+
     socket.on('turnStart', (data) => {
         currentDrawerId = data.drawerId;
+        currentGuessedPlayers = [];
         render();
     });
     
     socket.on('gameStarted', (data) => {
         currentScores = data.scores;
         currentTurnOrder = data.turnOrder;
+        currentGuessedPlayers = [];
         render();
     });
     
@@ -211,6 +257,7 @@ export function initPlayerList(socket, playersListElement, onKickRequest) {
         currentDrawerId = null;
         currentTurnOrder = [];
         currentScores = {};
+        currentGuessedPlayers = [];
         render();
     });
     
@@ -226,6 +273,7 @@ export function initPlayerList(socket, playersListElement, onKickRequest) {
         if (data.game) {
             if (data.game.scores) currentScores = data.game.scores;
             if (data.game.turnOrder) currentTurnOrder = data.game.turnOrder;
+            if (data.game.guessedPlayers) currentGuessedPlayers = data.game.guessedPlayers;
         }
         render();
         updatePlayerCount();

@@ -201,7 +201,8 @@ io.on('connection', (socket) => {
                 currentRound: room.game.currentRound,
                 totalRounds: room.game.totalRounds,
                 currentDrawerIndex: room.game.currentDrawerIndex,
-                turnOrder: room.game.turnOrder
+                turnOrder: room.game.turnOrder,
+                guessedPlayers: room.game.guessedPlayers
             };
         }
 
@@ -852,6 +853,7 @@ io.on('connection', (socket) => {
                     });
 
                     io.to(roomCode).emit('scoreUpdate', room.game.scores);
+                    io.to(roomCode).emit('playerGuessed', socket.id);
 
                     // Check if everyone guessed (excluding drawer)
                     const activePlayersCount = room.users.filter(u => !u.isSpectator).length;
