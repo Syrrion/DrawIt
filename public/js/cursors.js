@@ -65,6 +65,14 @@ export function initCursorManager(socket, cursorsLayer, getRoomCode, getUsername
                 }
                 delete cursors[id];
             }
+        },
+        removeCursor: (id) => {
+            if (cursors[id]) {
+                if (cursors[id].element.parentNode) {
+                    cursors[id].element.parentNode.removeChild(cursors[id].element);
+                }
+                delete cursors[id];
+            }
         }
     };
 }

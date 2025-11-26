@@ -299,7 +299,8 @@ io.on('connection', (socket) => {
 
                     io.to(targetRoomCode).emit('userLeft', { 
                         users: room.users, 
-                        leaderId: room.leaderId 
+                        leaderId: room.leaderId,
+                        leftUserId: targetId
                     });
                     
                     io.to(targetRoomCode).emit('chatMessage', {
@@ -656,7 +657,8 @@ io.on('connection', (socket) => {
 
                 io.to(roomCode).emit('userLeft', { 
                     users: room.users, 
-                    leaderId: room.leaderId 
+                    leaderId: room.leaderId,
+                    leftUserId: socket.id
                 });
 
                 if (room.users.length === 0) {

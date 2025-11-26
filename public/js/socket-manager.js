@@ -36,6 +36,9 @@ export function initSocketManager(
             state.leaderId = data.leaderId;
             gameSettingsManager.updateControlsState();
         }
+        if (data.leftUserId) {
+            cursorManager.removeCursor(data.leftUserId);
+        }
     });
 
     socket.on('roomJoined', (data) => {
