@@ -6,12 +6,14 @@ import {
     confirmationModal, confirmOkBtn, confirmCancelBtn,
     btnReturnLobby, gameEndModal,
     btnIamReady, btnRefuseGame, readyCheckModal,
-    socket, spectatorCheckbox, btnJoinRandom, activeGamesCount, privateRoomCheckbox
+    socket, spectatorCheckbox, btnJoinRandom, activeGamesCount, privateRoomCheckbox,
+    btnUserSettings, userSettingsModal, btnCloseUserSettings, settingShowCursors, settingShowLayerAvatars,
+    maxPlayersInput
 } from './dom-elements.js';
 import { state } from './state.js';
 import { showToast, generateRandomUsername, copyToClipboard, escapeHtml } from './utils.js';
 
-export function initUIManager(avatarManager, animationSystem, gameSettingsManager, render) {
+export function initUIManager(avatarManager, animationSystem, gameSettingsManager, render, cursorManager, layerManager) {
     // Login Tabs Logic
     const loginTabs = document.querySelectorAll('.login-tab');
     const loginTabContents = document.querySelectorAll('.login-tab-content');
@@ -94,6 +96,16 @@ export function initUIManager(avatarManager, animationSystem, gameSettingsManage
         showToast(msg, 'error');
     });
 
+    // Max Players Slider
+    if (maxPlayersInput) {
+        const maxPlayersValue = document.getElementById('max-players-value');
+        maxPlayersInput.addEventListener('input', (e) => {
+            if (maxPlayersValue) {
+                maxPlayersValue.textContent = e.target.value;
+            }
+        });
+    }
+
     // Navigation
     joinBtn.addEventListener('click', () => {
         let username = usernameInput.value.trim();
@@ -125,6 +137,7 @@ export function initUIManager(avatarManager, animationSystem, gameSettingsManage
 
         let username = usernameInput.value.trim();
         const isPrivate = privateRoomCheckbox ? privateRoomCheckbox.checked : false;
+        const maxPlayers = maxPlayersInput ? parseInt(maxPlayersInput.value) : 8;
         
         if (!username) {
             username = generateRandomUsername();
@@ -136,13 +149,13 @@ export function initUIManager(avatarManager, animationSystem, gameSettingsManage
             username = escapeHtml(username);
             
             const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-            joinRoom(roomCode, username, false, isPrivate);
+            joinRoom(roomCode, username, false, isPrivate, maxPlayers);
         } else {
             showToast('Merci de choisir un pseudo', 'error');
         }
     });
 
-    function joinRoom(roomCode, username, isSpectator = false, isPrivate = false) {
+    function joinRoom(roomCode, username, isSpectator = false, isPrivate = false, maxPlayers = 8) {
         state.user.username = username;
         state.currentRoom = roomCode;
         
@@ -153,7 +166,8 @@ export function initUIManager(avatarManager, animationSystem, gameSettingsManage
             avatar: avatarData,
             roomCode: state.currentRoom,
             isSpectator,
-            isPrivate
+            isPrivate,
+            maxPlayers
         });
 
         loginScreen.classList.add('hidden');
@@ -270,6 +284,50 @@ export function initUIManager(avatarManager, animationSystem, gameSettingsManage
     if (btnRefuseGame) {
         btnRefuseGame.addEventListener('click', () => {
             socket.emit('playerRefused', state.currentRoom);
+        });
+    }
+
+    // User Settings Modal
+    if (btnUserSettings) {
+        btnUserSettings.addEventListener('click', () => {
+            userSettingsModal.classList.remove('hidden');
+        });
+    }
+
+    if (btnCloseUserSettings) {
+        btnCloseUserSettings.addEventListener('click', () => {
+            userSettingsModal.classList.add('hidden');
+        });
+    }
+
+    // Load saved settings
+    const savedShowCursors = localStorage.getItem('drawit_show_cursors');
+    if (savedShowCursors !== null) {
+        const isVisible = savedShowCursors === 'true';
+        if (settingShowCursors) settingShowCursors.checked = isVisible;
+        if (cursorManager) cursorManager.setCursorsVisible(isVisible);
+    }
+
+    if (settingShowCursors) {
+        settingShowCursors.addEventListener('change', (e) => {
+            const isVisible = e.target.checked;
+            localStorage.setItem('drawit_show_cursors', isVisible);
+            if (cursorManager) cursorManager.setCursorsVisible(isVisible);
+        });
+    }
+
+    const savedShowLayerAvatars = localStorage.getItem('drawit_show_layer_avatars');
+    if (savedShowLayerAvatars !== null) {
+        const isVisible = savedShowLayerAvatars === 'true';
+        if (settingShowLayerAvatars) settingShowLayerAvatars.checked = isVisible;
+        if (layerManager) layerManager.setShowLayerAvatars(isVisible);
+    }
+
+    if (settingShowLayerAvatars) {
+        settingShowLayerAvatars.addEventListener('change', (e) => {
+            const isVisible = e.target.checked;
+            localStorage.setItem('drawit_show_layer_avatars', isVisible);
+            if (layerManager) layerManager.setShowLayerAvatars(isVisible);
         });
     }
 }

@@ -69,13 +69,15 @@ const layerManager = initLayerManagement(
     showToast,
     (newActiveId) => {
         state.activeLayerId = newActiveId;
-    }
+        socket.emit('activeLayerChanged', { roomCode: state.currentRoom, layerId: newActiveId });
+    },
+    () => playerListManager.getPlayerList()
 );
 
 // Initialize Managers
 initTools();
 initCanvasManager(cursorManager, cameraManager);
-initUIManager(avatarManager, animationSystem, gameSettingsManager, render);
+initUIManager(avatarManager, animationSystem, gameSettingsManager, render, cursorManager, layerManager);
 initSocketManager(
     gameSettingsManager, 
     playerListManager, 

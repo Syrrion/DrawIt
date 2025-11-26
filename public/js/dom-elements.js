@@ -17,6 +17,7 @@ export const spectatorCheckbox = document.getElementById('spectator-checkbox');
 export const btnJoinRandom = document.getElementById('btn-join-random');
 export const activeGamesCount = document.getElementById('active-games-count');
 export const privateRoomCheckbox = document.getElementById('private-room-checkbox');
+export const maxPlayersInput = document.getElementById('max-players-input');
 
 // Canvas Area
 export const canvas = document.getElementById('drawing-board');
@@ -95,6 +96,13 @@ export const lobbySettingsModal = document.getElementById('lobby-settings-modal'
 export const btnCloseSettings = document.getElementById('btn-close-settings');
 export const btnStartGame = document.getElementById('btn-start-game');
 export const btnOpenSettings = document.getElementById('btn-open-settings');
+
+// User Settings
+export const btnUserSettings = document.getElementById('btn-user-settings');
+export const userSettingsModal = document.getElementById('user-settings-modal');
+export const btnCloseUserSettings = document.getElementById('btn-close-user-settings');
+export const settingShowCursors = document.getElementById('setting-show-cursors');
+export const settingShowLayerAvatars = document.getElementById('setting-show-layer-avatars');
 
 // Game Top Bar
 export const gameTopBar = document.getElementById('game-top-bar');

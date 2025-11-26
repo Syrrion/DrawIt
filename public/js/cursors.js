@@ -3,6 +3,7 @@ import { stringToColor } from './utils.js';
 export function initCursorManager(socket, cursorsLayer, getRoomCode, getUsername) {
     const cursors = {};
     let lastCursorEmit = 0;
+    let areCursorsVisible = true;
 
     socket.on('cursorMove', ({ id, x, y, username }) => {
         if (!cursors[id]) {
@@ -33,10 +34,18 @@ export function initCursorManager(socket, cursorsLayer, getRoomCode, getUsername
             cursor.element.style.left = `${cursor.x}px`;
             cursor.element.style.top = `${cursor.y}px`;
             
-            // Hide cursor if not active
-            // This is a fallback if the server sends it but we want to hide it locally for some reason
-            // But the server should filter it.
-            // However, we can add a visual indication or hide it if needed.
+            // Visibility check
+            if (areCursorsVisible) {
+                cursor.element.style.display = 'flex';
+            } else {
+                cursor.element.style.display = 'none';
+            }
+        }
+    }
+
+    function updateAllCursorsVisibility() {
+        for (const id in cursors) {
+            updateCursorPosition(id);
         }
     }
 
@@ -73,6 +82,10 @@ export function initCursorManager(socket, cursorsLayer, getRoomCode, getUsername
                 }
                 delete cursors[id];
             }
+        },
+        setCursorsVisible: (visible) => {
+            areCursorsVisible = visible;
+            updateAllCursorsVisibility();
         }
     };
 }

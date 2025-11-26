@@ -6,8 +6,10 @@ export function initPlayerList(socket, playersListElement, onKickRequest) {
     let currentTurnOrder = [];
     let currentGameState = 'LOBBY';
     let currentRoomCode = null;
+    let currentMaxPlayers = 8; // Default
 
     function render() {
+        updatePlayerCount();
         playersListElement.innerHTML = '';
         // Sort by score descending if scores exist, but spectators always last
         const sortedUsers = [...currentUsers].sort((a, b) => {
@@ -85,7 +87,7 @@ export function initPlayerList(socket, playersListElement, onKickRequest) {
                 ${turnOrderBadge}
                 ${avatarHtml}
                 <div class="player-info" style="flex:1;">
-                    <div class="player-name" style="font-weight:bold;">
+                    <div class="player-name">
                         ${leaderIcon}${u.username} ${drawerIcon} ${spectatorIcon}
                         ${switchRoleBtn}
                     </div>
@@ -156,12 +158,24 @@ export function initPlayerList(socket, playersListElement, onKickRequest) {
         });
     }
 
+    function updatePlayerCount() {
+        const countDisplay = document.getElementById('player-count-display');
+        if (countDisplay) {
+            // Count only active players (not spectators) for the limit check, 
+            // but usually we want to show total connected or active/max.
+            // Based on user request "nombre de joueurs actuel / Max", usually implies active players vs limit.
+            const activePlayers = currentUsers.filter(u => !u.isSpectator).length;
+            countDisplay.textContent = `(${activePlayers}/${currentMaxPlayers})`;
+        }
+    }
+
     socket.on('userJoined', (data) => {
         if (Array.isArray(data)) {
             currentUsers = data;
         } else {
             currentUsers = data.users;
             currentLeaderId = data.leaderId;
+            if (data.maxPlayers) currentMaxPlayers = data.maxPlayers;
         }
         render();
     });
@@ -174,6 +188,7 @@ export function initPlayerList(socket, playersListElement, onKickRequest) {
             currentLeaderId = data.leaderId;
         }
         render();
+        updatePlayerCount();
     });
 
     socket.on('scoreUpdate', (scores) => {
@@ -204,6 +219,7 @@ export function initPlayerList(socket, playersListElement, onKickRequest) {
         currentLeaderId = data.leaderId;
         if (data.roomCode) currentRoomCode = data.roomCode;
         if (data.gameState) currentGameState = data.gameState;
+        if (data.maxPlayers) currentMaxPlayers = data.maxPlayers;
         
         // If joining mid-game, we might need scores, but usually roomJoined sends basic info.
         // Ideally roomJoined should send scores too.
@@ -212,6 +228,7 @@ export function initPlayerList(socket, playersListElement, onKickRequest) {
             if (data.game.turnOrder) currentTurnOrder = data.game.turnOrder;
         }
         render();
+        updatePlayerCount();
     });
 
     socket.on('gameStateChanged', (state) => {
@@ -226,6 +243,10 @@ export function initPlayerList(socket, playersListElement, onKickRequest) {
             if (gameState) currentGameState = gameState;
             if (roomCode) currentRoomCode = roomCode;
             render();
+            updatePlayerCount();
+        },
+        getPlayerList: () => {
+            return currentUsers;
         },
         getPlayer: (id) => {
             return currentUsers.find(u => u.id === id);

@@ -1,6 +1,7 @@
 import { performDraw, performFloodFill } from './draw.js';
+import { state as globalState } from './state.js';
 
-export function initLayerManagement(socket, currentRoom, layers, layerCanvases, activeLayerId, renderCallback, showToast, onActiveLayerChange) {
+export function initLayerManagement(socket, currentRoom, layers, layerCanvases, activeLayerId, renderCallback, showToast, onActiveLayerChange, getPlayerList) {
     // We need to return an object with methods that modify the state or expose functions to the global scope/UI
     
     const layersList = document.getElementById('layers-list');
@@ -10,7 +11,9 @@ export function initLayerManagement(socket, currentRoom, layers, layerCanvases, 
     const state = {
         layers,
         activeLayerId,
-        layerCanvases
+        layerCanvases,
+        playerLayers: {}, // Map userId -> layerId
+        showLayerAvatars: true
     };
 
     function createLayerCanvas(layerId) {
@@ -32,8 +35,12 @@ export function initLayerManagement(socket, currentRoom, layers, layerCanvases, 
         const reversedLayers = [...state.layers].reverse();
         
         reversedLayers.forEach((layer) => {
+            const isVisible = state.layerCanvases[layer.id] ? state.layerCanvases[layer.id].visible : true;
+            const isActive = layer.id === state.activeLayerId;
+            const hiddenClass = !isVisible ? 'hidden-layer' : '';
+
             const div = document.createElement('div');
-            div.className = `layer-item ${layer.id === state.activeLayerId ? 'active' : ''}`;
+            div.className = `layer-item ${isActive ? 'active' : ''} ${hiddenClass}`;
             div.draggable = true;
             div.dataset.layerId = layer.id;
             
@@ -53,7 +60,46 @@ export function initLayerManagement(socket, currentRoom, layers, layerCanvases, 
                 }
             };
 
-            const isVisible = state.layerCanvases[layer.id] ? state.layerCanvases[layer.id].visible : true;
+            // Find players on this layer
+            let playersOnLayerHtml = '';
+            if (getPlayerList && state.showLayerAvatars) {
+                const players = getPlayerList();
+                
+                // Filter players on this layer AND allowed to draw
+                const playersOnThisLayer = players.filter(p => {
+                    const isOnLayer = state.playerLayers[p.id] === layer.id;
+                    if (!isOnLayer) return false;
+
+                    // Check if allowed to draw
+                    if (p.isSpectator) return false;
+                    if (globalState.currentGameState === 'LOBBY') return true;
+                    if (globalState.currentGameState === 'PLAYING') {
+                        return p.id === globalState.currentDrawerId;
+                    }
+                    return false;
+                });
+                
+                if (playersOnThisLayer.length > 0) {
+                    playersOnLayerHtml = '<div class="layer-avatars" style="display: flex; margin-left: 5px; gap: -5px;">';
+                    playersOnThisLayer.forEach(p => {
+                        const isMe = p.id === socket.id;
+                        const size = isMe ? '24px' : '20px';
+                        const extraClass = isMe ? 'self-avatar' : '';
+                        const zIndex = isMe ? 'z-index: 10;' : '';
+                        
+                        let avatarHtml = '';
+                        if (p.avatar && p.avatar.type === 'image') {
+                            avatarHtml = `<img src="${p.avatar.value}" class="${extraClass}" style="width: ${size}; height: ${size}; border-radius: 50%; border: 1px solid rgba(255,255,255,0.3); object-fit: cover;">`;
+                        } else {
+                            const color = (p.avatar && p.avatar.color) || '#3498db';
+                            const emoji = (p.avatar && p.avatar.emoji) || '🎨';
+                            avatarHtml = `<div class="${extraClass}" style="width: ${size}; height: ${size}; border-radius: 50%; background-color: ${color}; display: flex; align-items: center; justify-content: center; font-size: 12px; border: 1px solid rgba(255,255,255,0.3);">${emoji}</div>`;
+                        }
+                        playersOnLayerHtml += `<div title="${p.username}${isMe ? ' (Vous)' : ''}" style="margin-right: -8px; transition: transform 0.2s; cursor: help; ${zIndex}">${avatarHtml}</div>`;
+                    });
+                    playersOnLayerHtml += '</div>';
+                }
+            }
 
             div.innerHTML = `
                 <span class="layer-visibility ${isVisible ? 'visible' : ''}" data-action="toggle-visibility" data-id="${layer.id}">
@@ -63,6 +109,8 @@ export function initLayerManagement(socket, currentRoom, layers, layerCanvases, 
                     }
                 </span>
                 
+                ${playersOnLayerHtml}
+
                 <div class="layer-name-container">
                     <span class="layer-name-display" id="name-display-${layer.id}">${layer.name}</span>
                     <input type="text" class="layer-name" id="name-input-${layer.id}" value="${layer.name}">
@@ -240,7 +288,8 @@ export function initLayerManagement(socket, currentRoom, layers, layerCanvases, 
         const newLayer = {
             id: 'layer-' + Date.now(),
             name: 'Calque ' + (state.layers.length + 1),
-            order: state.layers.length
+            order: state.layers.length,
+            creatorId: socket.id
         };
         socket.emit('addLayer', { roomCode: currentRoom(), layer: newLayer });
     });
@@ -254,6 +303,14 @@ export function initLayerManagement(socket, currentRoom, layers, layerCanvases, 
         setActiveLayerId: (id) => { state.activeLayerId = id; },
         getActiveLayerId: () => state.activeLayerId,
         getLayerCanvases: () => state.layerCanvases,
-        deleteLayerCanvas: (id) => { delete state.layerCanvases[id]; }
+        deleteLayerCanvas: (id) => { delete state.layerCanvases[id]; },
+        updatePlayerLayer: (userId, layerId) => {
+            state.playerLayers[userId] = layerId;
+            updateLayersUI();
+        },
+        setShowLayerAvatars: (visible) => {
+            state.showLayerAvatars = visible;
+            updateLayersUI();
+        }
     };
 }

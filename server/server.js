@@ -58,7 +58,11 @@ function generateHint(word, revealedIndices) {
 
 // Helper: Count Public Rooms
 function countPublicRooms() {
-    return Object.values(rooms).filter(r => !r.isPrivate && r.gameState === 'LOBBY').length;
+    return Object.values(rooms).filter(r => 
+        !r.isPrivate && 
+        r.gameState === 'LOBBY' && 
+        r.users.filter(u => !u.isSpectator).length < r.maxPlayers
+    ).length;
 }
 
 io.on('connection', (socket) => {
@@ -75,7 +79,7 @@ io.on('connection', (socket) => {
         const publicRooms = Object.entries(rooms).filter(([code, room]) => 
             !room.isPrivate && 
             room.gameState === 'LOBBY' && 
-            room.users.length < 10 // Assuming max 10 players
+            room.users.filter(u => !u.isSpectator).length < room.maxPlayers
         );
         
         if (publicRooms.length > 0) {
@@ -87,7 +91,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('joinRoom', ({ username, avatar, roomCode, isSpectator, isPrivate }) => {
+    socket.on('joinRoom', ({ username, avatar, roomCode, isSpectator, isPrivate, maxPlayers }) => {
         // Sanitize username
         if (username) {
             username = username.replace(/</g, "&lt;").replace(/>/g, "&gt;").trim().substring(0, 20);
@@ -102,6 +106,11 @@ io.on('connection', (socket) => {
                 return;
             }
 
+            // Validate maxPlayers
+            let limit = parseInt(maxPlayers) || 8;
+            if (limit < 2) limit = 2;
+            if (limit > 8) limit = 8;
+
             rooms[roomCode] = {
                 users: [],
                 drawHistory: [],
@@ -112,6 +121,7 @@ io.on('connection', (socket) => {
                 leaderId: socket.id,
                 gameState: 'LOBBY', // LOBBY, READY_CHECK, PLAYING, ENDED
                 isPrivate: !!isPrivate,
+                maxPlayers: limit,
                 settings: {
                     mode: 'guess-word',
                     drawTime: 80,
@@ -141,17 +151,28 @@ io.on('connection', (socket) => {
             };
             // Notify everyone about new public room count
             io.emit('updatePublicGameCount', countPublicRooms());
+        } else {
+            // Check max players if not spectator
+            if (!isSpectator) {
+                const currentActivePlayers = rooms[roomCode].users.filter(u => !u.isSpectator).length;
+                if (currentActivePlayers >= rooms[roomCode].maxPlayers) {
+                    socket.emit('error', 'La partie est complète.');
+                    socket.leave(roomCode);
+                    return;
+                }
+            }
         }
 
         const room = rooms[roomCode];
-        const user = { id: socket.id, username, avatar, score: 0, isSpectator: !!isSpectator };
+        const user = { id: socket.id, username, avatar, score: 0, isSpectator: !!isSpectator, activeLayerId: room.layers[0].id };
         room.users.push(user);
         room.game.scores[socket.id] = 0;
 
         // Notify others in the room
         io.to(roomCode).emit('userJoined', { 
             users: room.users, 
-            leaderId: room.leaderId 
+            leaderId: room.leaderId,
+            maxPlayers: room.maxPlayers
         });
         
         // System message
@@ -170,7 +191,8 @@ io.on('connection', (socket) => {
             settings: room.settings,
             gameState: room.gameState,
             isSpectator: !!isSpectator,
-            isPrivate: room.isPrivate
+            isPrivate: room.isPrivate,
+            maxPlayers: room.maxPlayers
         };
 
         if (room.gameState === 'PLAYING') {
@@ -437,7 +459,7 @@ io.on('connection', (socket) => {
                     });
 
                     // Game Logic for Kick (same as disconnect)
-                    if (room.gameState === 'PLAYING') {
+                    if (!user.isSpectator && room.gameState === 'PLAYING') {
                         // 1. Save score
                         if (!room.game.disconnectedPlayers) room.game.disconnectedPlayers = [];
                         room.game.disconnectedPlayers.push({
@@ -448,7 +470,8 @@ io.on('connection', (socket) => {
                         });
 
                         // 2. Check if only 1 player remains
-                        if (room.users.length < 2) {
+                        const activePlayersCount = room.users.filter(u => !u.isSpectator).length;
+                        if (activePlayersCount < 2) {
                             io.to(targetRoomCode).emit('chatMessage', {
                                 username: 'System',
                                 message: 'Partie terminée : il ne reste plus assez de joueurs.'
@@ -831,7 +854,8 @@ io.on('connection', (socket) => {
                     io.to(roomCode).emit('scoreUpdate', room.game.scores);
 
                     // Check if everyone guessed (excluding drawer)
-                    const totalGuessers = room.users.length - 1;
+                    const activePlayersCount = room.users.filter(u => !u.isSpectator).length;
+                    const totalGuessers = activePlayersCount - 1;
                     if (room.game.guessedPlayers.length >= totalGuessers) {
                         endRound(roomCode, 'Tout le monde a trouvé !');
                     }
@@ -894,6 +918,17 @@ io.on('connection', (socket) => {
                     username: 'System',
                     message: `${user.username} est passé en mode ${roleName}.`
                 });
+            }
+        }
+    });
+
+    socket.on('activeLayerChanged', ({ roomCode, layerId }) => {
+        const room = rooms[roomCode];
+        if (room) {
+            const user = room.users.find(u => u.id === socket.id);
+            if (user) {
+                user.activeLayerId = layerId;
+                io.to(roomCode).emit('playerLayerChanged', { userId: socket.id, layerId });
             }
         }
     });

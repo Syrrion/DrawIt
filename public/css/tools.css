@@ -3,7 +3,7 @@
     background: var(--bg-glass-strong);
     border-top: 1px solid var(--border-color);
     padding: 0 0.5rem;
-    min-height: 52px;
+    height: 75px;
     display: flex;
     justify-content: center;
     align-items: center;

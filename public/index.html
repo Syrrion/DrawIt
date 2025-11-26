@@ -841,6 +841,12 @@
 
                             <div id="tab-create" class="login-tab-content">
                                 <div class="create-section">
+                                    <div class="form-group" style="margin-bottom: 10px;">
+                                        <label for="max-players-input" style="text-align: center; display: block; margin-bottom: 5px;">Joueurs Max: <span id="max-players-value" style="color: var(--primary); font-weight: bold;">8</span></label>
+                                        <div class="slider-container">
+                                            <input type="range" id="max-players-input" min="2" max="8" value="8" class="slider">
+                                        </div>
+                                    </div>
                                     <div class="checkbox-group" style="margin-bottom: 15px; display: flex; align-items: center; gap: 8px; justify-content: center;">
                                         <input type="checkbox" id="private-room-checkbox">
                                         <label for="private-room-checkbox" style="margin: 0; font-size: 0.9rem; cursor: pointer;">Partie Privée</label>
@@ -952,25 +958,27 @@
                     </div>
                     
                     <div id="settings-guess-word" class="mode-settings">
-                        <div class="setting-group">
-                            <label>Temps de dessin (sec)</label>
-                            <input type="number" id="setting-drawtime" value="80" min="30" max="300">
+                        <div class="settings-grid">
+                            <div class="setting-group">
+                                <label>Temps de dessin (sec)</label>
+                                <input type="number" id="setting-drawtime" value="80" min="30" max="300">
+                            </div>
+                            <div class="setting-group">
+                                <label>Temps de choix (sec)</label>
+                                <input type="number" id="setting-wordchoicetime" value="20" min="10" max="60">
+                            </div>
+                            <div class="setting-group">
+                                <label>Choix de mots</label>
+                                <input type="number" id="setting-wordchoices" value="3" min="1" max="5">
+                            </div>
+                            <div class="setting-group">
+                                <label>Nombre de tours</label>
+                                <input type="number" id="setting-rounds" value="3" min="1" max="10">
+                            </div>
                         </div>
-                        <div class="setting-group">
-                            <label>Temps de choix (sec)</label>
-                            <input type="number" id="setting-wordchoicetime" value="20" min="10" max="60">
-                        </div>
-                        <div class="setting-group">
-                            <label>Choix de mots</label>
-                            <input type="number" id="setting-wordchoices" value="3" min="1" max="5">
-                        </div>
-                        <div class="setting-group">
-                            <label>Nombre de tours</label>
-                            <input type="number" id="setting-rounds" value="3" min="1" max="10">
-                        </div>
-                        <div class="setting-group" style="display: flex; align-items: center; gap: 10px;">
-                            <input type="checkbox" id="setting-fuzzy" style="width: auto;">
-                            <label for="setting-fuzzy" style="margin: 0; cursor: pointer;">Autoriser les accents approximatifs</label>
+                        <div class="setting-group checkbox-group">
+                            <input type="checkbox" id="setting-fuzzy">
+                            <label for="setting-fuzzy">Autoriser les accents approximatifs</label>
                         </div>
                     </div>
 
@@ -978,6 +986,27 @@
                         <button id="btn-start-game" class="btn-primary">
                             <i class="fas fa-play"></i> Lancer la partie
                         </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- User Settings Modal -->
+            <div id="user-settings-modal" class="modal hidden">
+                <div class="modal-content settings-content">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-user-cog"></i> Paramètres</h3>
+                        <button id="btn-close-user-settings" class="close-btn"><i class="fas fa-times"></i></button>
+                    </div>
+                    
+                    <div class="setting-section">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="setting-show-cursors" checked>
+                            <label for="setting-show-cursors" style="text-transform: none;">Afficher les curseurs des autres joueurs</label>
+                        </div>
+                        <div class="checkbox-group" style="margin-top: 15px;">
+                            <input type="checkbox" id="setting-show-layer-avatars" checked>
+                            <label for="setting-show-layer-avatars" style="text-transform: none;">Afficher la position des joueurs sur les calques</label>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -999,16 +1028,8 @@
                     </div>
                 </div>
                 
-                <div id="lobby-controls" class="hidden">
-                    <button id="btn-open-settings" class="btn-primary full-width">
-                        <i class="fas fa-cog"></i> Commencer une partie
-                    </button>
-                    <div id="waiting-message" class="waiting-status hidden">
-                        <div class="loading-dots">
-                            <span></span><span></span><span></span>
-                        </div>
-                        <span>En attente du leader...</span>
-                    </div>
+                <div class="players-header">
+                    <h3>Joueurs <span id="player-count-display" style="font-size: 0.8rem; color: var(--text-dim); margin-left: 5px;"></span></h3>
                 </div>
 
                 <div id="players-list" class="players-list">
@@ -1025,6 +1046,21 @@
                     <div id="layers-list" class="layers-list">
                         <!-- Layers will be added here -->
                     </div>
+                </div>
+                
+                <div class="sidebar-footer">
+                    <div id="lobby-controls" class="hidden">
+                        <button id="btn-open-settings" class="btn-primary full-width">
+                            <i class="fas fa-cog"></i> Commencer une partie
+                        </button>
+                        <div id="waiting-message" class="waiting-status hidden">
+                            <i class="fas fa-hourglass-half"></i>
+                            <span>En attente du leader...</span>
+                        </div>
+                    </div>
+                    <button id="btn-user-settings" class="settings-btn">
+                        <i class="fas fa-user-cog"></i> Paramètres
+                    </button>
                 </div>
             </div>
             

@@ -30,9 +30,12 @@ export function initSocketManager(
             gameSettingsManager.updateControlsState();
         }
 
-        // Remove cursors for spectators
+        // Update layers for new users
         if (data.users) {
             data.users.forEach(user => {
+                if (user.activeLayerId) {
+                    layerManager.updatePlayerLayer(user.id, user.activeLayerId);
+                }
                 if (user.isSpectator) {
                     cursorManager.removeCursor(user.id);
                 }
@@ -48,6 +51,10 @@ export function initSocketManager(
         if (data.leftUserId) {
             cursorManager.removeCursor(data.leftUserId);
         }
+    });
+
+    socket.on('playerLayerChanged', ({ userId, layerId }) => {
+        layerManager.updatePlayerLayer(userId, layerId);
     });
 
     socket.on('roomJoined', (data) => {
@@ -86,6 +93,14 @@ export function initSocketManager(
              }
              const toolbar = document.querySelector('.toolbar');
              if (toolbar) toolbar.style.display = 'flex';
+        }
+
+        if (data.users) {
+            data.users.forEach(u => {
+                if (u.activeLayerId) {
+                    layerManager.updatePlayerLayer(u.id, u.activeLayerId);
+                }
+            });
         }
 
         if (data.game && data.game.turnOrder && data.game.currentDrawerIndex !== undefined) {
@@ -145,8 +160,14 @@ export function initSocketManager(
     socket.on('layerAdded', (layer) => {
         state.layers.push(layer);
         layerManager.createLayerCanvas(layer.id);
-        if (state.layers.length === 1) state.activeLayerId = layer.id;
-        layerManager.setActiveLayerId(state.activeLayerId);
+        
+        // Switch to new layer only if I created it
+        if (layer.creatorId === socket.id) {
+            state.activeLayerId = layer.id;
+            layerManager.setActiveLayerId(state.activeLayerId);
+            socket.emit('activeLayerChanged', { roomCode: state.currentRoom, layerId: layer.id });
+        }
+        
         layerManager.updateLayersUI();
         render();
     });
@@ -161,6 +182,9 @@ export function initSocketManager(
         if (state.activeLayerId === layerId) {
             state.activeLayerId = state.layers.length > 0 ? state.layers[state.layers.length - 1].id : null;
             layerManager.setActiveLayerId(state.activeLayerId);
+            if (state.activeLayerId) {
+                socket.emit('activeLayerChanged', { roomCode: state.currentRoom, layerId: state.activeLayerId });
+            }
         }
         layerManager.updateLayersUI();
         render();

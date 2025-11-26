@@ -25,6 +25,33 @@ export function initCanvasManager(cursorManager, cameraManager) {
     canvas.width = 800;
     canvas.height = 600;
 
+    let lastForbiddenTime = 0;
+    function showForbiddenIcon(canvasX, canvasY) {
+        const now = Date.now();
+        if (now - lastForbiddenTime < 500) return; // Throttle to avoid spamming
+        lastForbiddenTime = now;
+
+        const icon = document.createElement('div');
+        icon.className = 'forbidden-icon';
+        icon.innerHTML = '<i class="fas fa-ban"></i>'; // FontAwesome ban icon
+        
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = rect.width / canvas.width;
+        const scaleY = rect.height / canvas.height;
+        
+        const screenX = rect.left + canvasX * scaleX;
+        const screenY = rect.top + canvasY * scaleY;
+        
+        icon.style.left = `${screenX}px`;
+        icon.style.top = `${screenY}px`;
+        
+        document.body.appendChild(icon);
+        
+        setTimeout(() => {
+            icon.remove();
+        }, 800);
+    }
+
     function getMousePos(e) {
         const rect = canvas.getBoundingClientRect();
         const scaleX = canvas.width / rect.width;
@@ -39,6 +66,14 @@ export function initCanvasManager(cursorManager, cameraManager) {
     function drawOnCanvas(x0, y0, x1, y1, color, size, opacity, tool, emit) {
         if (!state.activeLayerId || !state.layerCanvases[state.activeLayerId]) return;
         
+        // Prevent drawing on hidden layer
+        if (!state.layerCanvases[state.activeLayerId].visible) {
+            if (emit) {
+                showForbiddenIcon(x1, y1);
+            }
+            return;
+        }
+
         const targetCtx = state.layerCanvases[state.activeLayerId].ctx;
         performDraw(targetCtx, x0, y0, x1, y1, color, size, opacity, tool);
         render();
@@ -122,6 +157,12 @@ export function initCanvasManager(cursorManager, cameraManager) {
             const color = penColorInput.value;
             
             if (state.activeLayerId && state.layerCanvases[state.activeLayerId]) {
+                // Prevent filling on hidden layer
+                if (!state.layerCanvases[state.activeLayerId].visible) {
+                    showForbiddenIcon(x, y);
+                    return;
+                }
+
                 performFloodFill(state.layerCanvases[state.activeLayerId].ctx, 800, 600, Math.floor(x), Math.floor(y), color);
                 render();
                 
