@@ -103,7 +103,9 @@ export class AnimationSystem {
         
         const launchFirework = () => {
             const x = Math.random() * this.canvas.width;
-            const targetY = Math.random() * (this.canvas.height * 0.8); // Use more vertical space
+            // Target between 10% and 80% of screen height (0 is top)
+            // This ensures fireworks appear all over the screen, not just at the bottom
+            const targetY = this.canvas.height * (0.1 + Math.random() * 0.7);
             const color = `hsl(${Math.random() * 360}, 100%, 50%)`;
             this.particles.push(new FireworkRocket(x, this.canvas.height, targetY, color, (x, y, color) => {
                 // Explosion callback
@@ -198,13 +200,20 @@ class FireworkRocket {
         this.targetY = targetY;
         this.color = color;
         this.onExplode = onExplode;
-        this.speedY = -8; // Slower initial speed (was -12)
+        
+        // Calculate speed to reach targetY
+        // v^2 = 2 * a * d
+        // a = 0.15 (gravity)
+        const gravity = 0.15;
+        const distance = y - targetY;
+        this.speedY = -Math.sqrt(2 * gravity * distance);
+        
         this.exploded = false;
     }
 
     update() {
         this.y += this.speedY;
-        this.speedY += 0.1; // Lower gravity (was 0.2)
+        this.speedY += 0.15; // Gravity
 
         if (this.speedY >= 0 || this.y <= this.targetY) {
             this.exploded = true;
