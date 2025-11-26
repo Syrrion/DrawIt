@@ -12,6 +12,28 @@ import { state } from './state.js';
 import { showToast, generateRandomUsername, copyToClipboard, escapeHtml } from './utils.js';
 
 export function initUIManager(avatarManager, animationSystem, gameSettingsManager, render) {
+    // Login Tabs Logic
+    const loginTabs = document.querySelectorAll('.login-tab');
+    const loginTabContents = document.querySelectorAll('.login-tab-content');
+
+    loginTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            // Remove active class from all tabs and contents
+            loginTabs.forEach(t => t.classList.remove('active'));
+            loginTabContents.forEach(c => c.classList.remove('active'));
+
+            // Add active class to clicked tab
+            tab.classList.add('active');
+
+            // Show target content
+            const targetId = tab.getAttribute('data-target');
+            const targetContent = document.getElementById(targetId);
+            if (targetContent) {
+                targetContent.classList.add('active');
+            }
+        });
+    });
+
     // Pre-fill random username
     if (usernameInput && !usernameInput.value) {
         usernameInput.value = generateRandomUsername();

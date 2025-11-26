@@ -13,6 +13,10 @@ export function initAvatarManager() {
     const avatarPreviewDiv = document.getElementById('avatar-preview');
     const avatarSizeInput = document.getElementById('avatar-size');
     
+    // Color Previews
+    const emojiColorPreview = document.getElementById('emoji-color-preview');
+    const avatarColorPreview = document.getElementById('avatar-color-preview');
+
     // New Elements for Image Mode
     const avatarZoomInput = document.getElementById('avatar-zoom');
     const avatarImageControls = document.getElementById('avatar-image-controls');
@@ -59,6 +63,7 @@ export function initAvatarManager() {
     };
 
     // Custom Emoji Picker Logic
+    const emojiPickerWrapper = document.getElementById('emoji-picker-wrapper');
     const emojiTrigger = document.getElementById('emoji-picker-trigger');
     const emojiOptions = document.getElementById('emoji-options');
     const currentEmojiSpan = emojiTrigger ? emojiTrigger.querySelector('.current-emoji') : null;
@@ -149,12 +154,7 @@ export function initAvatarManager() {
     tabUpload.addEventListener('click', () => switchAvatarMode('upload'));
 
     // --- Emoji Logic ---
-    if (avatarColorInput) {
-        avatarColorInput.addEventListener('input', (e) => {
-            emojiState.color = e.target.value;
-            avatarPreview.style.backgroundColor = e.target.value;
-        });
-    }
+    // Removed dead code for avatarColorInput
 
     // --- Drawing Logic ---
     function updateAvatarTool(activeBtn) {
@@ -248,8 +248,8 @@ export function initAvatarManager() {
         imgState.isPanning = false;
     };
 
-    avatarCanvas.addEventListener('mouseup', stopAction);
-    avatarCanvas.addEventListener('mouseout', stopAction);
+    window.addEventListener('mouseup', stopAction);
+    // avatarCanvas.addEventListener('mouseout', stopAction);
 
     // Touch Support
     function handleAvatarTouch(e) {
@@ -414,9 +414,14 @@ export function initAvatarManager() {
             avatarEmojiDisplay.textContent = val;
             if (currentEmojiSpan) currentEmojiSpan.textContent = val;
             
-            // Update Color Picker Preview if exists
-            const emojiColorPreview = document.getElementById('emoji-color-preview');
+            // Update UI
+            avatarPreview.style.backgroundColor = randomColor;
+            avatarEmojiDisplay.textContent = val;
+            if (currentEmojiSpan) currentEmojiSpan.textContent = val;
+            
+            // Update Color Picker Previews
             if (emojiColorPreview) emojiColorPreview.style.backgroundColor = randomColor;
+            if (avatarColorPreview) avatarColorPreview.style.backgroundColor = randomColor;
             
             // Update Selected Class
             emojiOptionElements.forEach(o => o.classList.remove('selected'));
@@ -437,6 +442,8 @@ export function initAvatarManager() {
             currentAvatarColor = color; 
             emojiState.color = color;
             if (avatarPreview) avatarPreview.style.backgroundColor = color;
+            if (emojiColorPreview) emojiColorPreview.style.backgroundColor = color;
+            if (avatarColorPreview) avatarColorPreview.style.backgroundColor = color;
         },
         getAvatarData: () => {
             if (avatarMode === 'emoji') {

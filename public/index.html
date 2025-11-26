@@ -810,35 +810,47 @@
                             </div>
                         </div>
 
-                        <div class="public-lobbies-section">
-                            <div class="active-games-info" style="text-align: center; margin-bottom: 10px; color: var(--text-dim);">
-                                <span id="active-games-count" style="font-weight: bold; color: var(--primary);">0</span> room disponible
+                        <div class="login-tabs-container">
+                            <div class="login-tabs">
+                                <button class="login-tab active" data-target="tab-join">Rejoindre</button>
+                                <button class="login-tab" data-target="tab-create">Créer</button>
                             </div>
-                            <button id="btn-join-random" class="secondary full-width">
-                                <i class="fas fa-random"></i> Rejoindre une room aléatoire
-                            </button>
-                        </div>
 
-                        <div class="room-controls">
-                            <div class="form-group">
-                                <label>Rejoindre une partie privée</label>
-                                <div class="input-group">
-                                    <input type="text" id="room-code-input" placeholder="Code de la room">
-                                    <button id="join-btn">Rejoindre</button>
+                            <div id="tab-join" class="login-tab-content active">
+                                <div class="public-lobbies-section">
+                                    <div class="active-games-info" style="text-align: center; margin-bottom: 10px; color: var(--text-dim);">
+                                        <span id="active-games-count" style="font-weight: bold; color: var(--primary);">0</span> room disponible
+                                    </div>
+                                    <button id="btn-join-random" class="secondary full-width">
+                                        <i class="fas fa-random"></i> Aléatoire
+                                    </button>
+                                </div>
+                                
+                                <div class="divider">
+                                    <span>OU</span>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Code de la room</label>
+                                    <div class="input-group">
+                                        <input type="text" id="room-code-input" placeholder="Ex: ABCDEF">
+                                        <button id="join-btn">GO</button>
+                                    </div>
                                 </div>
                             </div>
-                            
-                            <div class="divider">
-                                <span>OU</span>
+
+                            <div id="tab-create" class="login-tab-content">
+                                <div class="create-section">
+                                    <div class="checkbox-group" style="margin-bottom: 15px; display: flex; align-items: center; gap: 8px; justify-content: center;">
+                                        <input type="checkbox" id="private-room-checkbox">
+                                        <label for="private-room-checkbox" style="margin: 0; font-size: 0.9rem; cursor: pointer;">Partie Privée</label>
+                                    </div>
+                                    <button id="create-btn" class="secondary full-width">Créer une room</button>
+                                    <p class="help-text" style="text-align: center; margin-top: 15px;">
+                                        Créez une partie et invitez vos amis avec le code !
+                                    </p>
+                                </div>
                             </div>
-                            
-                            <div class="create-section">
-                                <div class="checkbox-group" style="margin-bottom: 10px; display: flex; align-items: center; gap: 8px; justify-content: center;">
-                                   <input type="checkbox" id="private-room-checkbox">
-                                   <label for="private-room-checkbox" style="margin: 0; font-size: 0.9rem; cursor: pointer;">Partie Privée</label>
-                               </div>
-                               <button id="create-btn" class="secondary full-width">Créer une room</button>
-                           </div>
                         </div>
                     </div>
                 </div>
