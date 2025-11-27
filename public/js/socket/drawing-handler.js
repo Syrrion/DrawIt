@@ -2,61 +2,80 @@ import { socket, canvas } from '../dom-elements.js';
 import { state } from '../state.js';
 import { performDraw, performFloodFill, performMoveSelection, performClearRect } from '../draw.js';
 
-export function initDrawingHandler(layerManager, cursorManager, render) {
+export class DrawingHandler {
+    constructor(managers) {
+        this.layerManager = managers.layerManager;
+        this.cursorManager = managers.cursorManager;
+        this.render = managers.render;
 
-    // Layers
-    socket.on('layerAdded', (layer) => {
+        this.init();
+    }
+
+    init() {
+        socket.on('layerAdded', this.handleLayerAdded.bind(this));
+        socket.on('layerDeleted', this.handleLayerDeleted.bind(this));
+        socket.on('layerRenamed', this.handleLayerRenamed.bind(this));
+        socket.on('layersReordered', this.handleLayersReordered.bind(this));
+        socket.on('resetLayers', this.handleResetLayers.bind(this));
+        socket.on('playerLayerChanged', this.handlePlayerLayerChanged.bind(this));
+        socket.on('canvasState', this.handleCanvasState.bind(this));
+        socket.on('draw', this.handleDraw.bind(this));
+        socket.on('clearCanvas', this.handleClearCanvas.bind(this));
+        socket.on('cursorMove', this.handleCursorMove.bind(this));
+    }
+
+    handleLayerAdded(layer) {
         state.layers.push(layer);
-        layerManager.createLayerCanvas(layer.id);
+        this.layerManager.createLayerCanvas(layer.id);
 
         // Switch to new layer only if I created it
         if (layer.creatorId === socket.id) {
             state.activeLayerId = layer.id;
-            layerManager.setActiveLayerId(state.activeLayerId);
+            this.layerManager.setActiveLayerId(state.activeLayerId);
             socket.emit('activeLayerChanged', { roomCode: state.currentRoom, layerId: layer.id });
         }
 
-        layerManager.updateLayersUI();
-        render();
-    });
+        this.layerManager.updateLayersUI();
+        if (this.render) this.render();
+    }
 
-    socket.on('layerDeleted', (layerId) => {
+    handleLayerDeleted(layerId) {
         const index = state.layers.findIndex(l => l.id === layerId);
         if (index !== -1) state.layers.splice(index, 1);
 
         delete state.layerCanvases[layerId];
-        layerManager.deleteLayerCanvas(layerId);
+        this.layerManager.deleteLayerCanvas(layerId);
 
         if (state.activeLayerId === layerId) {
             state.activeLayerId = state.layers.length > 0 ? state.layers[state.layers.length - 1].id : null;
-            layerManager.setActiveLayerId(state.activeLayerId);
+            this.layerManager.setActiveLayerId(state.activeLayerId);
             if (state.activeLayerId) {
                 socket.emit('activeLayerChanged', { roomCode: state.currentRoom, layerId: state.activeLayerId });
             }
         }
-        layerManager.updateLayersUI();
-        render();
-    });
+        this.layerManager.updateLayersUI();
+        if (this.render) this.render();
+    }
 
-    socket.on('layerRenamed', ({ layerId, name }) => {
+    handleLayerRenamed({ layerId, name }) {
         const layer = state.layers.find(l => l.id === layerId);
         if (layer) {
             layer.name = name;
-            layerManager.updateLayersUI();
+            this.layerManager.updateLayersUI();
         }
-    });
+    }
 
-    socket.on('layersReordered', (newLayers) => {
+    handleLayersReordered(newLayers) {
         state.layers.length = 0;
         state.layers.push(...newLayers);
-        layerManager.updateLayersUI();
-        render();
-    });
+        this.layerManager.updateLayersUI();
+        if (this.render) this.render();
+    }
 
-    socket.on('resetLayers', (layers) => {
+    handleResetLayers(layers) {
         // Clear all existing canvases
         Object.keys(state.layerCanvases).forEach(id => {
-            layerManager.deleteLayerCanvas(id);
+            this.layerManager.deleteLayerCanvas(id);
         });
 
         // Reset state layers
@@ -65,25 +84,24 @@ export function initDrawingHandler(layerManager, cursorManager, render) {
 
         // Re-create canvases for new layers
         layers.forEach(l => {
-            layerManager.createLayerCanvas(l.id);
+            this.layerManager.createLayerCanvas(l.id);
         });
 
         // Set active layer
         if (layers.length > 0) {
             state.activeLayerId = layers[0].id;
-            layerManager.setActiveLayerId(state.activeLayerId);
+            this.layerManager.setActiveLayerId(state.activeLayerId);
         }
 
-        layerManager.updateLayersUI();
-        render();
-    });
+        this.layerManager.updateLayersUI();
+        if (this.render) this.render();
+    }
 
-    socket.on('playerLayerChanged', ({ userId, layerId }) => {
-        layerManager.updatePlayerLayer(userId, layerId);
-    });
+    handlePlayerLayerChanged({ userId, layerId }) {
+        this.layerManager.updatePlayerLayer(userId, layerId);
+    }
 
-    // Drawing
-    socket.on('canvasState', (history) => {
+    handleCanvasState(history) {
         Object.values(state.layerCanvases).forEach(l => {
             l.ctx.clearRect(0, 0, 800, 600);
         });
@@ -103,10 +121,10 @@ export function initDrawingHandler(layerManager, cursorManager, render) {
                 }
             }
         });
-        render();
-    });
+        if (this.render) this.render();
+    }
 
-    socket.on('draw', (data) => {
+    handleDraw(data) {
         const targetLayerId = data.layerId || (state.layers[0] ? state.layers[0].id : null);
         if (targetLayerId && state.layerCanvases[targetLayerId]) {
             const targetCtx = state.layerCanvases[targetLayerId].ctx;
@@ -119,18 +137,18 @@ export function initDrawingHandler(layerManager, cursorManager, render) {
             } else {
                 performDraw(targetCtx, data.x0, data.y0, data.x1, data.y1, data.color, data.size, data.opacity, data.tool);
             }
-            render();
+            if (this.render) this.render();
         }
-    });
+    }
 
-    socket.on('clearCanvas', () => {
+    handleClearCanvas() {
         Object.values(state.layerCanvases).forEach(l => {
             l.ctx.clearRect(0, 0, 800, 600);
         });
-        render();
-    });
+        if (this.render) this.render();
+    }
 
-    socket.on('cursorMove', (data) => {
-        cursorManager.updateCursor(data.id, data.x, data.y, data.username);
-    });
+    handleCursorMove(data) {
+        this.cursorManager.updateCursor(data.id, data.x, data.y, data.username);
+    }
 }

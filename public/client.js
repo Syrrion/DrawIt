@@ -14,7 +14,7 @@ import { AnimationSystem } from './js/animations.js';
 import { initTools } from './js/tools-manager.js';
 import { initCanvasManager, render } from './js/canvas-manager.js';
 import { initUIManager } from './js/ui-manager.js';
-import { initSocketManager } from './js/socket-manager.js';
+import { SocketManager } from './js/socket-manager.js';
 
 const animationSystem = new AnimationSystem();
 
@@ -83,7 +83,7 @@ const layerManager = initLayerManagement(
 initTools();
 initCanvasManager(cursorManager, cameraManager);
 initUIManager(avatarManager, animationSystem, gameSettingsManager, render, cursorManager, layerManager);
-initSocketManager(
+new SocketManager({
     gameSettingsManager, 
     playerListManager, 
     layerManager, 
@@ -91,4 +91,4 @@ initSocketManager(
     cursorManager, 
     animationSystem,
     render
-);
+});

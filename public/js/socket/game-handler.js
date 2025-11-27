@@ -2,15 +2,54 @@ import { socket, gameTopBar, wordChoiceModal, wordChoicesContainer, timerValue, 
 import { state } from '../state.js';
 import { showToast, playTickSound } from '../utils.js';
 
-export function initGameHandler(gameSettingsManager, playerListManager, layerManager, chatManager, cursorManager, animationSystem) {
+export class GameHandler {
+    constructor(managers) {
+        this.gameSettingsManager = managers.gameSettingsManager;
+        this.playerListManager = managers.playerListManager;
+        this.layerManager = managers.layerManager;
+        this.chatManager = managers.chatManager;
+        this.cursorManager = managers.cursorManager;
+        this.animationSystem = managers.animationSystem;
 
-    // Game Logic
-    socket.on('gameStateChanged', (stateVal) => {
+        this.currentTimerInterval = null;
+        this.wordChoiceTimerInterval = null;
+        this.readyTimerInterval = null;
+
+        this.init();
+    }
+
+    init() {
+        socket.on('gameStateChanged', this.handleGameStateChanged.bind(this));
+        socket.on('roomJoined', this.handleRoomJoined.bind(this));
+        socket.on('chooseWord', this.handleChooseWord.bind(this));
+        socket.on('roundStart', this.handleRoundStart.bind(this));
+        socket.on('updateHint', this.handleUpdateHint.bind(this));
+        socket.on('yourWord', this.handleYourWord.bind(this));
+        socket.on('turnStart', this.handleTurnStart.bind(this));
+        socket.on('roundEnd', this.handleRoundEnd.bind(this));
+        socket.on('gameEnded', this.handleGameEnded.bind(this));
+        socket.on('readyCheckStarted', this.handleReadyCheckStarted.bind(this));
+        socket.on('gameStarting', this.handleGameStarting.bind(this));
+        socket.on('updateReadyStatus', this.handleUpdateReadyStatus.bind(this));
+        socket.on('gameCancelled', this.handleGameCancelled.bind(this));
+        socket.on('gameStarted', this.handleGameStarted.bind(this));
+        socket.on('hintRevealed', this.handleHintRevealed.bind(this));
+
+        if (btnUseHint) {
+            btnUseHint.addEventListener('click', () => {
+                if (state.currentGameState === 'PLAYING' && !btnUseHint.disabled) {
+                    socket.emit('requestHint', state.currentRoom);
+                }
+            });
+        }
+    }
+
+    handleGameStateChanged(stateVal) {
         state.currentGameState = stateVal;
-        layerManager.updateLayersUI();
-    });
+        this.layerManager.updateLayersUI();
+    }
 
-    socket.on('roomJoined', (data) => {
+    handleRoomJoined(data) {
         // Game state sync for mid-game join
         if (data.game && data.game.turnOrder && data.game.currentDrawerIndex !== undefined) {
             state.currentDrawerId = data.game.turnOrder[data.game.currentDrawerIndex];
@@ -46,18 +85,18 @@ export function initGameHandler(gameSettingsManager, playerListManager, layerMan
             if (data.game.timeLeft !== undefined) {
                 timerValue.textContent = data.game.timeLeft;
                 // Start local timer
-                if (window.currentTimerInterval) clearInterval(window.currentTimerInterval);
+                if (this.currentTimerInterval) clearInterval(this.currentTimerInterval);
                 let timeLeft = data.game.timeLeft;
-                window.currentTimerInterval = setInterval(() => {
+                this.currentTimerInterval = setInterval(() => {
                     timeLeft--;
                     if (timeLeft >= 0) timerValue.textContent = timeLeft;
-                    else clearInterval(window.currentTimerInterval);
+                    else clearInterval(this.currentTimerInterval);
                 }, 1000);
             }
         }
-    });
+    }
 
-    socket.on('chooseWord', (data) => {
+    handleChooseWord(data) {
         const words = Array.isArray(data) ? data : data.words;
         const timeout = (Array.isArray(data) ? 20 : data.timeout) || 20;
 
@@ -69,7 +108,7 @@ export function initGameHandler(gameSettingsManager, playerListManager, layerMan
             btn.onclick = () => {
                 socket.emit('wordChosen', { roomCode: state.currentRoom, word });
                 wordChoiceModal.classList.add('hidden');
-                if (window.wordChoiceTimerInterval) clearInterval(window.wordChoiceTimerInterval);
+                if (this.wordChoiceTimerInterval) clearInterval(this.wordChoiceTimerInterval);
             };
             wordChoicesContainer.appendChild(btn);
         });
@@ -80,25 +119,25 @@ export function initGameHandler(gameSettingsManager, playerListManager, layerMan
             timerVal.textContent = timeLeft;
             timerVal.style.color = '';
 
-            if (window.wordChoiceTimerInterval) clearInterval(window.wordChoiceTimerInterval);
-            window.wordChoiceTimerInterval = setInterval(() => {
+            if (this.wordChoiceTimerInterval) clearInterval(this.wordChoiceTimerInterval);
+            this.wordChoiceTimerInterval = setInterval(() => {
                 timeLeft--;
                 timerVal.textContent = timeLeft;
                 if (timeLeft <= 5) {
                     timerVal.style.color = 'red';
                     if (timeLeft > 0) playTickSound();
                 }
-                if (timeLeft <= 0) clearInterval(window.wordChoiceTimerInterval);
+                if (timeLeft <= 0) clearInterval(this.wordChoiceTimerInterval);
             }, 1000);
         }
 
         wordChoiceModal.classList.remove('hidden');
-    });
+    }
 
-    socket.on('roundStart', (data) => {
+    handleRoundStart(data) {
         gameTopBar.classList.remove('hidden');
         wordChoiceModal.classList.add('hidden');
-        if (window.wordChoiceTimerInterval) clearInterval(window.wordChoiceTimerInterval);
+        if (this.wordChoiceTimerInterval) clearInterval(this.wordChoiceTimerInterval);
         timerValue.textContent = data.duration;
         wordDisplay.textContent = data.hint;
 
@@ -125,9 +164,9 @@ export function initGameHandler(gameSettingsManager, playerListManager, layerMan
         }
 
         let timeLeft = data.duration;
-        if (window.currentTimerInterval) clearInterval(window.currentTimerInterval);
+        if (this.currentTimerInterval) clearInterval(this.currentTimerInterval);
 
-        window.currentTimerInterval = setInterval(() => {
+        this.currentTimerInterval = setInterval(() => {
             timeLeft--;
             if (timeLeft >= 0) timerValue.textContent = timeLeft;
 
@@ -136,45 +175,45 @@ export function initGameHandler(gameSettingsManager, playerListManager, layerMan
             }
 
             if (timeLeft <= 0) {
-                clearInterval(window.currentTimerInterval);
+                clearInterval(this.currentTimerInterval);
             }
         }, 1000);
-    });
+    }
 
-    socket.on('updateHint', (data) => {
+    handleUpdateHint(data) {
         wordDisplay.textContent = data.hint;
-    });
+    }
 
-    socket.on('yourWord', (word) => {
+    handleYourWord(word) {
         wordDisplay.textContent = word;
         wordDisplay.style.color = 'var(--success)';
-    });
+    }
 
-    socket.on('turnStart', (data) => {
+    handleTurnStart(data) {
         state.currentDrawerId = data.drawerId;
         state.currentDrawerName = data.drawerName;
         roundCurrent.textContent = data.roundIndex;
         roundTotal.textContent = data.totalRounds;
 
-        chatManager.addSeparator(`Round ${data.roundIndex} - Tour ${data.turnIndex}/${data.totalTurns}`);
-        cursorManager.clearCursors();
+        this.chatManager.addSeparator(`Round ${data.roundIndex} - Tour ${data.turnIndex}/${data.totalTurns}`);
+        this.cursorManager.clearCursors();
 
         roundResultOverlay.classList.add('hidden');
-        if (window.currentTimerInterval) clearInterval(window.currentTimerInterval);
+        if (this.currentTimerInterval) clearInterval(this.currentTimerInterval);
         timerValue.textContent = '0';
         wordDisplay.textContent = '';
         wordDisplay.style.color = 'var(--primary)';
 
-        layerManager.updateLayersUI();
-    });
+        this.layerManager.updateLayersUI();
+    }
 
-    socket.on('roundEnd', (data) => {
-        if (window.currentTimerInterval) clearInterval(window.currentTimerInterval);
+    handleRoundEnd(data) {
+        if (this.currentTimerInterval) clearInterval(this.currentTimerInterval);
 
         roundResultTitle.textContent = data.reason;
         roundResultWord.textContent = data.word;
 
-        chatManager.addSystemMessage(`Le mot était : ${data.word}`);
+        this.chatManager.addSystemMessage(`Le mot était : ${data.word}`);
 
         roundResultScores.innerHTML = '';
         const sortedPlayers = Object.keys(data.roundScores).sort((a, b) => data.roundScores[b] - data.roundScores[a]);
@@ -182,7 +221,7 @@ export function initGameHandler(gameSettingsManager, playerListManager, layerMan
         let someoneScored = false;
 
         sortedPlayers.forEach(playerId => {
-            const player = playerListManager.getPlayer(playerId);
+            const player = this.playerListManager.getPlayer(playerId);
             if (!player) return;
 
             const row = document.createElement('div');
@@ -227,28 +266,28 @@ export function initGameHandler(gameSettingsManager, playerListManager, layerMan
         roundResultOverlay.classList.remove('hidden');
 
         if (someoneScored) {
-            animationSystem.triggerConfetti();
+            this.animationSystem.triggerConfetti();
         } else {
-            animationSystem.triggerRain();
+            this.animationSystem.triggerRain();
         }
 
         setTimeout(() => {
             roundResultOverlay.classList.add('hidden');
-            animationSystem.stop();
+            this.animationSystem.stop();
         }, 5000);
-    });
+    }
 
-    socket.on('gameEnded', (data) => {
+    handleGameEnded(data) {
         // Clear any active timers
-        if (window.wordChoiceTimerInterval) clearInterval(window.wordChoiceTimerInterval);
-        if (window.currentTimerInterval) clearInterval(window.currentTimerInterval);
+        if (this.wordChoiceTimerInterval) clearInterval(this.wordChoiceTimerInterval);
+        if (this.currentTimerInterval) clearInterval(this.currentTimerInterval);
 
         // Hide game UI elements
         wordChoiceModal.classList.add('hidden');
         roundResultOverlay.classList.add('hidden');
         gameTopBar.classList.add('hidden');
 
-        chatManager.addSeparator('Partie terminée');
+        this.chatManager.addSeparator('Partie terminée');
 
         gameEndScores.innerHTML = '';
 
@@ -257,7 +296,7 @@ export function initGameHandler(gameSettingsManager, playerListManager, layerMan
             sortedPlayers = data.results.sort((a, b) => b.score - a.score);
         } else {
             sortedPlayers = Object.keys(data.scores).map(id => {
-                const p = playerListManager.getPlayer(id);
+                const p = this.playerListManager.getPlayer(id);
                 return p ? { ...p, score: data.scores[id] } : null;
             }).filter(p => p).sort((a, b) => b.score - a.score);
         }
@@ -324,16 +363,13 @@ export function initGameHandler(gameSettingsManager, playerListManager, layerMan
         });
 
         gameEndModal.classList.remove('hidden');
-        animationSystem.triggerConfetti(3000);
+        this.animationSystem.triggerConfetti(3000);
         setTimeout(() => {
-            animationSystem.triggerFireworks(5000);
+            this.animationSystem.triggerFireworks(5000);
         }, 2000);
-    });
+    }
 
-    // Ready Check
-    let readyTimerInterval = null;
-
-    socket.on('readyCheckStarted', (data) => {
+    handleReadyCheckStarted(data) {
         readyCheckModal.classList.remove('hidden');
 
         // Display Settings
@@ -430,16 +466,16 @@ export function initGameHandler(gameSettingsManager, playerListManager, layerMan
         if (newReadyTimerVal) newReadyTimerVal.textContent = data.timeout;
 
         let timeLeft = data.timeout;
-        if (readyTimerInterval) clearInterval(readyTimerInterval);
-        readyTimerInterval = setInterval(() => {
+        if (this.readyTimerInterval) clearInterval(this.readyTimerInterval);
+        this.readyTimerInterval = setInterval(() => {
             timeLeft--;
             if (newReadyTimerVal) newReadyTimerVal.textContent = timeLeft;
             if (timeLeft <= 10 && timeLeft > 0) playTickSound();
-            if (timeLeft <= 0) clearInterval(readyTimerInterval);
+            if (timeLeft <= 0) clearInterval(this.readyTimerInterval);
         }, 1000);
-    });
+    }
 
-    socket.on('gameStarting', (count) => {
+    handleGameStarting(count) {
         playTickSound();
         const readyStatus = document.querySelector('.ready-status');
         const readyTitle = document.querySelector('.ready-check-content h2');
@@ -458,9 +494,9 @@ export function initGameHandler(gameSettingsManager, playerListManager, layerMan
         if (btnIamReady) btnIamReady.classList.add('hidden');
         if (btnRefuseGame) btnRefuseGame.classList.add('hidden');
         if (readyTimer) readyTimer.classList.add('hidden');
-    });
+    }
 
-    socket.on('updateReadyStatus', (data) => {
+    handleUpdateReadyStatus(data) {
         const currentReadyCountVal = document.getElementById('ready-count-val');
         const currentReadyTotalVal = document.getElementById('ready-total-val');
 
@@ -481,15 +517,15 @@ export function initGameHandler(gameSettingsManager, playerListManager, layerMan
                 }
             });
         }
-    });
+    }
 
-    socket.on('gameCancelled', (reason) => {
+    handleGameCancelled(reason) {
         readyCheckModal.classList.add('hidden');
-        if (readyTimerInterval) clearInterval(readyTimerInterval);
+        if (this.readyTimerInterval) clearInterval(this.readyTimerInterval);
         showToast(reason, 'error');
-    });
+    }
 
-    socket.on('gameStarted', (data) => {
+    handleGameStarted(data) {
         readyCheckModal.classList.add('hidden');
         helpModal.classList.add('hidden');
         lobbySettingsModal.classList.add('hidden');
@@ -498,23 +534,14 @@ export function initGameHandler(gameSettingsManager, playerListManager, layerMan
         alertModal.classList.add('hidden');
         gameEndModal.classList.add('hidden');
 
-        if (readyTimerInterval) clearInterval(readyTimerInterval);
+        if (this.readyTimerInterval) clearInterval(this.readyTimerInterval);
 
         if (hintsCount && data.personalHints !== undefined) {
             hintsCount.textContent = data.personalHints;
         }
-    });
-
-    // Hint Button
-    if (btnUseHint) {
-        btnUseHint.addEventListener('click', () => {
-            if (state.currentGameState === 'PLAYING' && !btnUseHint.disabled) {
-                socket.emit('requestHint', state.currentRoom);
-            }
-        });
     }
 
-    socket.on('hintRevealed', (data) => {
+    handleHintRevealed(data) {
         wordDisplay.textContent = data.hint;
         if (hintsCount) hintsCount.textContent = data.remainingHints;
 
@@ -535,5 +562,5 @@ export function initGameHandler(gameSettingsManager, playerListManager, layerMan
                 }
             }, cooldown * 1000);
         }
-    });
+    }
 }

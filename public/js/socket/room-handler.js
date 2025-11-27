@@ -1,48 +1,68 @@
-import { socket, roomPrivacyBadge, helpModal, lobbySettingsModal, confirmationModal, kickModal, alertModal, gameEndModal, readyCheckModal } from '../dom-elements.js';
+import { socket, roomPrivacyBadge } from '../dom-elements.js';
 import { state } from '../state.js';
 import { showToast } from '../utils.js';
 import { performDraw, performFloodFill, performMoveSelection, performClearRect } from '../draw.js';
 import { canvas } from '../dom-elements.js';
 
-export function initRoomHandler(gameSettingsManager, playerListManager, layerManager, cursorManager, render) {
-    socket.on('roomSettingsUpdated', (settings) => {
+export class RoomHandler {
+    constructor(managers) {
+        this.gameSettingsManager = managers.gameSettingsManager;
+        this.playerListManager = managers.playerListManager;
+        this.layerManager = managers.layerManager;
+        this.cursorManager = managers.cursorManager;
+        this.render = managers.render;
+
+        this.init();
+    }
+
+    init() {
+        socket.on('roomSettingsUpdated', this.handleRoomSettingsUpdated.bind(this));
+        socket.on('error', this.handleError.bind(this));
+        socket.on('userJoined', this.handleUserJoined.bind(this));
+        socket.on('userLeft', this.handleUserLeft.bind(this));
+        socket.on('roomJoined', this.handleRoomJoined.bind(this));
+        socket.on('kicked', this.handleKicked.bind(this));
+        socket.on('disconnect', this.handleDisconnect.bind(this));
+    }
+
+    handleRoomSettingsUpdated(settings) {
         state.settings = settings;
-    });
+    }
 
-    socket.on('error', (msg) => {
+    handleError(msg) {
         showToast(msg, 'error');
-    });
+    }
 
-    socket.on('userJoined', (data) => {
+    handleUserJoined(data) {
         if (data.leaderId) {
             state.leaderId = data.leaderId;
-            gameSettingsManager.updateControlsState();
+            this.gameSettingsManager.updateControlsState();
         }
 
         // Update layers for new users
         if (data.users) {
             data.users.forEach(user => {
                 if (user.activeLayerId) {
-                    layerManager.updatePlayerLayer(user.id, user.activeLayerId);
+                    this.layerManager.updatePlayerLayer(user.id, user.activeLayerId);
                 }
                 if (user.isSpectator) {
-                    cursorManager.removeCursor(user.id);
+                    this.cursorManager.removeCursor(user.id);
                 }
             });
         }
-    });
+    }
 
-    socket.on('userLeft', (data) => {
+    handleUserLeft(data) {
         if (data.leaderId) {
             state.leaderId = data.leaderId;
-            gameSettingsManager.updateControlsState();
+            this.gameSettingsManager.updateControlsState();
         }
         if (data.leftUserId) {
-            cursorManager.removeCursor(data.leftUserId);
+            this.cursorManager.removeCursor(data.leftUserId);
         }
-    });
+    }
 
-    socket.on('roomJoined', (data) => {
+    handleRoomJoined(data) {
         state.currentGameState = data.gameState;
         state.isSpectator = data.isSpectator;
         state.settings = data.settings || {};
@@ -84,27 +104,19 @@ export function initRoomHandler(gameSettingsManager, playerListManager, layerMan
         if (data.users) {
             data.users.forEach(u => {
                 if (u.activeLayerId) {
-                    layerManager.updatePlayerLayer(u.id, u.activeLayerId);
+                    this.layerManager.updatePlayerLayer(u.id, u.activeLayerId);
                 }
             });
         }
 
-        // Note: Game state sync logic is handled in game-handler, but some initial sync is here.
-        // We might need to coordinate or duplicate some logic, or move all "roomJoined" logic to a central place.
-        // For now, I'll keep the room-specific parts here and let game-handler handle the game parts of roomJoined if possible,
-        // OR I'll leave the game-specific parts of roomJoined in game-handler and listen to the same event?
-        // Socket.io allows multiple listeners for the same event.
-        // So I can have room-handler listen to 'roomJoined' for room stuff, and game-handler listen to 'roomJoined' for game stuff.
-        // That's a good pattern.
-
-        playerListManager.updatePlayerList(data.users, data.leaderId, data.gameState, data.roomCode);
+        this.playerListManager.updatePlayerList(data.users, data.leaderId, data.gameState, data.roomCode);
         state.leaderId = data.leaderId;
 
         if (data.gameState === 'LOBBY') {
-            gameSettingsManager.show();
-            gameSettingsManager.updateControlsState();
+            this.gameSettingsManager.show();
+            this.gameSettingsManager.updateControlsState();
         } else {
-            gameSettingsManager.hide();
+            this.gameSettingsManager.hide();
         }
 
         // Layers initialization
@@ -113,16 +125,16 @@ export function initRoomHandler(gameSettingsManager, playerListManager, layerMan
             state.layers.length = 0;
             state.layers.push(...data.layers);
 
-            layerManager.setLayers(state.layers);
+            this.layerManager.setLayers(state.layers);
             state.layers.forEach(layer => {
-                layerManager.createLayerCanvas(layer.id);
+                this.layerManager.createLayerCanvas(layer.id);
             });
 
             if (state.layers.length > 0) {
                 state.activeLayerId = state.layers[0].id;
-                layerManager.setActiveLayerId(state.activeLayerId);
+                this.layerManager.setActiveLayerId(state.activeLayerId);
             }
-            layerManager.updateLayersUI();
+            this.layerManager.updateLayersUI();
         }
 
         if (data.drawHistory) {
@@ -145,18 +157,18 @@ export function initRoomHandler(gameSettingsManager, playerListManager, layerMan
         }
 
         // We need to call render after replaying history
-        if (render) render();
-    });
+        if (this.render) this.render();
+    }
 
-    socket.on('kicked', () => {
+    handleKicked() {
         window.showAlert('Expulsion', 'Vous avez été expulsé de la partie.', () => {
             window.location.reload();
         });
-    });
+    }
 
-    socket.on('disconnect', () => {
+    handleDisconnect() {
         window.showAlert('Déconnexion', 'La connexion au serveur a été perdue.', () => {
             window.location.reload();
         });
-    });
+    }
 }
