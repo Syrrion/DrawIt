@@ -36,14 +36,22 @@ module.exports = (io, socket) => {
             const user = room.getUser(socket.id);
             if (user && user.isSpectator) return;
 
+            // Add socket id to data for undo tracking
+            data.userId = socket.id;
+
+            if (room.gameState === 'PLAYING' && room.settings.mode === 'creative') {
+                // Creative Mode: Everyone draws, no broadcast
+                if (room.game && room.game.handleCreativeDraw) {
+                    room.game.handleCreativeDraw(data);
+                }
+                return;
+            }
+
             // Restriction: Only drawer can draw during game
             if (room.gameState === 'PLAYING' && (room.settings.mode === 'guess-word' || room.settings.mode === 'custom-word')) {
                 const drawerId = room.game.turnOrder[room.game.currentDrawerIndex];
                 if (socket.id !== drawerId) return;
             }
-
-            // Add socket id to data for undo tracking
-            data.userId = socket.id;
 
             room.recordDrawAction(data);
             socket.to(data.roomCode).emit('draw', data);
@@ -53,6 +61,12 @@ module.exports = (io, socket) => {
     socket.on('undo', (roomCode) => {
         const room = rooms[roomCode];
         if (room) {
+            if (room.gameState === 'PLAYING' && room.settings.mode === 'creative') {
+                if (room.game && room.game.handleCreativeUndo) {
+                    room.game.handleCreativeUndo(socket.id);
+                }
+                return;
+            }
             room.undo(socket.id);
         }
     });
@@ -77,6 +91,9 @@ module.exports = (io, socket) => {
             // Check if user is spectator
             const user = room.getUser(socket.id);
             if (user && user.isSpectator) return;
+
+            // Creative Mode: Hide cursors
+            if (room.gameState === 'PLAYING' && room.settings.mode === 'creative') return;
 
             // Restriction: Only drawer can show cursor during game
             if (room.gameState === 'PLAYING' && (room.settings.mode === 'guess-word' || room.settings.mode === 'custom-word')) {

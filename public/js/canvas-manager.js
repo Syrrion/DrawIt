@@ -162,7 +162,7 @@ export class CanvasManager {
         if (state.isSpectator) return;
 
         // Restriction: Only drawer can draw during game
-        if (state.currentGameState === 'PLAYING' && socket.id !== state.currentDrawerId) {
+        if (state.currentGameState === 'PLAYING' && socket.id !== state.currentDrawerId && state.settings.mode !== 'creative') {
             return;
         }
 

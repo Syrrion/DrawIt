@@ -1,6 +1,7 @@
 import { socket, gameTopBar, wordChoiceModal, wordChoicesContainer, timerValue, wordDisplay, roundCurrent, roundTotal, roundResultOverlay, roundResultTitle, roundResultWord, roundResultScores, gameEndModal, gameEndScores, readyCheckModal, btnIamReady, btnRefuseGame, readyCountVal, readyTotalVal, readyTimerVal, readyPlayersList, helpModal, lobbySettingsModal, confirmationModal, kickModal, alertModal, btnUseHint, hintsCount } from '../dom-elements.js';
 import { state } from '../state.js';
 import { showToast, playTickSound } from '../utils.js';
+import { performDraw, performFloodFill } from '../draw.js';
 
 export class GameHandler {
     constructor(managers) {
@@ -14,6 +15,7 @@ export class GameHandler {
         this.currentTimerInterval = null;
         this.wordChoiceTimerInterval = null;
         this.readyTimerInterval = null;
+        this.votingTimerInterval = null;
 
         this.init();
     }
@@ -34,6 +36,15 @@ export class GameHandler {
         socket.on('gameCancelled', this.handleGameCancelled.bind(this));
         socket.on('gameStarted', this.handleGameStarted.bind(this));
         socket.on('hintRevealed', this.handleHintRevealed.bind(this));
+
+        // Creative Mode Events
+        socket.on('creativeRoundStart', this.handleCreativeRoundStart.bind(this));
+        socket.on('creativeIntermission', this.handleCreativeIntermission.bind(this));
+        socket.on('creativePresentation', this.handleCreativePresentation.bind(this));
+        socket.on('creativeVotingStart', this.handleCreativeVotingStart.bind(this));
+        socket.on('votingAllDone', this.handleVotingAllDone.bind(this));
+        socket.on('creativeRoundEnd', this.handleCreativeRoundEnd.bind(this));
+        socket.on('creativeHistory', this.handleCreativeHistory.bind(this));
 
         if (btnUseHint) {
             btnUseHint.addEventListener('click', () => {
@@ -384,6 +395,9 @@ export class GameHandler {
         const ignoredKeys = ['mode'];
         if (settings.mode === 'guess-word') ignoredKeys.push('maxWordLength');
         if (settings.mode === 'custom-word') ignoredKeys.push('wordChoices');
+        if (settings.mode === 'creative') {
+            ignoredKeys.push('wordChoiceTime', 'wordChoices', 'allowFuzzy', 'hintsEnabled', 'personalHints', 'maxWordLength');
+        }
         
         if (settings.hintsEnabled) ignoredKeys.push('personalHints');
 
@@ -569,6 +583,277 @@ export class GameHandler {
                     btnUseHint.classList.remove('cooldown');
                 }
             }, cooldown * 1000);
+        }
+    }
+
+    handleCreativeRoundStart(data) {
+        gameTopBar.classList.remove('hidden');
+        if (timerValue) timerValue.textContent = data.duration;
+        wordDisplay.textContent = data.word;
+        roundCurrent.textContent = data.roundIndex;
+        roundTotal.textContent = data.totalRounds;
+        
+        // Clear canvas & cursors
+        this.cursorManager.clearCursors();
+        
+        showToast(`C'est parti ! Dessinez : ${data.word}`, 'info');
+
+        // Start Timer
+        if (this.currentTimerInterval) clearInterval(this.currentTimerInterval);
+        let timeLeft = parseInt(data.duration);
+        
+        // Force initial update
+        if (timerValue) timerValue.textContent = timeLeft;
+
+        this.currentTimerInterval = setInterval(() => {
+            timeLeft--;
+            if (timerValue) timerValue.textContent = timeLeft;
+            
+            if (timeLeft <= 10 && timeLeft > 0) {
+                try { playTickSound(); } catch(e) {}
+            }
+            
+            if (timeLeft <= 0) {
+                clearInterval(this.currentTimerInterval);
+            }
+        }, 1000);
+    }
+
+    handleCreativeIntermission(data) {
+        const modal = document.getElementById('intermission-modal');
+        const timer = document.getElementById('intermission-timer');
+        
+        if (modal) {
+            modal.classList.remove('hidden');
+            let timeLeft = data.duration;
+            if (timer) timer.textContent = timeLeft;
+            
+            const interval = setInterval(() => {
+                timeLeft--;
+                if (timer) timer.textContent = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(interval);
+                    modal.classList.add('hidden');
+                }
+            }, 1000);
+        }
+    }
+
+    handleCreativePresentation(data) {
+        // Ensure intermission is closed
+        const intermissionModal = document.getElementById('intermission-modal');
+        if (intermissionModal) intermissionModal.classList.add('hidden');
+
+        const modal = document.getElementById('creative-presentation-modal');
+        const artistName = document.getElementById('presentation-artist');
+        const canvas = document.getElementById('presentation-canvas');
+        const timer = document.getElementById('presentation-timer-val');
+
+        modal.classList.remove('hidden');
+        artistName.textContent = `Artiste : ${data.artist}`;
+        
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        this.replayDrawing(ctx, data.drawing);
+
+        let timeLeft = data.duration;
+        timer.textContent = timeLeft;
+        
+        const interval = setInterval(() => {
+            timeLeft--;
+            timer.textContent = timeLeft;
+            if (timeLeft <= 0) clearInterval(interval);
+        }, 1000);
+    }
+
+    replayDrawing(ctx, actions) {
+        if (!actions) return;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        actions.forEach(action => {
+            if (action.tool === 'fill') {
+                // Calculate scale based on canvas size vs original 800x600
+                const scaleX = ctx.canvas.width / 800;
+                const scaleY = ctx.canvas.height / 600;
+                
+                performFloodFill(
+                    ctx, 
+                    ctx.canvas.width, 
+                    ctx.canvas.height, 
+                    Math.floor(action.x0 * scaleX), 
+                    Math.floor(action.y0 * scaleY), 
+                    action.color
+                );
+            } else {
+                performDraw(ctx, action.x0, action.y0, action.x1, action.y1, action.color, action.size, action.opacity, action.tool);
+            }
+        });
+    }
+
+    handleCreativeVotingStart(data) {
+        document.getElementById('creative-presentation-modal').classList.add('hidden');
+        const modal = document.getElementById('creative-voting-modal');
+        const grid = document.getElementById('voting-grid');
+        const timer = document.getElementById('voting-timer-val');
+
+        modal.classList.remove('hidden');
+        grid.innerHTML = '';
+        
+        // Adjust grid for smaller items
+        grid.style.gridTemplateColumns = 'repeat(auto-fit, minmax(220px, 1fr))';
+
+        data.drawings.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'voting-card';
+            card.style.border = '1px solid #ccc';
+            card.style.padding = '10px';
+            card.style.borderRadius = '8px';
+            card.style.background = 'rgba(255,255,255,0.1)';
+            card.style.display = 'flex';
+            card.style.flexDirection = 'column';
+            card.style.gap = '10px';
+
+            const cvs = document.createElement('canvas');
+            cvs.width = 800;
+            cvs.height = 600;
+            cvs.style.width = '100%';
+            cvs.style.background = 'white';
+            cvs.style.borderRadius = '4px';
+            
+            const ctx = cvs.getContext('2d');
+            // No scaling needed as we use full resolution
+            this.replayDrawing(ctx, item.drawing);
+
+            const info = document.createElement('div');
+            info.style.display = 'flex';
+            info.style.justifyContent = 'space-between';
+            info.style.alignItems = 'center';
+            
+            info.innerHTML = `<span style="font-weight:bold; font-size:0.9rem;">${item.username}</span>`;
+
+            const starsContainer = document.createElement('div');
+            starsContainer.className = 'stars-input';
+            starsContainer.style.display = 'flex';
+            starsContainer.style.gap = '2px';
+            starsContainer.style.justifyContent = 'center';
+
+            if (item.userId === socket.id) {
+                starsContainer.innerHTML = '<span style="color: var(--text-dim); font-size: 0.8rem; font-style: italic;">Votre dessin</span>';
+            } else {
+                for(let i=1; i<=10; i++) {
+                    const s = document.createElement('i');
+                    s.className = 'far fa-star';
+                    s.style.cursor = 'pointer';
+                    s.style.color = 'gold';
+                    s.style.fontSize = '0.8rem';
+                    s.onclick = () => {
+                        Array.from(starsContainer.children).forEach((child, idx) => {
+                            if (idx < i) {
+                                child.className = 'fas fa-star';
+                            } else {
+                                child.className = 'far fa-star';
+                            }
+                        });
+                        socket.emit('creativeVote', { roomCode: state.currentRoom, targetId: item.userId, stars: i });
+                    };
+                    starsContainer.appendChild(s);
+                }
+            }
+
+            card.appendChild(cvs);
+            card.appendChild(info);
+            card.appendChild(starsContainer);
+            grid.appendChild(card);
+        });
+
+        let timeLeft = data.duration;
+        timer.textContent = timeLeft;
+        
+        if (this.votingTimerInterval) clearInterval(this.votingTimerInterval);
+        this.votingTimerInterval = setInterval(() => {
+            timeLeft--;
+            timer.textContent = timeLeft;
+            if (timeLeft <= 0) clearInterval(this.votingTimerInterval);
+        }, 1000);
+    }
+
+    handleVotingAllDone() {
+        showToast('Tout le monde a voté ! Résultats imminents...', 'success');
+        const timer = document.getElementById('voting-timer-val');
+        
+        if (this.votingTimerInterval) clearInterval(this.votingTimerInterval);
+        
+        let timeLeft = 5;
+        if (timer) timer.textContent = timeLeft;
+        
+        this.votingTimerInterval = setInterval(() => {
+            timeLeft--;
+            if (timer) timer.textContent = timeLeft;
+            if (timeLeft <= 0) clearInterval(this.votingTimerInterval);
+        }, 1000);
+    }
+
+    handleCreativeRoundEnd(data) {
+        document.getElementById('creative-voting-modal').classList.add('hidden');
+        if (this.votingTimerInterval) clearInterval(this.votingTimerInterval);
+        
+        roundResultTitle.textContent = "Résultats du vote";
+        roundResultWord.textContent = ""; 
+
+        roundResultScores.innerHTML = '';
+        
+        data.results.forEach(res => {
+            const row = document.createElement('div');
+            row.className = 'score-row';
+            row.innerHTML = `
+                <span class="score-name">${res.username}</span>
+                <span class="score-points">+${res.score} (${res.average} <i class="fas fa-star"></i>)</span>
+            `;
+            roundResultScores.appendChild(row);
+        });
+
+        roundResultOverlay.classList.remove('hidden');
+        setTimeout(() => {
+            roundResultOverlay.classList.add('hidden');
+        }, 8000);
+    }
+
+    handleCreativeHistory(actions) {
+        // Clear all layers
+        const canvases = this.layerManager.getLayerCanvases();
+        Object.values(canvases).forEach(c => {
+            c.ctx.clearRect(0, 0, c.canvas.width, c.canvas.height);
+        });
+
+        // Replay all actions on correct layers
+        actions.forEach(action => {
+            const layerId = action.layerId || this.layerManager.getActiveLayerId();
+            const layer = canvases[layerId];
+            
+            if (layer) {
+                const ctx = layer.ctx;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+
+                if (action.tool === 'fill') {
+                    performFloodFill(
+                        ctx, 
+                        ctx.canvas.width, 
+                        ctx.canvas.height, 
+                        action.x0, 
+                        action.y0, 
+                        action.color
+                    );
+                } else {
+                    performDraw(ctx, action.x0, action.y0, action.x1, action.y1, action.color, action.size, action.opacity, action.tool);
+                }
+            }
+        });
+
+        if (this.layerManager.renderCallback) {
+            this.layerManager.renderCallback();
         }
     }
 }

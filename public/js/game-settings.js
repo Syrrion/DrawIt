@@ -30,6 +30,11 @@ export class GameSettingsManager {
         this.personalHintsInput = document.getElementById('setting-personal-hints');
         this.guessWordSettings = document.getElementById('settings-guess-word');
         
+        // Creative Settings
+        this.creativeDrawTimeInput = document.getElementById('setting-creative-drawtime');
+        this.creativeRoundsInput = document.getElementById('setting-creative-rounds');
+        this.anonymousVotingInput = document.getElementById('setting-anonymous-voting');
+
         // Actions
         this.startBtn = document.getElementById('btn-start-game');
         this.waitingMsg = document.getElementById('waiting-message');
@@ -89,6 +94,11 @@ export class GameSettingsManager {
             this.personalHintsInput.addEventListener('change', () => this.emitSettingsUpdate());
         }
 
+        // Creative Listeners
+        if (this.creativeDrawTimeInput) this.creativeDrawTimeInput.addEventListener('change', () => this.emitSettingsUpdate());
+        if (this.creativeRoundsInput) this.creativeRoundsInput.addEventListener('change', () => this.emitSettingsUpdate());
+        if (this.anonymousVotingInput) this.anonymousVotingInput.addEventListener('change', () => this.emitSettingsUpdate());
+
         // Start Game
         this.startBtn.addEventListener('click', () => {
             if (!this.isLeaderProvider()) return;
@@ -117,13 +127,22 @@ export class GameSettingsManager {
             if (data.settings) {
                 const s = data.settings;
                 if (this.currentMode !== s.mode) this.selectCard(s.mode);
-                if (this.timeInput) this.timeInput.value = s.drawTime;
+                
+                if (s.mode === 'creative') {
+                    if (this.creativeDrawTimeInput) this.creativeDrawTimeInput.value = s.drawTime;
+                    if (this.creativeRoundsInput) this.creativeRoundsInput.value = s.rounds;
+                } else {
+                    if (this.timeInput) this.timeInput.value = s.drawTime;
+                    if (this.roundsInput) this.roundsInput.value = s.rounds;
+                }
+
                 if (this.wordChoiceTimeInput) this.wordChoiceTimeInput.value = s.wordChoiceTime;
                 if (this.wordChoicesInput) this.wordChoicesInput.value = s.wordChoices;
-                if (this.roundsInput) this.roundsInput.value = s.rounds;
                 if (this.fuzzyInput) this.fuzzyInput.checked = s.allowFuzzy;
                 if (this.hintsInput) this.hintsInput.checked = s.hintsEnabled;
                 if (this.maxWordLengthInput) this.maxWordLengthInput.value = s.maxWordLength || 20;
+                if (this.anonymousVotingInput) this.anonymousVotingInput.checked = s.anonymousVoting;
+
                 if (this.personalHintsInput) {
                     this.personalHintsInput.value = s.personalHints;
                     const valDisplay = document.getElementById('setting-personal-hints-val');
@@ -144,16 +163,25 @@ export class GameSettingsManager {
             if (this.currentMode !== settings.mode) {
                 this.selectCard(settings.mode);
             }
-            if (this.timeInput.value != settings.drawTime) this.timeInput.value = settings.drawTime;
+            
+            if (settings.mode === 'creative') {
+                if (this.creativeDrawTimeInput && this.creativeDrawTimeInput.value != settings.drawTime) this.creativeDrawTimeInput.value = settings.drawTime;
+                if (this.creativeRoundsInput && this.creativeRoundsInput.value != settings.rounds) this.creativeRoundsInput.value = settings.rounds;
+            } else {
+                if (this.timeInput.value != settings.drawTime) this.timeInput.value = settings.drawTime;
+                if (this.roundsInput.value != settings.rounds) this.roundsInput.value = settings.rounds;
+            }
+
             if (this.wordChoiceTimeInput.value != settings.wordChoiceTime) this.wordChoiceTimeInput.value = settings.wordChoiceTime;
             if (this.wordChoicesInput.value != settings.wordChoices) this.wordChoicesInput.value = settings.wordChoices;
-            if (this.roundsInput.value != settings.rounds) this.roundsInput.value = settings.rounds;
             if (this.fuzzyInput && this.fuzzyInput.checked !== settings.allowFuzzy) this.fuzzyInput.checked = settings.allowFuzzy;
             if (this.hintsInput && settings.hintsEnabled !== undefined && this.hintsInput.checked !== settings.hintsEnabled) {
                 this.hintsInput.checked = settings.hintsEnabled;
                 this.updatePersonalHints();
             }
             if (this.maxWordLengthInput && settings.maxWordLength !== undefined && this.maxWordLengthInput.value != settings.maxWordLength) this.maxWordLengthInput.value = settings.maxWordLength;
+            if (this.anonymousVotingInput && settings.anonymousVoting !== undefined && this.anonymousVotingInput.checked !== settings.anonymousVoting) this.anonymousVotingInput.checked = settings.anonymousVoting;
+
             if (this.personalHintsInput && settings.personalHints !== undefined) {
                 this.personalHintsInput.value = settings.personalHints;
                 document.getElementById('setting-personal-hints-val').textContent = settings.personalHints;
@@ -227,6 +255,9 @@ export class GameSettingsManager {
         if (this.hintsInput) this.hintsInput.disabled = disabled;
         if (this.maxWordLengthInput) this.maxWordLengthInput.disabled = disabled;
         if (this.personalHintsInput) this.personalHintsInput.disabled = disabled;
+        if (this.creativeDrawTimeInput) this.creativeDrawTimeInput.disabled = disabled;
+        if (this.creativeRoundsInput) this.creativeRoundsInput.disabled = disabled;
+        if (this.anonymousVotingInput) this.anonymousVotingInput.disabled = disabled;
         
         // Cards interaction
         this.cards.forEach(card => {
@@ -251,16 +282,26 @@ export class GameSettingsManager {
 
     emitSettingsUpdate() {
         if (!this.isLeaderProvider()) return;
+        
+        let drawTime = parseInt(this.timeInput.value);
+        let rounds = parseInt(this.roundsInput.value);
+
+        if (this.currentMode === 'creative') {
+            drawTime = this.creativeDrawTimeInput ? parseInt(this.creativeDrawTimeInput.value) : 180;
+            rounds = this.creativeRoundsInput ? parseInt(this.creativeRoundsInput.value) : 3;
+        }
+
         const settings = {
             mode: this.currentMode,
-            drawTime: parseInt(this.timeInput.value),
+            drawTime: drawTime,
             wordChoiceTime: parseInt(this.wordChoiceTimeInput.value),
             wordChoices: parseInt(this.wordChoicesInput.value),
-            rounds: parseInt(this.roundsInput.value),
+            rounds: rounds,
             allowFuzzy: this.fuzzyInput ? this.fuzzyInput.checked : false,
             hintsEnabled: this.hintsInput ? this.hintsInput.checked : true,
             maxWordLength: this.maxWordLengthInput ? parseInt(this.maxWordLengthInput.value) : 20,
-            personalHints: this.personalHintsInput ? parseInt(this.personalHintsInput.value) : 3
+            personalHints: this.personalHintsInput ? parseInt(this.personalHintsInput.value) : 3,
+            anonymousVoting: this.anonymousVotingInput ? this.anonymousVotingInput.checked : true
         };
 
         this.socket.emit('updateSettings', {

@@ -47,6 +47,7 @@ export class LayerManager {
         if (globalState.isSpectator) return false;
         if (globalState.currentGameState === 'LOBBY') return true;
         if (globalState.currentGameState === 'PLAYING') {
+            if (globalState.settings && globalState.settings.mode === 'creative') return true;
             return this.socket.id === globalState.currentDrawerId;
         }
         return false;

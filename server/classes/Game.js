@@ -29,6 +29,8 @@ class Game {
     }
 
     init(settings) {
+        this.mode = settings.mode || 'guess-word';
+        
         // Shuffle players for turn order (exclude spectators)
         const activePlayers = this.room.getPlayers();
         this.turnOrder = shuffle(activePlayers.map(u => u.id));
@@ -43,6 +45,13 @@ class Game {
         this.hintCooldowns = {};
         this.userRevealedIndices = {};
         this.disconnectedPlayers = [];
+
+        // Creative Mode Data
+        this.playerDrawings = {};
+        this.votes = {};
+        this.presentationOrder = [];
+        this.presentationIndex = 0;
+        this.phase = 'IDLE';
 
         this.room.users.forEach(u => {
             u.score = 0;
@@ -61,10 +70,216 @@ class Game {
             scores: this.scores,
             currentRound: this.currentRound,
             totalRounds: this.totalRounds,
-            personalHints: settings.personalHints
+            personalHints: settings.personalHints,
+            mode: this.mode
         });
 
-        this.startTurn();
+        if (this.mode === 'creative') {
+            this.startCreativeRound();
+        } else {
+            this.startTurn();
+        }
+    }
+
+    // Creative Mode Methods
+    startCreativeRound() {
+        this.phase = 'DRAWING';
+        this.playerDrawings = {};
+        this.votes = {};
+        this.currentWord = getRandomWord().toUpperCase();
+        
+        this.room.getPlayers().forEach(p => {
+            this.playerDrawings[p.id] = [];
+            this.votes[p.id] = {};
+        });
+
+        // Clear global canvas for everyone
+        this.room.clearCanvas();
+
+        this.io.to(this.room.code).emit('creativeRoundStart', {
+            roundIndex: this.currentRound,
+            totalRounds: this.totalRounds,
+            word: this.currentWord,
+            duration: this.room.settings.drawTime
+        });
+
+        this.startTimer(this.room.settings.drawTime, () => this.endDrawingPhase());
+    }
+
+    handleCreativeDraw(action) {
+        if (this.phase !== 'DRAWING') return;
+        if (!this.playerDrawings[action.userId]) {
+            this.playerDrawings[action.userId] = [];
+        }
+        this.playerDrawings[action.userId].push(action);
+    }
+
+    handleCreativeUndo(userId) {
+        if (this.phase !== 'DRAWING') return;
+        
+        if (this.playerDrawings[userId] && this.playerDrawings[userId].length > 0) {
+            // Find last strokeId
+            const history = this.playerDrawings[userId];
+            let lastStrokeId = null;
+            for (let i = history.length - 1; i >= 0; i--) {
+                if (history[i].strokeId) {
+                    lastStrokeId = history[i].strokeId;
+                    break;
+                }
+            }
+
+            if (lastStrokeId) {
+                // Remove all actions with this strokeId
+                this.playerDrawings[userId] = history.filter(action => action.strokeId !== lastStrokeId);
+                
+                // Send back new history
+                this.io.to(userId).emit('creativeHistory', this.playerDrawings[userId]);
+            }
+        }
+    }
+
+    endDrawingPhase() {
+        this.phase = 'INTERMISSION';
+        this.io.to(this.room.code).emit('creativeIntermission', { duration: 5 });
+
+        this.startTimer(5, () => {
+            this.phase = 'PRESENTATION';
+            this.presentationOrder = shuffle(Object.keys(this.playerDrawings));
+            this.presentationIndex = 0;
+            this.startPresentation();
+        });
+    }
+
+    startPresentation() {
+        if (this.presentationIndex >= this.presentationOrder.length) {
+            this.startVoting();
+            return;
+        }
+
+        const playerId = this.presentationOrder[this.presentationIndex];
+        const player = this.room.getUser(playerId);
+        const drawing = this.playerDrawings[playerId];
+
+        // Clear canvas before showing next drawing
+        this.io.to(this.room.code).emit('clearCanvas');
+
+        this.io.to(this.room.code).emit('creativePresentation', {
+            artist: this.room.settings.anonymousVoting ? 'Anonyme' : (player ? player.username : 'Inconnu'),
+            drawing: drawing,
+            duration: 10
+        });
+
+        this.startTimer(10, () => {
+            this.presentationIndex++;
+            this.startPresentation();
+        });
+    }
+
+    startVoting() {
+        this.phase = 'VOTING';
+        
+        const mosaicData = this.presentationOrder.map(id => ({
+            userId: id,
+            username: this.room.settings.anonymousVoting ? '???' : (this.room.getUser(id)?.username || 'Inconnu'),
+            drawing: this.playerDrawings[id]
+        }));
+
+        this.io.to(this.room.code).emit('creativeVotingStart', {
+            drawings: mosaicData,
+            duration: 60
+        });
+
+        this.startTimer(60, () => this.endVoting());
+    }
+
+    handleVote(voterId, targetId, stars) {
+        if (this.phase !== 'VOTING') return;
+        if (voterId === targetId) return;
+
+        if (!this.votes[targetId]) this.votes[targetId] = {};
+        this.votes[targetId][voterId] = parseInt(stars);
+
+        // Check if everyone voted
+        const activePlayers = this.room.getPlayers();
+        const voters = activePlayers.map(p => p.id);
+        
+        let allVoted = true;
+        for (const voter of voters) {
+            let votesCast = 0;
+            for (const target of voters) {
+                if (target !== voter) {
+                    if (this.votes[target] && this.votes[target][voter]) {
+                        votesCast++;
+                    }
+                }
+            }
+            if (votesCast < voters.length - 1) {
+                allVoted = false;
+                break;
+            }
+        }
+
+        if (allVoted) {
+            this.startTimer(5, () => this.endVoting());
+            this.io.to(this.room.code).emit('votingAllDone');
+        }
+    }
+
+    endVoting() {
+        this.phase = 'SCORING';
+        
+        const roundResults = [];
+        
+        Object.keys(this.votes).forEach(targetId => {
+            const targetVotes = this.votes[targetId] || {};
+            const voteValues = Object.values(targetVotes);
+            const totalStars = voteValues.reduce((a, b) => a + b, 0);
+            const average = voteValues.length ? (totalStars / voteValues.length).toFixed(1) : 0;
+            
+            if (this.scores[targetId] !== undefined) {
+                this.scores[targetId] += totalStars;
+            }
+
+            roundResults.push({
+                userId: targetId,
+                username: this.room.getUser(targetId)?.username,
+                score: totalStars,
+                average: average
+            });
+        });
+
+        roundResults.sort((a, b) => b.score - a.score);
+
+        this.io.to(this.room.code).emit('creativeRoundEnd', {
+            results: roundResults,
+            scores: this.scores
+        });
+
+        setTimeout(() => {
+            this.nextCreativeRound();
+        }, 10000);
+    }
+
+    nextCreativeRound() {
+        this.currentRound++;
+        if (this.currentRound > this.totalRounds) {
+            this.endGame();
+        } else {
+            this.startCreativeRound();
+        }
+    }
+
+    startTimer(seconds, callback) {
+        if (this.timerInterval) clearInterval(this.timerInterval);
+        this.timeLeft = seconds; // Sync with timeLeft property used elsewhere
+        
+        this.timerInterval = setInterval(() => {
+            this.timeLeft--;
+            if (this.timeLeft <= 0) {
+                clearInterval(this.timerInterval);
+                if (callback) callback();
+            }
+        }, 1000);
     }
 
     startTurn() {

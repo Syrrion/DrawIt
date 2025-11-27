@@ -12,6 +12,9 @@ export class CursorManager {
         this.areCursorsVisible = true;
 
         this.init();
+        
+        // Check for inactive cursors every second
+        setInterval(() => this.checkInactiveCursors(), 1000);
     }
 
     init() {
@@ -29,12 +32,13 @@ export class CursorManager {
                 <div class="cursor-name">${safeUsername}</div>
             `;
             this.cursorsLayer.appendChild(cursor);
-            this.cursors[id] = { element: cursor, x, y };
+            this.cursors[id] = { element: cursor, x, y, lastUpdate: Date.now() };
         }
         
         this.cursors[id].x = x;
         this.cursors[id].y = y;
         this.cursors[id].username = username; 
+        this.cursors[id].lastUpdate = Date.now();
         
         this.updateCursorPosition(id);
     }
@@ -50,8 +54,18 @@ export class CursorManager {
             // Visibility check
             if (this.areCursorsVisible) {
                 cursor.element.style.display = 'flex';
+                cursor.element.style.opacity = '1';
             } else {
                 cursor.element.style.display = 'none';
+            }
+        }
+    }
+
+    checkInactiveCursors() {
+        const now = Date.now();
+        for (const id in this.cursors) {
+            if (now - this.cursors[id].lastUpdate > 3000) { // 3 seconds inactivity
+                this.cursors[id].element.style.opacity = '0';
             }
         }
     }

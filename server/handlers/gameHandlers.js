@@ -106,4 +106,13 @@ module.exports = (io, socket) => {
 
         room.game.handleWordChosen(cleanWord, drawerId);
     });
+
+    socket.on('creativeVote', ({ roomCode, targetId, stars }) => {
+        const room = rooms[roomCode];
+        if (room && room.gameState === 'PLAYING' && room.settings.mode === 'creative') {
+            if (room.game && room.game.handleVote) {
+                room.game.handleVote(socket.id, targetId, stars);
+            }
+        }
+    });
 };

@@ -607,3 +607,10 @@
 .settings-grid .setting-group {
     margin-bottom: 0;
 }
+
+/* Presentation Modal - Larger */
+.presentation-content {
+ max-width: 900px !important;
+ width: 90%;
+}
+

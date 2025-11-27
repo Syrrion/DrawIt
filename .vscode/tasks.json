@@ -70,6 +70,16 @@
 				"\n/* Base style for View Settings button to match Start Game button typography */\n#btn-view-settings {\n    font-weight: 600;\n    font-size: 1rem;\n    padding: 0.8rem;\n    text-transform: uppercase;\n    letter-spacing: 1px;\n    height: auto;\n    white-space: nowrap;\n}\n"
 			],
 			"group": "build"
+		},
+		{
+			"label": "append_css_presentation",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\modals.css",
+				"\n/* Presentation Modal - Larger */\n.presentation-content {\n    max-width: 900px !important;\n    width: 90%;\n}\n"
+			],
+			"group": "build"
 		}
 	]
 }

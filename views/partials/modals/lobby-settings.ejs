@@ -22,6 +22,13 @@
                         <p>Le dessinateur choisit son propre mot.</p>
                     </div>
                 </div>
+                <div class="gamemode-card" data-mode="creative">
+                    <div class="card-icon"><i class="fas fa-palette"></i></div>
+                    <div class="card-info">
+                        <h4>Mode Créatif</h4>
+                        <p>Tout le monde dessine, tout le monde vote !</p>
+                    </div>
+                </div>
             </div>
         </div>
         
@@ -61,6 +68,23 @@
                 <div class="slider-container">
                     <input type="range" id="setting-personal-hints" min="0" max="10" value="3" class="slider">
                 </div>
+            </div>
+        </div>
+
+        <div id="settings-creative" class="mode-settings hidden">
+            <div class="settings-grid">
+                <div class="setting-group">
+                    <label>Temps de dessin (sec)</label>
+                    <input type="number" id="setting-creative-drawtime" value="180" min="60" max="600">
+                </div>
+                <div class="setting-group">
+                    <label>Nombre de tours</label>
+                    <input type="number" id="setting-creative-rounds" value="3" min="1" max="10">
+                </div>
+            </div>
+            <div class="setting-group checkbox-group">
+                <input type="checkbox" id="setting-anonymous-voting" checked>
+                <label for="setting-anonymous-voting">Votes Anonymes</label>
             </div>
         </div>
 

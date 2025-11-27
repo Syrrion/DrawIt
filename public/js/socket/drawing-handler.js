@@ -21,7 +21,6 @@ export class DrawingHandler {
         socket.on('canvasState', this.handleCanvasState.bind(this));
         socket.on('draw', this.handleDraw.bind(this));
         socket.on('clearCanvas', this.handleClearCanvas.bind(this));
-        socket.on('cursorMove', this.handleCursorMove.bind(this));
     }
 
     handleLayerAdded(layer) {
@@ -146,9 +145,5 @@ export class DrawingHandler {
             l.ctx.clearRect(0, 0, 800, 600);
         });
         if (this.render) this.render();
-    }
-
-    handleCursorMove(data) {
-        this.cursorManager.updateCursor(data.id, data.x, data.y, data.username);
     }
 }
