@@ -196,15 +196,15 @@
 }
 
 /* Leaderboard specific */
-.leaderboard .score-row:nth-child(1) {
+.leaderboard .score-row.rank-1 {
     background: linear-gradient(90deg, rgba(241, 196, 15, 0.2), transparent);
     border-left: 4px solid #f1c40f;
 }
-.leaderboard .score-row:nth-child(2) {
+.leaderboard .score-row.rank-2 {
     background: linear-gradient(90deg, rgba(192, 192, 192, 0.2), transparent);
     border-left: 4px solid #c0c0c0;
 }
-.leaderboard .score-row:nth-child(3) {
+.leaderboard .score-row.rank-3 {
     background: linear-gradient(90deg, rgba(205, 127, 50, 0.2), transparent);
     border-left: 4px solid #cd7f32;
 }
