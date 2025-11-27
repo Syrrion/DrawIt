@@ -369,6 +369,30 @@ export class GameHandler {
         }, 2000);
     }
 
+    formatSettings(settings) {
+        const labels = {
+            drawTime: (v) => `${v}s Dessin`,
+            wordChoiceTime: (v) => `${v}s Choix`,
+            wordChoices: (v) => `${v} Choix de mots`,
+            rounds: (v) => `${v} Tours`,
+            allowFuzzy: (v) => v ? 'Accents Cool' : 'Accents Stricts',
+            hintsEnabled: (v) => v ? 'Indices Auto' : 'Sans Indices Auto',
+            maxWordLength: (v) => `Max ${v} lettres`,
+            personalHints: (v) => `${v} Indices Perso`
+        };
+
+        const ignoredKeys = ['mode'];
+        if (settings.mode === 'guess-word') ignoredKeys.push('maxWordLength');
+        if (settings.mode === 'custom-word') ignoredKeys.push('wordChoices');
+        
+        if (settings.hintsEnabled) ignoredKeys.push('personalHints');
+
+        return Object.entries(settings)
+            .filter(([key, _]) => !ignoredKeys.includes(key) && labels[key])
+            .map(([key, value]) => labels[key](value))
+            .join(' • ');
+    }
+
     handleReadyCheckStarted(data) {
         readyCheckModal.classList.remove('hidden');
 
@@ -376,35 +400,19 @@ export class GameHandler {
         const modeDisplay = document.getElementById('ready-mode-display');
         const settingsDisplay = document.getElementById('ready-settings-display');
 
-        // Dynamic Mode Configuration
-        const modeConfigs = {
-            'guess-word': {
-                label: 'Devine le dessin',
-                getDetails: (s) => {
-                    const fuzzyText = s.allowFuzzy ? '• Accents cool' : '• Accents stricts';
-                    return `${s.drawTime}s • ${s.rounds} Tours ${fuzzyText}`;
-                }
-            },
-            'custom-word': {
-                label: 'Mot personnalisé',
-                getDetails: (s) => {
-                    const fuzzyText = s.allowFuzzy ? '• Accents cool' : '• Accents stricts';
-                    return `${s.drawTime}s • ${s.rounds} Tours ${fuzzyText} • Mot libre`;
-                }
-            }
+        const modeLabels = {
+            'guess-word': 'Devine le dessin',
+            'custom-word': 'Mot personnalisé'
         };
 
-        const config = modeConfigs[data.settings.mode] || {
-            label: data.settings.mode,
-            getDetails: () => ''
-        };
+        const modeLabel = modeLabels[data.settings.mode] || data.settings.mode;
 
         if (modeDisplay) {
-            modeDisplay.textContent = `Mode : ${config.label}`;
+            modeDisplay.textContent = `${modeLabel}`;
         }
 
         if (settingsDisplay) {
-            settingsDisplay.textContent = config.getDetails(data.settings);
+            settingsDisplay.textContent = this.formatSettings(data.settings);
         }
 
         const readyStatus = document.querySelector('.ready-status');
