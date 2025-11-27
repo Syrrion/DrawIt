@@ -1471,7 +1471,7 @@ robinet
 bidet
 toilettes
 papier toilette
-brosse wc
+brosse à wc
 ventouse
 pèse-personne
 miroir

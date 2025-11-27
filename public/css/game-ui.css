@@ -423,25 +423,24 @@ canvas {
 }
 
 .settings-btn {
- width: 100%;
- background: rgba(255, 255, 255, 0.05);
- border: 1px solid rgba(255, 255, 255, 0.1);
- color: var(--text-dim);
- padding: 0.8rem;
- border-radius: var(--radius-md);
- cursor: pointer;
- display: flex;
- align-items: center;
- justify-content: center;
- gap: 10px;
- transition: all 0.2s;
- font-size: 0.9rem;
- text-transform: uppercase;
- letter-spacing: 1px;
- font-weight: 600;
-}
-
-.settings-btn:hover {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-dim);
+    padding: 0.8rem;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: all 0.2s;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+}.settings-btn:hover {
  background: rgba(255, 255, 255, 0.1);
  color: var(--text-main);
  border-color: var(--primary);
@@ -492,6 +491,8 @@ canvas {
     transform: translateY(-2px) scale(1.02);
     box-shadow: 0 0 30px var(--primary-glow);
 }
+
+
 
 @keyframes btnPulse {
     0% { transform: scale(1); }
@@ -631,4 +632,21 @@ canvas {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+
+
+/* Configuring Animation for Non-Leader Settings Button */
+#btn-view-settings.is-configuring {
+    animation: configuringPulse 2s infinite ease-in-out;
+    border-color: var(--primary);
+    color: white;
+    background: var(--primary);
+    box-shadow: 0 0 15px var(--primary-glow);
+}
+
+@keyframes configuringPulse {
+    0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); transform: scale(1); }
+    50% { box-shadow: 0 0 20px 0 rgba(99, 102, 241, 0.6); transform: scale(1.02); }
+    100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); transform: scale(1); }
+}
+
 

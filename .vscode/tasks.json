@@ -50,6 +50,26 @@
 				"\n/* Layer Avatars Polish */\n.layer-avatars {\n    display: flex;\n    align-items: center;\n    margin-right: 5px;\n}\n\n.layer-avatars > div {\n    transition: transform 0.2s;\n    position: relative;\n}\n\n.layer-avatars > div:hover {\n    transform: translateY(-3px) scale(1.2);\n    z-index: 100 !important;\n}\n"
 			],
 			"group": "build"
+		},
+		{
+			"label": "append_css_configuring_anim",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\game-ui.css",
+				"\n/* Configuring Animation for Non-Leader Settings Button */\n#btn-open-settings.secondary.is-configuring {\n    animation: configuringPulse 2s infinite ease-in-out;\n    border-color: var(--primary);\n    color: var(--primary);\n    background: rgba(99, 102, 241, 0.1);\n}\n\n@keyframes configuringPulse {\n    0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.2); transform: scale(1); }\n    50% { box-shadow: 0 0 15px 0 rgba(99, 102, 241, 0.4); transform: scale(1.02); }\n    100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.2); transform: scale(1); }\n}\n"
+			],
+			"group": "build"
+		},
+		{
+			"label": "append_css_view_settings",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\game-ui.css",
+				"\n/* Base style for View Settings button to match Start Game button typography */\n#btn-view-settings {\n    font-weight: 600;\n    font-size: 1rem;\n    padding: 0.8rem;\n    text-transform: uppercase;\n    letter-spacing: 1px;\n    height: auto;\n    white-space: nowrap;\n}\n"
+			],
+			"group": "build"
 		}
 	]
 }

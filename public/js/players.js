@@ -8,6 +8,7 @@ export function initPlayerList(socket, playersListElement, onKickRequest) {
     let currentRoomCode = null;
     let currentMaxPlayers = 8; // Default
     let currentGuessedPlayers = [];
+    let lastSwitchRoleTime = 0;
 
     // Sound Effect
     const successAudio = new Audio();
@@ -102,8 +103,16 @@ export function initPlayerList(socket, playersListElement, onKickRequest) {
             if (u.id === socket.id && u.id !== currentLeaderId && currentGameState === 'LOBBY') {
                 const icon = u.isSpectator ? 'fa-user-plus' : 'fa-eye';
                 const title = u.isSpectator ? 'Devenir Joueur' : 'Devenir Observateur';
+                
+                // Check cooldown
+                const now = Date.now();
+                const timeSinceLastClick = now - lastSwitchRoleTime;
+                const isCooldown = timeSinceLastClick < 5000;
+                const disabledAttr = isCooldown ? 'disabled' : '';
+                const style = isCooldown ? 'margin-left: 5px; padding: 2px 6px; font-size: 0.8rem; opacity: 0.5; cursor: not-allowed;' : 'margin-left: 5px; padding: 2px 6px; font-size: 0.8rem;';
+
                 switchRoleBtn = `
-                    <button class="switch-role-btn secondary small-btn" title="${title}" style="margin-left: 5px; padding: 2px 6px; font-size: 0.8rem;">
+                    <button class="switch-role-btn secondary small-btn" title="${title}" style="${style}" ${disabledAttr}>
                         <i class="fas ${icon}"></i>
                     </button>
                 `;
@@ -138,6 +147,21 @@ export function initPlayerList(socket, playersListElement, onKickRequest) {
                 if (btn) {
                     btn.addEventListener('click', (e) => {
                         e.stopPropagation();
+                        
+                        // Double check cooldown
+                        const now = Date.now();
+                        if (now - lastSwitchRoleTime < 5000) return;
+                        
+                        lastSwitchRoleTime = now;
+                        
+                        // Re-render to show disabled state immediately
+                        render();
+                        
+                        // Re-enable after 5 seconds
+                        setTimeout(() => {
+                            render();
+                        }, 5000);
+
                         if (currentRoomCode) {
                             socket.emit('switchRole', currentRoomCode);
                         }

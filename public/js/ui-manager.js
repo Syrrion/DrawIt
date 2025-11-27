@@ -6,9 +6,9 @@ import {
     confirmationModal, confirmOkBtn, confirmCancelBtn,
     btnReturnLobby, gameEndModal,
     btnIamReady, btnRefuseGame, readyCheckModal,
-    socket, spectatorCheckbox, btnJoinRandom, activeGamesCount, privateRoomCheckbox,
+    socket, spectatorCheckbox, btnJoinRandom, activeGamesCount, privateRoomCheckbox, allowSpectatorsCheckbox,
     btnUserSettings, userSettingsModal, btnCloseUserSettings, settingShowCursors, settingShowLayerAvatars,
-    maxPlayersInput, btnSubmitCustomWord, customWordInput, customWordModal
+    maxPlayersInput, btnSubmitCustomWord, customWordInput, customWordModal, waitingMessage
 } from './dom-elements.js';
 import { state } from './state.js';
 import { showToast, generateRandomUsername, copyToClipboard, escapeHtml } from './utils.js';
@@ -45,22 +45,37 @@ export function initUIManager(avatarManager, animationSystem, gameSettingsManage
     }
 
     // Active Games Count
+    let currentCounts = { playable: 0, observable: 0 };
+
+    function updateGameCountDisplay() {
+        if (!activeGamesCount) return;
+        
+        const isSpectator = spectatorCheckbox ? spectatorCheckbox.checked : false;
+        const count = isSpectator ? currentCounts.observable : currentCounts.playable;
+        
+        if (count === 0) {
+            activeGamesCount.textContent = "Aucune";
+        } else {
+            activeGamesCount.textContent = count;
+        }
+        
+        const suffix = count > 1 ? ' rooms disponibles' : ' room disponible';
+        if (activeGamesCount.nextSibling) {
+            activeGamesCount.nextSibling.textContent = ` ${suffix}`;
+        }
+    }
+
     function initGameCount() {
         socket.emit('getPublicGameCount');
 
-        socket.on('updatePublicGameCount', (count) => {
-            if (activeGamesCount) {
-                if (count === 0) {
-                    activeGamesCount.textContent = "Aucune";
-                } else {
-                    activeGamesCount.textContent = count;
-                }
-                
-                const suffix = count > 1 ? ' rooms disponibles' : ' room disponible';
-                if (activeGamesCount.nextSibling) {
-                    activeGamesCount.nextSibling.textContent = ` ${suffix}`;
-                }
+        socket.on('updatePublicGameCount', (counts) => {
+            // Handle legacy number format just in case, though we changed server
+            if (typeof counts === 'number') {
+                currentCounts = { playable: counts, observable: counts };
+            } else {
+                currentCounts = counts;
             }
+            updateGameCountDisplay();
         });
         
         setInterval(() => {
@@ -70,6 +85,22 @@ export function initUIManager(avatarManager, animationSystem, gameSettingsManage
         }, 5000);
     }
     initGameCount();
+
+    // Spectator Toggle Logic
+    if (spectatorCheckbox) {
+        spectatorCheckbox.addEventListener('change', () => {
+            const isSpectator = spectatorCheckbox.checked;
+            
+            // Update Join Tab Label
+            const joinTab = document.querySelector('.login-tab[data-target="tab-join"]');
+            if (joinTab) {
+                joinTab.textContent = isSpectator ? 'Observer' : 'Rejoindre';
+            }
+
+            // Update Game Count
+            updateGameCountDisplay();
+        });
+    }
 
     // Random Join
     if (btnJoinRandom) {
@@ -95,8 +126,33 @@ export function initUIManager(avatarManager, animationSystem, gameSettingsManage
         joinRoom(roomCode, state.user.username, isSpectator);
     });
 
-    socket.on('error', (msg) => {
-        showToast(msg, 'error');
+    socket.on('roomJoined', (data) => {
+        loginScreen.classList.add('hidden');
+        gameScreen.classList.remove('hidden');
+        displayRoomCode.textContent = state.currentRoom;
+    });
+
+    socket.on('updateLobbyStatus', ({ status }) => {
+        if (waitingMessage) {
+            const span = waitingMessage.querySelector('span');
+            if (span) {
+                if (status === 'CONFIGURING') {
+                    span.textContent = 'Préparation en cours...';
+                } else {
+                    span.textContent = 'En attente du leader...';
+                }
+            }
+        }
+        
+        // Animate settings button for non-leaders
+        const btnViewSettings = document.getElementById('btn-view-settings');
+        if (btnViewSettings) {
+            if (status === 'CONFIGURING') {
+                btnViewSettings.classList.add('is-configuring');
+            } else {
+                btnViewSettings.classList.remove('is-configuring');
+            }
+        }
     });
 
     // Max Players Slider
@@ -140,6 +196,7 @@ export function initUIManager(avatarManager, animationSystem, gameSettingsManage
 
         let username = usernameInput.value.trim();
         const isPrivate = privateRoomCheckbox ? privateRoomCheckbox.checked : false;
+        const allowSpectators = allowSpectatorsCheckbox ? allowSpectatorsCheckbox.checked : true;
         const maxPlayers = maxPlayersInput ? parseInt(maxPlayersInput.value) : 8;
         
         if (!username) {
@@ -152,13 +209,13 @@ export function initUIManager(avatarManager, animationSystem, gameSettingsManage
             username = escapeHtml(username);
             
             const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-            joinRoom(roomCode, username, false, isPrivate, maxPlayers);
+            joinRoom(roomCode, username, false, isPrivate, maxPlayers, allowSpectators);
         } else {
             showToast('Merci de choisir un pseudo', 'error');
         }
     });
 
-    function joinRoom(roomCode, username, isSpectator = false, isPrivate = false, maxPlayers = 8) {
+    function joinRoom(roomCode, username, isSpectator = false, isPrivate = false, maxPlayers = 8, allowSpectators = true) {
         state.user.username = username;
         state.currentRoom = roomCode;
         
@@ -175,12 +232,9 @@ export function initUIManager(avatarManager, animationSystem, gameSettingsManage
             roomCode: state.currentRoom,
             isSpectator,
             isPrivate,
-            maxPlayers
+            maxPlayers,
+            allowSpectators
         });
-
-        loginScreen.classList.add('hidden');
-        gameScreen.classList.remove('hidden');
-        displayRoomCode.textContent = state.currentRoom;
     }
 
     // Room Code Toggle

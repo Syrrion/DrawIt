@@ -17,6 +17,10 @@ export function initSocketManager(
         state.settings = settings;
     });
 
+    socket.on('error', (msg) => {
+        showToast(msg, 'error');
+    });
+
     socket.on('gameStateChanged', (stateVal) => {
         state.currentGameState = stateVal;
         layerManager.updateLayersUI();
@@ -397,8 +401,14 @@ export function initSocketManager(
         window.currentTimerInterval = setInterval(() => {
             timeLeft--;
             if (timeLeft >= 0) timerValue.textContent = timeLeft;
-            if (timeLeft <= 10 && timeLeft > 0) playTickSound();
-            else clearInterval(window.currentTimerInterval);
+            
+            if (timeLeft <= 10 && timeLeft > 0) {
+                playTickSound();
+            }
+            
+            if (timeLeft <= 0) {
+                clearInterval(window.currentTimerInterval);
+            }
         }, 1000);
     });
 
@@ -658,12 +668,17 @@ export function initSocketManager(
         const readyTimer = document.querySelector('.ready-timer');
         if (readyTimer) readyTimer.classList.remove('hidden');
 
-        btnIamReady.classList.remove('hidden');
-        btnIamReady.classList.remove('waiting');
-        btnIamReady.textContent = 'JE SUIS PRÊT !';
-        btnIamReady.disabled = false;
+        if (!state.isSpectator) {
+            btnIamReady.classList.remove('hidden');
+            btnIamReady.classList.remove('waiting');
+            btnIamReady.textContent = 'JE SUIS PRÊT !';
+            btnIamReady.disabled = false;
 
-        if (btnRefuseGame) btnRefuseGame.classList.remove('hidden');
+            if (btnRefuseGame) btnRefuseGame.classList.remove('hidden');
+        } else {
+            btnIamReady.classList.add('hidden');
+            if (btnRefuseGame) btnRefuseGame.classList.add('hidden');
+        }
 
         const newReadyCountVal = document.getElementById('ready-count-val');
         const newReadyTotalVal = document.getElementById('ready-total-val');

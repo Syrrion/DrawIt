@@ -1,0 +1,73 @@
+<div id="lobby-settings-modal" class="modal hidden">
+    <div class="modal-content settings-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-cog"></i> Paramètres de la partie</h3>
+            <button id="btn-close-settings" class="close-btn"><i class="fas fa-times"></i></button>
+        </div>
+        
+        <div class="setting-section">
+            <label>Mode de jeu</label>
+            <div class="gamemode-cards">
+                <div class="gamemode-card selected" data-mode="guess-word">
+                    <div class="card-icon"><i class="fas fa-pencil-alt"></i></div>
+                    <div class="card-info">
+                        <h4>Devine le dessin</h4>
+                        <p>Un joueur dessine, les autres devinent.</p>
+                    </div>
+                </div>
+                <div class="gamemode-card" data-mode="custom-word">
+                    <div class="card-icon"><i class="fas fa-keyboard"></i></div>
+                    <div class="card-info">
+                        <h4>Mot personnalisé</h4>
+                        <p>Le dessinateur choisit son propre mot.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="settings-guess-word" class="mode-settings">
+            <div class="settings-grid">
+                <div class="setting-group">
+                    <label>Temps de dessin (sec)</label>
+                    <input type="number" id="setting-drawtime" value="80" min="30" max="300">
+                </div>
+                <div class="setting-group">
+                    <label>Temps de choix (sec)</label>
+                    <input type="number" id="setting-wordchoicetime" value="20" min="10" max="60">
+                </div>
+                <div class="setting-group">
+                    <label>Choix de mots</label>
+                    <input type="number" id="setting-wordchoices" value="3" min="1" max="5">
+                </div>
+                <div class="setting-group hidden" id="setting-group-max-word-length">
+                    <label>Longueur max du mot (Custom)</label>
+                    <input type="number" id="setting-max-word-length" value="20" min="5" max="30">
+                </div>
+                <div class="setting-group">
+                    <label>Nombre de tours</label>
+                    <input type="number" id="setting-rounds" value="3" min="1" max="10">
+                </div>
+            </div>
+            <div class="setting-group checkbox-group">
+                <input type="checkbox" id="setting-fuzzy">
+                <label for="setting-fuzzy">Autoriser les accents approximatifs</label>
+            </div>
+            <div class="setting-group checkbox-group">
+                <input type="checkbox" id="setting-hints" checked>
+                <label for="setting-hints">Activer les indices progressifs</label>
+            </div>
+            <div class="setting-group" style="margin-top: 10px;">
+                <label for="setting-personal-hints" style="text-align: center; display: block; margin-bottom: 5px;">Indices personnels (Total): <span id="setting-personal-hints-val" style="color: var(--primary); font-weight: bold;">3</span></label>
+                <div class="slider-container">
+                    <input type="range" id="setting-personal-hints" min="0" max="10" value="3" class="slider">
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-actions">
+            <button id="btn-start-game" class="btn-primary">
+                <i class="fas fa-play"></i> Lancer la partie
+            </button>
+        </div>
+    </div>
+</div>

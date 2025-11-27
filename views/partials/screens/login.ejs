@@ -1,0 +1,183 @@
+<!-- Login Screen -->
+<div id="login-screen" class="screen">
+    <div class="card">
+        <div class="game-logo">
+            <div class="logo-icon">
+                <i class="fas fa-pencil-alt"></i>
+            </div>
+            <h1>Draw-it</h1>
+        </div>
+        
+        <div class="login-content">
+            <div class="login-avatar-side">
+                <div class="avatar-section">
+                    <h3>Crée ton Avatar</h3>
+                    
+                    <div class="avatar-tabs">
+                        <button id="tab-emoji" class="tab-btn active">Emoji</button>
+                        <button id="tab-draw" class="tab-btn">Dessin</button>
+                        <button id="tab-upload" class="tab-btn">Image</button>
+                    </div>
+
+                    <div id="avatar-preview-container">
+                        <div id="avatar-preview" class="avatar">
+                            <span id="avatar-emoji">🎨</span>
+                        </div>
+                        <canvas id="avatar-canvas" width="100" height="100" class="avatar hidden"></canvas>
+                    </div>
+
+                    <div id="mode-emoji" class="avatar-mode-content">
+                        <div class="controls">
+                            <div class="control-row">
+                                <label>Couleur:</label>
+                                <div class="color-trigger" id="emoji-color-trigger">
+                                    <div id="emoji-color-preview" style="background-color: #3498db;"></div>
+                                </div>
+                            </div>
+                            <div class="control-row">
+                                <label>Emoji:</label>
+                                <div style="display: flex; gap: 10px; align-items: center;">
+                                    <div class="emoji-picker-wrapper" id="emoji-picker-wrapper">
+                                        <div class="emoji-picker-trigger" id="emoji-picker-trigger">
+                                            <span class="current-emoji">🎨</span>
+                                            <i class="fas fa-chevron-down"></i>
+                                        </div>
+                                        <div class="emoji-options hidden" id="emoji-options">
+                                            <%- include('../components/emoji-list') %>
+                                        </div>
+                                    </div>
+                                    <button id="btn-random-avatar" class="secondary small-btn" title="Aléatoire">
+                                        <i class="fas fa-dice"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="mode-draw" class="avatar-mode-content hidden">
+                        <div class="controls">
+                            <div class="mini-toolbar">
+                                <div class="avatar-tools-row">
+                                    <button id="avatar-tool-pen" class="tool-btn small-btn active" title="Crayon">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                                    </button>
+                                    <button id="avatar-tool-fill" class="tool-btn small-btn" data-tooltip="Remplir">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                            <rect x="4" y="4" width="16" height="6" rx="1"></rect>
+                                            <path d="M18 10v3a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-3"></path>
+                                            <path d="M12 15v6"></path>
+                                        </svg>
+                                    </button>
+                                    <button id="avatar-tool-eraser" class="tool-btn small-btn" data-tooltip="Gomme">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M15.5 3.5 L20.5 8.5 L8.5 20.5 L3.5 15.5 Z"></path>
+                                            <line x1="11" y1="8" x2="16" y2="13"></line>
+                                        </svg>
+                                    </button>
+                                    <div class="separator"></div>
+                                    <div class="color-trigger small" id="avatar-color-trigger">
+                                        <div id="avatar-color-preview" style="background-color: #000000;"></div>
+                                    </div>
+                                    <button id="avatar-clear-btn" class="secondary small-btn" data-tooltip="Effacer">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                    </button>
+                                </div>
+                                <div class="avatar-sliders">
+                                    <div class="slider-row compact">
+                                        <label>Taille</label>
+                                        <input type="range" id="avatar-size" min="1" max="20" value="3">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="mode-upload" class="avatar-mode-content hidden">
+                        <div class="controls">
+                            <div class="upload-container">
+                                <input type="file" id="avatar-upload" accept="image/*" class="hidden">
+                                <button id="btn-trigger-upload" class="secondary small-btn">
+                                    <i class="fas fa-upload"></i> Choisir une image
+                                </button>
+                            </div>
+                            <div id="avatar-image-controls" class="hidden">
+                                <div class="slider-row compact zoom-slider">
+                                    <i class="fas fa-search-minus small-icon"></i>
+                                    <input type="range" id="avatar-zoom" min="0.1" max="3" step="0.1" value="1">
+                                    <i class="fas fa-search-plus small-icon"></i>
+                                </div>
+                                <p class="help-text"><i class="fas fa-arrows-alt"></i> Glisser pour déplacer • <i class="fas fa-mouse"></i> Scroll pour zoomer</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="login-form-side">
+                <div class="form-group">
+                    <label for="username">Pseudo</label>
+                    <div class="input-group">
+                        <input type="text" id="username" placeholder="Ton pseudo" maxlength="15">
+                    </div>
+                    <div class="checkbox-group" style="margin-top: 8px; display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="spectator-checkbox">
+                        <label for="spectator-checkbox" style="margin: 0; font-size: 0.9rem; cursor: pointer;">Mode Observateur</label>
+                    </div>
+                </div>
+
+                <div class="login-tabs-container">
+                    <div class="login-tabs">
+                        <button class="login-tab active" data-target="tab-join">Rejoindre</button>
+                        <button class="login-tab" data-target="tab-create">Créer</button>
+                    </div>
+
+                    <div id="tab-join" class="login-tab-content active">
+                        <div class="public-lobbies-section">
+                            <div class="active-games-info" style="text-align: center; margin-bottom: 10px; color: var(--text-dim);">
+                                <span id="active-games-count" style="font-weight: bold; color: var(--primary);">0</span> room disponible
+                            </div>
+                            <button id="btn-join-random" class="secondary full-width">
+                                <i class="fas fa-random"></i> Aléatoire
+                            </button>
+                        </div>
+                        
+                        <div class="divider">
+                            <span>OU</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Code de la room</label>
+                            <div class="input-group">
+                                <input type="text" id="room-code-input" placeholder="Ex: ABCDEF">
+                                <button id="join-btn">GO</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="tab-create" class="login-tab-content">
+                        <div class="create-section">
+                            <div class="form-group" style="margin-bottom: 10px;">
+                                <label for="max-players-input" style="text-align: center; display: block; margin-bottom: 5px;">Joueurs Max: <span id="max-players-value" style="color: var(--primary); font-weight: bold;">8</span></label>
+                                <div class="slider-container">
+                                    <input type="range" id="max-players-input" min="2" max="8" value="8" class="slider">
+                                </div>
+                            </div>
+                            <div class="checkbox-group" style="margin-bottom: 15px; display: flex; align-items: center; gap: 8px; justify-content: center;">
+                                <input type="checkbox" id="private-room-checkbox">
+                                <label for="private-room-checkbox" style="margin: 0; font-size: 0.9rem; cursor: pointer;">Partie Privée</label>
+                            </div>
+                            <div class="checkbox-group" style="margin-bottom: 15px; display: flex; align-items: center; gap: 8px; justify-content: center;">
+                                <input type="checkbox" id="allow-spectators-checkbox" checked>
+                                <label for="allow-spectators-checkbox" style="margin: 0; font-size: 0.9rem; cursor: pointer;">Autoriser les observateurs</label>
+                            </div>
+                            <button id="create-btn" class="secondary full-width">Créer une room</button>
+                            <p class="help-text" style="text-align: center; margin-top: 15px;">
+                                Créez une partie et invitez vos amis avec le code !
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

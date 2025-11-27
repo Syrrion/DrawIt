@@ -4,6 +4,7 @@ export function initGameSettings(socket, isLeaderFn, getRoomCode, getPlayerCount
     // Modal & Controls
     const modal = document.getElementById('lobby-settings-modal');
     const btnOpen = document.getElementById('btn-open-settings');
+    const btnView = document.getElementById('btn-view-settings');
     const btnClose = document.getElementById('btn-close-settings');
     const lobbyControls = document.getElementById('lobby-controls');
     
@@ -31,10 +32,16 @@ export function initGameSettings(socket, isLeaderFn, getRoomCode, getPlayerCount
 
     function openModal() {
         modal.classList.remove('hidden');
+        if (isLeaderFn()) {
+            socket.emit('leaderConfiguring', { roomCode: getRoomCode(), isConfiguring: true });
+        }
     }
 
     function closeModal() {
         modal.classList.add('hidden');
+        if (isLeaderFn()) {
+            socket.emit('leaderConfiguring', { roomCode: getRoomCode(), isConfiguring: false });
+        }
     }
 
     function selectCard(mode) {
@@ -98,18 +105,14 @@ export function initGameSettings(socket, isLeaderFn, getRoomCode, getPlayerCount
 
         // Buttons visibility
         if (isLeader) {
-            btnOpen.classList.remove('hidden');
-            btnOpen.innerHTML = '<i class="fas fa-cog"></i> Commencer une partie';
-            btnOpen.classList.add('btn-primary');
-            btnOpen.classList.remove('secondary');
+            if (btnOpen) btnOpen.classList.remove('hidden');
+            if (btnView) btnView.classList.add('hidden');
             waitingMsg.classList.add('hidden');
             startBtn.classList.remove('hidden'); // Inside modal
         } else {
             // Non-leader can see settings but not edit
-            btnOpen.classList.remove('hidden');
-            btnOpen.innerHTML = '<i class="fas fa-cog"></i> Paramètres de partie';
-            btnOpen.classList.remove('btn-primary');
-            btnOpen.classList.add('secondary');
+            if (btnOpen) btnOpen.classList.add('hidden');
+            if (btnView) btnView.classList.remove('hidden');
             waitingMsg.classList.remove('hidden');
             startBtn.classList.add('hidden'); // Inside modal
         }
@@ -194,6 +197,7 @@ export function initGameSettings(socket, isLeaderFn, getRoomCode, getPlayerCount
 
     // Modal Triggers
     if (btnOpen) btnOpen.addEventListener('click', openModal);
+    if (btnView) btnView.addEventListener('click', openModal);
     if (btnClose) btnClose.addEventListener('click', closeModal);
 
     // Game Mode Cards

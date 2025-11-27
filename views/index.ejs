@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="fr">
+<%- include('partials/head') %>
+<body>
+    <div id="app">
+        <%- include('partials/components/cursor') %>
+        <%- include('partials/components/toast') %>
+        
+        <%- include('partials/screens/login') %>
+        <%- include('partials/screens/game') %>
+
+        <%- include('partials/modals/confirmation') %>
+        <%- include('partials/modals/kick-confirmation') %>
+        <%- include('partials/modals/alert') %>
+        <%- include('partials/modals/help') %>
+        
+        <%- include('partials/components/color-popover') %>
+        <%- include('partials/components/avatar-tooltip') %>
+        <%- include('partials/modals/custom-word') %>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="module" src="client.js"></script>
+</body>
+</html>

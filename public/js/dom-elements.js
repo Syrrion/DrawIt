@@ -17,6 +17,7 @@ export const spectatorCheckbox = document.getElementById('spectator-checkbox');
 export const btnJoinRandom = document.getElementById('btn-join-random');
 export const activeGamesCount = document.getElementById('active-games-count');
 export const privateRoomCheckbox = document.getElementById('private-room-checkbox');
+export const allowSpectatorsCheckbox = document.getElementById('allow-spectators-checkbox');
 export const maxPlayersInput = document.getElementById('max-players-input');
 
 // Canvas Area
