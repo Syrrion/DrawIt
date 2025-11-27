@@ -10,6 +10,7 @@ import {
 import { state } from './state.js';
 import { showToast, rgbToHex } from './utils.js';
 import { deleteSelection } from './selection-manager.js';
+import { Modal } from './components/modal.js';
 
 export class ToolsManager {
     constructor() {
@@ -19,6 +20,11 @@ export class ToolsManager {
 
     init() {
         penSizeInput.addEventListener('input', () => this.updateBrushPreview());
+
+        // Help Modal
+        this.helpModalInstance = new Modal(helpModal, {
+            closeBtn: btnCloseHelp
+        });
 
         // --- Shortcuts ---
         window.addEventListener('keydown', (e) => {
@@ -163,18 +169,7 @@ export class ToolsManager {
         });
 
         btnHelp.addEventListener('click', () => {
-            helpModal.classList.remove('hidden');
-        });
-
-        btnCloseHelp.addEventListener('click', () => {
-            helpModal.classList.add('hidden');
-        });
-
-        // Close help on outside click
-        helpModal.addEventListener('click', (e) => {
-            if (e.target === helpModal) {
-                helpModal.classList.add('hidden');
-            }
+            this.helpModalInstance.open();
         });
 
         clearBtn.addEventListener('click', () => {

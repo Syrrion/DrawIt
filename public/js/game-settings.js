@@ -1,4 +1,5 @@
 import { showToast } from './utils.js';
+import { Modal } from './components/modal.js';
 
 export class GameSettingsManager {
     constructor(socket, isLeaderProvider, roomCodeProvider, playerCountProvider) {
@@ -11,7 +12,7 @@ export class GameSettingsManager {
         this.previousHintsEnabled = true;
 
         // Modal & Controls
-        this.modal = document.getElementById('lobby-settings-modal');
+        this.modalElement = document.getElementById('lobby-settings-modal');
         this.btnOpen = document.getElementById('btn-open-settings');
         this.btnView = document.getElementById('btn-view-settings');
         this.btnClose = document.getElementById('btn-close-settings');
@@ -37,12 +38,25 @@ export class GameSettingsManager {
     }
 
     init() {
-        if (!this.modal) return;
+        if (!this.modalElement) return;
+
+        this.modal = new Modal(this.modalElement, {
+            closeBtn: this.btnClose,
+            onOpen: () => {
+                if (this.isLeaderProvider()) {
+                    this.socket.emit('leaderConfiguring', { roomCode: this.roomCodeProvider(), isConfiguring: true });
+                }
+            },
+            onClose: () => {
+                if (this.isLeaderProvider()) {
+                    this.socket.emit('leaderConfiguring', { roomCode: this.roomCodeProvider(), isConfiguring: false });
+                }
+            }
+        });
 
         // Modal Triggers
-        if (this.btnOpen) this.btnOpen.addEventListener('click', () => this.openModal());
-        if (this.btnView) this.btnView.addEventListener('click', () => this.openModal());
-        if (this.btnClose) this.btnClose.addEventListener('click', () => this.closeModal());
+        if (this.btnOpen) this.btnOpen.addEventListener('click', () => this.modal.open());
+        if (this.btnView) this.btnView.addEventListener('click', () => this.modal.open());
 
         // Game Mode Cards
         this.cards.forEach(card => {
@@ -85,7 +99,7 @@ export class GameSettingsManager {
             }
 
             this.socket.emit('startGame', this.roomCodeProvider());
-            this.closeModal();
+            this.modal.close();
         });
 
         // Socket Listeners
@@ -151,23 +165,17 @@ export class GameSettingsManager {
                 this.lobbyControls.classList.remove('hidden');
             } else {
                 this.lobbyControls.classList.add('hidden');
-                this.closeModal();
+                this.modal.close();
             }
         });
     }
 
     openModal() {
-        this.modal.classList.remove('hidden');
-        if (this.isLeaderProvider()) {
-            this.socket.emit('leaderConfiguring', { roomCode: this.roomCodeProvider(), isConfiguring: true });
-        }
+        this.modal.open();
     }
 
     closeModal() {
-        this.modal.classList.add('hidden');
-        if (this.isLeaderProvider()) {
-            this.socket.emit('leaderConfiguring', { roomCode: this.roomCodeProvider(), isConfiguring: false });
-        }
+        this.modal.close();
     }
 
     selectCard(mode) {

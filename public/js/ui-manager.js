@@ -12,6 +12,8 @@ import {
 } from './dom-elements.js';
 import { state } from './state.js';
 import { showToast, generateRandomUsername, copyToClipboard, escapeHtml } from './utils.js';
+import { Modal } from './components/modal.js';
+import { Tabs } from './components/tabs.js';
 
 export class UIManager {
     constructor(avatarManager, animationSystem, gameSettingsManager, renderCallback, cursorManager, layerManager) {
@@ -30,26 +32,7 @@ export class UIManager {
 
     init() {
         // Login Tabs Logic
-        const loginTabs = document.querySelectorAll('.login-tab');
-        const loginTabContents = document.querySelectorAll('.login-tab-content');
-
-        loginTabs.forEach(tab => {
-            tab.addEventListener('click', () => {
-                // Remove active class from all tabs and contents
-                loginTabs.forEach(t => t.classList.remove('active'));
-                loginTabContents.forEach(c => c.classList.remove('active'));
-
-                // Add active class to clicked tab
-                tab.classList.add('active');
-
-                // Show target content
-                const targetId = tab.getAttribute('data-target');
-                const targetContent = document.getElementById(targetId);
-                if (targetContent) {
-                    targetContent.classList.add('active');
-                }
-            });
-        });
+        this.loginTabs = new Tabs('.login-tab', '.login-tab-content');
 
         // Pre-fill random username or load from storage
         const savedUsername = localStorage.getItem('drawit_username');
@@ -211,41 +194,48 @@ export class UIManager {
         }
 
         // Kick Modal
+        this.kickModalInstance = new Modal(kickModal, {
+            closeBtn: btnKickCancel
+        });
+
         window.showKickModal = (playerId, username) => {
             this.playerToKickId = playerId;
             kickPlayerName.textContent = username;
-            kickModal.classList.remove('hidden');
+            this.kickModalInstance.open();
         };
-
-        btnKickCancel.addEventListener('click', () => {
-            kickModal.classList.add('hidden');
-            this.playerToKickId = null;
-        });
 
         btnKickConfirm.addEventListener('click', () => {
             if (this.playerToKickId) {
                 socket.emit('kickPlayer', this.playerToKickId);
-                kickModal.classList.add('hidden');
+                this.kickModalInstance.close();
                 showToast('Joueur expulsé', 'success');
             }
         });
 
         // Alert Modal
+        this.alertModalInstance = new Modal(alertModal, {
+            closeBtn: alertOkBtn
+        });
+
         window.showAlert = (title, message, callback) => {
             alertTitle.textContent = title;
             alertMessage.textContent = message;
-            alertModal.classList.remove('hidden');
             
-            const handleOk = () => {
-                alertModal.classList.add('hidden');
-                alertOkBtn.removeEventListener('click', handleOk);
+            // Override close behavior for callback
+            const originalOnClose = this.alertModalInstance.options.onClose;
+            this.alertModalInstance.options.onClose = () => {
                 if (callback) callback();
+                this.alertModalInstance.options.onClose = originalOnClose; // Restore
             };
             
-            alertOkBtn.addEventListener('click', handleOk);
+            this.alertModalInstance.open();
         };
 
         // Confirm Modal
+        this.confirmationModalInstance = new Modal(confirmationModal, {
+            closeBtn: confirmCancelBtn
+        });
+
         window.showConfirmModal = (title, message, onConfirm) => {
             const titleEl = confirmationModal.querySelector('h3');
             const msgEl = confirmationModal.querySelector('p');
@@ -253,37 +243,42 @@ export class UIManager {
             if (titleEl) titleEl.textContent = title;
             if (msgEl) msgEl.textContent = message;
             
-            confirmationModal.classList.remove('hidden');
-            
+            // Handle Confirm
             const handleConfirm = () => {
-                confirmationModal.classList.add('hidden');
+                this.confirmationModalInstance.close();
                 confirmOkBtn.removeEventListener('click', handleConfirm);
-                confirmCancelBtn.removeEventListener('click', handleCancel);
                 if (onConfirm) onConfirm();
             };
-
-            const handleCancel = () => {
-                confirmationModal.classList.add('hidden');
-                confirmOkBtn.removeEventListener('click', handleConfirm);
-                confirmCancelBtn.removeEventListener('click', handleCancel);
-            };
             
-            confirmOkBtn.addEventListener('click', handleConfirm);
-            confirmCancelBtn.addEventListener('click', handleCancel);
+            // We need to remove old listeners or clone the button to avoid stacking listeners
+            // A cleaner way is to use a one-time listener or manage it via the class
+            // For now, let's use the removeEventListener approach but we need to be careful about previous listeners
+            // Actually, creating a new function every time is problematic for removal if we don't store reference.
+            // Let's use a property on the instance to store the current confirm handler
+            
+            if (this.currentConfirmHandler) {
+                confirmOkBtn.removeEventListener('click', this.currentConfirmHandler);
+            }
+            this.currentConfirmHandler = handleConfirm;
+            confirmOkBtn.addEventListener('click', this.currentConfirmHandler);
+            
+            this.confirmationModalInstance.open();
         };
 
         // Game End
-        btnReturnLobby.addEventListener('click', () => {
-            gameEndModal.classList.add('hidden');
-            this.animationSystem.stop();
-            this.gameSettingsManager.show();
-            this.gameSettingsManager.updateControlsState();
-            
-            // Clear canvas
-            Object.values(state.layerCanvases).forEach(l => {
-                l.ctx.clearRect(0, 0, 800, 600);
-            });
-            if (this.renderCallback) this.renderCallback();
+        this.gameEndModalInstance = new Modal(gameEndModal, {
+            closeBtn: btnReturnLobby,
+            onClose: () => {
+                this.animationSystem.stop();
+                this.gameSettingsManager.show();
+                this.gameSettingsManager.updateControlsState();
+                
+                // Clear canvas
+                Object.values(state.layerCanvases).forEach(l => {
+                    l.ctx.clearRect(0, 0, 800, 600);
+                });
+                if (this.renderCallback) this.renderCallback();
+            }
         });
 
         // Ready Check
@@ -301,15 +296,13 @@ export class UIManager {
         }
 
         // User Settings Modal
+        this.userSettingsModalInstance = new Modal(userSettingsModal, {
+            closeBtn: btnCloseUserSettings
+        });
+
         if (btnUserSettings) {
             btnUserSettings.addEventListener('click', () => {
-                userSettingsModal.classList.remove('hidden');
-            });
-        }
-
-        if (btnCloseUserSettings) {
-            btnCloseUserSettings.addEventListener('click', () => {
-                userSettingsModal.classList.add('hidden');
+                this.userSettingsModalInstance.open();
             });
         }
 
@@ -345,12 +338,14 @@ export class UIManager {
         }
 
         // Custom Word Modal
+        this.customWordModalInstance = new Modal(customWordModal);
+
         if (btnSubmitCustomWord) {
             btnSubmitCustomWord.addEventListener('click', () => {
                 const word = customWordInput.value.trim();
                 if (word) {
                     socket.emit('customWordChosen', { roomCode: state.currentRoom, word });
-                    customWordModal.classList.add('hidden');
+                    this.customWordModalInstance.close();
                     if (window.customWordTimerInterval) clearInterval(window.customWordTimerInterval);
                 } else {
                     showToast('Veuillez entrer un mot', 'error');
