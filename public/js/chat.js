@@ -1,48 +1,52 @@
 import { escapeHtml } from './utils.js';
 
-export function initChat(socket, getRoomCode, getUsername, getPlayerAvatar) {
-    const chatForm = document.getElementById('chat-form');
-    const chatInput = document.getElementById('chat-input');
-    const chatMessages = document.getElementById('chat-messages');
+export class ChatManager {
+    constructor(socket, roomCodeProvider, usernameProvider, playerProvider) {
+        this.socket = socket;
+        this.roomCodeProvider = roomCodeProvider;
+        this.usernameProvider = usernameProvider;
+        this.playerProvider = playerProvider;
 
-    if (!chatForm || !chatInput || !chatMessages) return;
+        this.chatForm = document.getElementById('chat-form');
+        this.chatInput = document.getElementById('chat-input');
+        this.chatMessages = document.getElementById('chat-messages');
 
-    chatForm.addEventListener('submit', (e) => {
+        this.init();
+    }
+
+    init() {
+        if (!this.chatForm || !this.chatInput || !this.chatMessages) return;
+
+        this.chatForm.addEventListener('submit', (e) => this.handleSubmit(e));
+
+        this.socket.on('chatMessage', (data) => this.handleIncomingMessage(data));
+    }
+
+    handleSubmit(e) {
         e.preventDefault();
-        const message = chatInput.value.trim();
-        const roomCode = getRoomCode();
-        const username = getUsername();
+        const message = this.chatInput.value.trim();
+        const roomCode = this.roomCodeProvider();
+        const username = this.usernameProvider();
 
         if (message && roomCode && username) {
             // Sanitize before sending (optional but good practice)
             // We will also sanitize on display
-            socket.emit('chatMessage', {
+            this.socket.emit('chatMessage', {
                 roomCode: roomCode,
                 username: username,
                 message: message // Send raw, sanitize on display/server
             });
-            chatInput.value = '';
+            this.chatInput.value = '';
         }
-    });
+    }
 
-    socket.on('chatMessage', ({ username, message, type }) => {
-        const isSelf = username === getUsername();
+    handleIncomingMessage({ username, message, type }) {
+        const isSelf = username === this.usernameProvider();
         const safeMessage = escapeHtml(message);
         const safeUsername = escapeHtml(username);
         
         if (username === 'System') {
-            const div = document.createElement('div');
-            div.className = 'message system-message';
-            
-            if (type === 'success') {
-                div.classList.add('success');
-                // Color handled by CSS
-            } else {
-                div.style.color = 'orange';
-            }
-            
-            div.innerHTML = `${safeMessage}`;
-            chatMessages.appendChild(div);
+            this.addSystemMessage(message, type);
         } else {
             const row = document.createElement('div');
             row.className = `chat-row ${isSelf ? 'self' : 'other'}`;
@@ -53,7 +57,7 @@ export function initChat(socket, getRoomCode, getUsername, getPlayerAvatar) {
                 avatarDiv.className = 'chat-avatar';
                 
                 let avatarHtml = '';
-                const player = getPlayerAvatar ? getPlayerAvatar(username) : null;
+                const player = this.playerProvider ? this.playerProvider(username) : null;
                 
                 if (player && player.avatar) {
                     if (player.avatar.type === 'image') {
@@ -89,21 +93,21 @@ export function initChat(socket, getRoomCode, getUsername, getPlayerAvatar) {
             }
             
             row.appendChild(bubble);
-            chatMessages.appendChild(row);
+            this.chatMessages.appendChild(row);
         }
 
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-    });
+        this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+    }
 
-    function addSeparator(text) {
+    addSeparator(text) {
         const div = document.createElement('div');
         div.className = 'chat-separator';
         div.innerHTML = `<span>${escapeHtml(text)}</span>`;
-        chatMessages.appendChild(div);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+        this.chatMessages.appendChild(div);
+        this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
     }
 
-    function addSystemMessage(message, type) {
+    addSystemMessage(message, type) {
         const div = document.createElement('div');
         div.className = 'message system-message';
         
@@ -114,12 +118,7 @@ export function initChat(socket, getRoomCode, getUsername, getPlayerAvatar) {
         }
         
         div.innerHTML = `${escapeHtml(message)}`;
-        chatMessages.appendChild(div);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+        this.chatMessages.appendChild(div);
+        this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
     }
-
-    return {
-        addSeparator,
-        addSystemMessage
-    };
 }

@@ -1,27 +1,41 @@
 import { performDraw, performFloodFill } from './draw.js';
 import { state as globalState } from './state.js';
 
-export function initLayerManagement(socket, currentRoom, layers, layerCanvases, activeLayerId, renderCallback, showToast, onActiveLayerChange, getPlayerList) {
-    // We need to return an object with methods that modify the state or expose functions to the global scope/UI
-    
-    const layersList = document.getElementById('layers-list');
-    const addLayerBtn = document.getElementById('add-layer-btn');
+export class LayerManager {
+    constructor(socket, currentRoomProvider, layers, layerCanvases, activeLayerId, renderCallback, showToast, onActiveLayerChange, getPlayerList) {
+        this.socket = socket;
+        this.currentRoomProvider = currentRoomProvider;
+        this.layers = layers;
+        this.layerCanvases = layerCanvases;
+        this.activeLayerId = activeLayerId;
+        this.renderCallback = renderCallback;
+        this.showToast = showToast;
+        this.onActiveLayerChange = onActiveLayerChange;
+        this.getPlayerList = getPlayerList;
 
-    // State wrappers to allow modification by reference or callbacks
-    const state = {
-        layers,
-        activeLayerId,
-        layerCanvases,
-        playerLayers: {}, // Map userId -> layerId
-        showLayerAvatars: true
-    };
+        this.playerLayers = {};
+        this.showLayerAvatars = true;
 
-    function createLayerCanvas(layerId) {
-        if (!state.layerCanvases[layerId]) {
+        this.layersList = document.getElementById('layers-list');
+        this.addLayerBtn = document.getElementById('add-layer-btn');
+        
+        this.dragSrcEl = null;
+
+        this.init();
+    }
+
+    init() {
+        if (this.addLayerBtn) {
+            this.addLayerBtn.addEventListener('click', () => this.handleAddLayer());
+        }
+    }
+
+    createLayerCanvas(layerId) {
+        if (!this.layerCanvases[layerId]) {
             const c = document.createElement('canvas');
             c.width = 800;
             c.height = 600;
-            state.layerCanvases[layerId] = {
+            this.layerCanvases[layerId] = {
                 canvas: c,
                 ctx: c.getContext('2d', { willReadFrequently: true }),
                 visible: true // Default visibility
@@ -29,33 +43,33 @@ export function initLayerManagement(socket, currentRoom, layers, layerCanvases, 
         }
     }
 
-    function canModifyLayers() {
+    canModifyLayers() {
         if (globalState.isSpectator) return false;
         if (globalState.currentGameState === 'LOBBY') return true;
         if (globalState.currentGameState === 'PLAYING') {
-            return socket.id === globalState.currentDrawerId;
+            return this.socket.id === globalState.currentDrawerId;
         }
         return false;
     }
 
-    function updateLayersUI() {
-        const allowed = canModifyLayers();
+    updateLayersUI() {
+        const allowed = this.canModifyLayers();
 
         // Update Add Button
-        if (addLayerBtn) {
-            addLayerBtn.disabled = !allowed;
-            addLayerBtn.style.opacity = allowed ? '1' : '0.5';
-            addLayerBtn.style.cursor = allowed ? 'pointer' : 'not-allowed';
-            addLayerBtn.title = allowed ? "Nouveau calque" : "Vous ne pouvez pas modifier les calques pour le moment";
+        if (this.addLayerBtn) {
+            this.addLayerBtn.disabled = !allowed;
+            this.addLayerBtn.style.opacity = allowed ? '1' : '0.5';
+            this.addLayerBtn.style.cursor = allowed ? 'pointer' : 'not-allowed';
+            this.addLayerBtn.title = allowed ? "Nouveau calque" : "Vous ne pouvez pas modifier les calques pour le moment";
         }
 
-        layersList.innerHTML = '';
+        this.layersList.innerHTML = '';
         // Render in reverse order (top layer first in UI list)
-        const reversedLayers = [...state.layers].reverse();
+        const reversedLayers = [...this.layers].reverse();
         
         reversedLayers.forEach((layer) => {
-            const isVisible = state.layerCanvases[layer.id] ? state.layerCanvases[layer.id].visible : true;
-            const isActive = layer.id === state.activeLayerId;
+            const isVisible = this.layerCanvases[layer.id] ? this.layerCanvases[layer.id].visible : true;
+            const isActive = layer.id === this.activeLayerId;
             const hiddenClass = !isVisible ? 'hidden-layer' : '';
 
             const div = document.createElement('div');
@@ -67,30 +81,30 @@ export function initLayerManagement(socket, currentRoom, layers, layerCanvases, 
             
             // Drag Events
             if (allowed) {
-                div.addEventListener('dragstart', handleDragStart);
-                div.addEventListener('dragover', handleDragOver);
-                div.addEventListener('drop', handleDrop);
-                div.addEventListener('dragenter', handleDragEnter);
-                div.addEventListener('dragleave', handleDragLeave);
-                div.addEventListener('dragend', handleDragEnd);
+                div.addEventListener('dragstart', this.handleDragStart.bind(this));
+                div.addEventListener('dragover', this.handleDragOver.bind(this));
+                div.addEventListener('drop', this.handleDrop.bind(this));
+                div.addEventListener('dragenter', this.handleDragEnter.bind(this));
+                div.addEventListener('dragleave', this.handleDragLeave.bind(this));
+                div.addEventListener('dragend', this.handleDragEnd.bind(this));
             }
 
             div.onclick = (e) => {
                 if (!e.target.closest('button') && !e.target.closest('input') && !e.target.closest('.layer-visibility')) {
-                    state.activeLayerId = layer.id;
-                    if (onActiveLayerChange) onActiveLayerChange(layer.id);
-                    updateLayersUI();
+                    this.activeLayerId = layer.id;
+                    if (this.onActiveLayerChange) this.onActiveLayerChange(layer.id);
+                    this.updateLayersUI();
                 }
             };
 
             // Find players on this layer
             let playersOnLayerHtml = '';
-            if (getPlayerList && state.showLayerAvatars) {
-                const players = getPlayerList();
+            if (this.getPlayerList && this.showLayerAvatars) {
+                const players = this.getPlayerList();
                 
                 // Filter players on this layer AND allowed to draw
                 const playersOnThisLayer = players.filter(p => {
-                    const isOnLayer = state.playerLayers[p.id] === layer.id;
+                    const isOnLayer = this.playerLayers[p.id] === layer.id;
                     if (!isOnLayer) return false;
 
                     // Check if allowed to draw
@@ -105,7 +119,7 @@ export function initLayerManagement(socket, currentRoom, layers, layerCanvases, 
                 if (playersOnThisLayer.length > 0) {
                     playersOnLayerHtml = '<div class="layer-avatars" style="display: flex; margin-left: 5px; gap: -5px;">';
                     playersOnThisLayer.forEach(p => {
-                        const isMe = p.id === socket.id;
+                        const isMe = p.id === this.socket.id;
                         const size = isMe ? '24px' : '20px';
                         const extraClass = isMe ? 'self-avatar' : '';
                         const zIndex = isMe ? 'z-index: 10;' : '';
@@ -154,11 +168,11 @@ export function initLayerManagement(socket, currentRoom, layers, layerCanvases, 
                     </button>
                 </div>
             `;
-            layersList.appendChild(div);
+            this.layersList.appendChild(div);
             
             // Attach event listeners for buttons inside the layer item
             const visibilityBtn = div.querySelector('[data-action="toggle-visibility"]');
-            visibilityBtn.onclick = () => toggleLayerVisibility(layer.id);
+            visibilityBtn.onclick = () => this.toggleLayerVisibility(layer.id);
 
             const renameBtn = div.querySelector('[data-action="rename"]');
             if (!allowed) {
@@ -166,7 +180,7 @@ export function initLayerManagement(socket, currentRoom, layers, layerCanvases, 
                 renameBtn.style.opacity = '0.3';
                 renameBtn.style.cursor = 'not-allowed';
             } else {
-                renameBtn.onclick = () => enableRenaming(layer.id);
+                renameBtn.onclick = () => this.enableRenaming(layer.id);
             }
 
             const moveUpBtn = div.querySelector('[data-action="move-up"]');
@@ -175,7 +189,7 @@ export function initLayerManagement(socket, currentRoom, layers, layerCanvases, 
                 moveUpBtn.style.opacity = '0.3';
                 moveUpBtn.style.cursor = 'not-allowed';
             } else {
-                moveUpBtn.onclick = () => moveLayerUp(layer.id);
+                moveUpBtn.onclick = () => this.moveLayerUp(layer.id);
             }
 
             const moveDownBtn = div.querySelector('[data-action="move-down"]');
@@ -184,7 +198,7 @@ export function initLayerManagement(socket, currentRoom, layers, layerCanvases, 
                 moveDownBtn.style.opacity = '0.3';
                 moveDownBtn.style.cursor = 'not-allowed';
             } else {
-                moveDownBtn.onclick = () => moveLayerDown(layer.id);
+                moveDownBtn.onclick = () => this.moveLayerDown(layer.id);
             }
 
             const deleteBtn = div.querySelector('[data-action="delete"]');
@@ -193,23 +207,22 @@ export function initLayerManagement(socket, currentRoom, layers, layerCanvases, 
                 deleteBtn.style.opacity = '0.3';
                 deleteBtn.style.cursor = 'not-allowed';
             } else {
-                deleteBtn.onclick = () => deleteLayer(layer.id);
+                deleteBtn.onclick = () => this.deleteLayer(layer.id);
             }
 
             const input = div.querySelector(`#name-input-${layer.id}`);
             if (!allowed) {
                 input.disabled = true;
             } else {
-                input.addEventListener('blur', () => saveLayerName(layer.id, input.value));
+                input.addEventListener('blur', () => this.saveLayerName(layer.id, input.value));
                 input.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') saveLayerName(layer.id, input.value);
+                    if (e.key === 'Enter') this.saveLayerName(layer.id, input.value);
                 });
             }
         });
     }
 
-    // Renaming functions
-    function enableRenaming(layerId) {
+    enableRenaming(layerId) {
         const display = document.getElementById(`name-display-${layerId}`);
         const input = document.getElementById(`name-input-${layerId}`);
         const btn = display.nextElementSibling.nextElementSibling; 
@@ -220,24 +233,21 @@ export function initLayerManagement(socket, currentRoom, layers, layerCanvases, 
         input.focus();
     }
 
-    function saveLayerName(layerId, newName) {
+    saveLayerName(layerId, newName) {
         if (newName.trim()) {
-            renameLayer(layerId, newName.trim());
+            this.renameLayer(layerId, newName.trim());
         }
     }
 
-    // Drag and Drop Logic
-    let dragSrcEl = null;
-
-    function handleDragStart(e) {
-        dragSrcEl = this;
+    handleDragStart(e) {
+        this.dragSrcEl = e.target;
         e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/html', this.innerHTML);
-        this.classList.add('dragging');
-        layersList.classList.add('dragging-mode');
+        e.dataTransfer.setData('text/html', e.target.innerHTML);
+        e.target.classList.add('dragging');
+        this.layersList.classList.add('dragging-mode');
     }
 
-    function handleDragOver(e) {
+    handleDragOver(e) {
         if (e.preventDefault) {
             e.preventDefault();
         }
@@ -245,62 +255,66 @@ export function initLayerManagement(socket, currentRoom, layers, layerCanvases, 
         return false;
     }
 
-    function handleDragEnter(e) {
-        this.classList.add('over');
+    handleDragEnter(e) {
+        e.target.classList.add('over');
     }
 
-    function handleDragLeave(e) {
-        this.classList.remove('over');
+    handleDragLeave(e) {
+        e.target.classList.remove('over');
     }
 
-    function handleDrop(e) {
+    handleDrop(e) {
         if (e.stopPropagation) {
             e.stopPropagation();
         }
         
-        layersList.classList.remove('dragging-mode');
+        this.layersList.classList.remove('dragging-mode');
 
-        if (dragSrcEl !== this) {
-            const srcId = dragSrcEl.dataset.layerId;
-            const targetId = this.dataset.layerId;
+        // e.target might be a child of the layer-item, we need to find the layer-item
+        const targetItem = e.target.closest('.layer-item');
+        if (!targetItem) return false;
+
+        if (this.dragSrcEl !== targetItem) {
+            const srcId = this.dragSrcEl.dataset.layerId;
+            const targetId = targetItem.dataset.layerId;
             
-            const srcIndex = state.layers.findIndex(l => l.id === srcId);
-            const targetIndex = state.layers.findIndex(l => l.id === targetId);
+            const srcIndex = this.layers.findIndex(l => l.id === srcId);
+            const targetIndex = this.layers.findIndex(l => l.id === targetId);
             
             if (srcIndex !== -1 && targetIndex !== -1) {
-                const newLayers = [...state.layers];
+                const newLayers = [...this.layers];
                 const [movedLayer] = newLayers.splice(srcIndex, 1);
                 newLayers.splice(targetIndex, 0, movedLayer);
                 
-                socket.emit('reorderLayers', { roomCode: currentRoom(), layers: newLayers });
+                this.socket.emit('reorderLayers', { roomCode: this.currentRoomProvider(), layers: newLayers });
             }
         }
         return false;
     }
 
-    function handleDragEnd(e) {
-        this.classList.remove('dragging');
-        layersList.classList.remove('dragging-mode');
+    handleDragEnd(e) {
+        e.target.classList.remove('dragging');
+        this.layersList.classList.remove('dragging-mode');
         document.querySelectorAll('.layer-item').forEach(item => {
             item.classList.remove('over');
         });
     }
 
-    function toggleLayerVisibility(layerId) {
-        if (state.layerCanvases[layerId]) {
-            state.layerCanvases[layerId].visible = !state.layerCanvases[layerId].visible;
-            updateLayersUI();
-            renderCallback();
+    toggleLayerVisibility(layerId) {
+        if (this.layerCanvases[layerId]) {
+            this.layerCanvases[layerId].visible = !this.layerCanvases[layerId].visible;
+            this.updateLayersUI();
+            this.renderCallback();
         }
     }
 
-    function renameLayer(layerId, newName) {
-        socket.emit('renameLayer', { roomCode: currentRoom(), layerId, name: newName });
+    renameLayer(layerId, newName) {
+        this.socket.emit('renameLayer', { roomCode: this.currentRoomProvider(), layerId, name: newName });
     }
 
-    function deleteLayer(layerId) {
-        if (state.layers.length <= 1) {
-            showToast('Impossible de supprimer le dernier calque !', 'error');
+    deleteLayer(layerId) {
+        if (this.layers.length <= 1) {
+            this.showToast('Impossible de supprimer le dernier calque !', 'error');
             return;
         }
         
@@ -308,61 +322,57 @@ export function initLayerManagement(socket, currentRoom, layers, layerCanvases, 
             'Supprimer le calque',
             'Voulez-vous vraiment supprimer ce calque ?',
             () => {
-                socket.emit('deleteLayer', { roomCode: currentRoom(), layerId });
+                this.socket.emit('deleteLayer', { roomCode: this.currentRoomProvider(), layerId });
             }
         );
     }
 
-    function moveLayerUp(layerId) {
-        const index = state.layers.findIndex(l => l.id === layerId);
-        if (index < state.layers.length - 1) {
-            const newLayers = [...state.layers];
+    moveLayerUp(layerId) {
+        const index = this.layers.findIndex(l => l.id === layerId);
+        if (index < this.layers.length - 1) {
+            const newLayers = [...this.layers];
             [newLayers[index], newLayers[index + 1]] = [newLayers[index + 1], newLayers[index]];
-            socket.emit('reorderLayers', { roomCode: currentRoom(), layers: newLayers });
+            this.socket.emit('reorderLayers', { roomCode: this.currentRoomProvider(), layers: newLayers });
         }
     }
 
-    function moveLayerDown(layerId) {
-        const index = state.layers.findIndex(l => l.id === layerId);
+    moveLayerDown(layerId) {
+        const index = this.layers.findIndex(l => l.id === layerId);
         if (index > 0) {
-            const newLayers = [...state.layers];
+            const newLayers = [...this.layers];
             [newLayers[index], newLayers[index - 1]] = [newLayers[index - 1], newLayers[index]];
-            socket.emit('reorderLayers', { roomCode: currentRoom(), layers: newLayers });
+            this.socket.emit('reorderLayers', { roomCode: this.currentRoomProvider(), layers: newLayers });
         }
     }
 
-    addLayerBtn.addEventListener('click', () => {
-        if (!canModifyLayers()) return;
-        if (state.layers.length >= 20) {
-            showToast('Limite de 20 calques atteinte', 'error');
+    handleAddLayer() {
+        if (!this.canModifyLayers()) return;
+        if (this.layers.length >= 20) {
+            this.showToast('Limite de 20 calques atteinte', 'error');
             return;
         }
         const newLayer = {
             id: 'layer-' + Date.now(),
-            name: 'Calque ' + (state.layers.length + 1),
-            order: state.layers.length,
-            creatorId: socket.id
+            name: 'Calque ' + (this.layers.length + 1),
+            order: this.layers.length,
+            creatorId: this.socket.id
         };
-        socket.emit('addLayer', { roomCode: currentRoom(), layer: newLayer });
-    });
+        this.socket.emit('addLayer', { roomCode: this.currentRoomProvider(), layer: newLayer });
+    }
 
-    // Public API to update state from outside (e.g. socket events)
-    return {
-        createLayerCanvas,
-        updateLayersUI,
-        setLayers: (newLayers) => { state.layers = newLayers; },
-        getLayers: () => state.layers,
-        setActiveLayerId: (id) => { state.activeLayerId = id; },
-        getActiveLayerId: () => state.activeLayerId,
-        getLayerCanvases: () => state.layerCanvases,
-        deleteLayerCanvas: (id) => { delete state.layerCanvases[id]; },
-        updatePlayerLayer: (userId, layerId) => {
-            state.playerLayers[userId] = layerId;
-            updateLayersUI();
-        },
-        setShowLayerAvatars: (visible) => {
-            state.showLayerAvatars = visible;
-            updateLayersUI();
-        }
-    };
+    // Public API
+    setLayers(newLayers) { this.layers = newLayers; }
+    getLayers() { return this.layers; }
+    setActiveLayerId(id) { this.activeLayerId = id; }
+    getActiveLayerId() { return this.activeLayerId; }
+    getLayerCanvases() { return this.layerCanvases; }
+    deleteLayerCanvas(id) { delete this.layerCanvases[id]; }
+    updatePlayerLayer(userId, layerId) {
+        this.playerLayers[userId] = layerId;
+        this.updateLayersUI();
+    }
+    setShowLayerAvatars(visible) {
+        this.showLayerAvatars = visible;
+        this.updateLayersUI();
+    }
 }

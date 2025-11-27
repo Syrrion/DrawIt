@@ -1,6 +1,15 @@
 import { canvas, ctx, socket } from './dom-elements.js';
 import { state } from './state.js';
-import { render } from './canvas-manager.js';
+
+let renderCallback = null;
+
+export function setRenderCallback(callback) {
+    renderCallback = callback;
+}
+
+function render() {
+    if (renderCallback) renderCallback();
+}
 
 let selectionRect = null; // { x, y, w, h }
 let isSelecting = false;
@@ -22,7 +31,7 @@ export function handleSelectionMouseDown(e, x, y) {
     } else {
         // Start new selection
         isSelecting = true;
-        selectionRect = { x, y, w: 0, h: 0 };
+        selectionRect = { x: Math.floor(x), y: Math.floor(y), w: 0, h: 0 };
         selectionContent = null;
         selectionOffset = { x: 0, y: 0 };
         render(); // Clear previous overlay
@@ -31,8 +40,8 @@ export function handleSelectionMouseDown(e, x, y) {
 
 export function handleSelectionMouseMove(e, x, y) {
     if (isSelecting) {
-        selectionRect.w = x - selectionRect.x;
-        selectionRect.h = y - selectionRect.y;
+        selectionRect.w = Math.floor(x) - selectionRect.x;
+        selectionRect.h = Math.floor(y) - selectionRect.y;
         render();
         drawSelectionOverlay(ctx, selectionRect);
     } else if (isDraggingContent) {
@@ -100,10 +109,17 @@ function captureSelectionContent() {
     const layerCtx = state.layerCanvases[state.activeLayerId].ctx;
     
     // Capture content
-    selectionContent = layerCtx.getImageData(selectionRect.x, selectionRect.y, selectionRect.w, selectionRect.h);
+    const x = Math.floor(selectionRect.x);
+    const y = Math.floor(selectionRect.y);
+    const w = Math.floor(selectionRect.w);
+    const h = Math.floor(selectionRect.h);
+
+    if (w === 0 || h === 0) return;
+
+    selectionContent = layerCtx.getImageData(x, y, w, h);
     
     // Clear from source
-    layerCtx.clearRect(selectionRect.x, selectionRect.y, selectionRect.w, selectionRect.h);
+    layerCtx.clearRect(x, y, w, h);
     
     // We need to broadcast this clear? 
     // For now, let's just handle local visual. 
@@ -155,7 +171,7 @@ function commitSelectionMove() {
     tempCanvas.getContext('2d').putImageData(selectionContent, 0, 0);
     
     layerCtx.globalCompositeOperation = 'source-over';
-    layerCtx.drawImage(tempCanvas, dest.x, dest.y);
+    layerCtx.drawImage(tempCanvas, Math.floor(dest.x), Math.floor(dest.y));
     
     // Broadcast
     socket.emit('draw', {
@@ -165,8 +181,8 @@ function commitSelectionMove() {
         srcY: selectionRect.y,
         w: selectionRect.w,
         h: selectionRect.h,
-        destX: dest.x,
-        destY: dest.y,
+        destX: Math.floor(dest.x),
+        destY: Math.floor(dest.y),
         layerId: state.activeLayerId
     });
     

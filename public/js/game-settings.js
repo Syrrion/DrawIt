@@ -1,52 +1,177 @@
 import { showToast } from './utils.js';
 
-export function initGameSettings(socket, isLeaderFn, getRoomCode, getPlayerCount) {
-    // Modal & Controls
-    const modal = document.getElementById('lobby-settings-modal');
-    const btnOpen = document.getElementById('btn-open-settings');
-    const btnView = document.getElementById('btn-view-settings');
-    const btnClose = document.getElementById('btn-close-settings');
-    const lobbyControls = document.getElementById('lobby-controls');
-    
-    // Settings Inputs
-    const cards = document.querySelectorAll('.gamemode-card');
-    const timeInput = document.getElementById('setting-drawtime');
-    const wordChoiceTimeInput = document.getElementById('setting-wordchoicetime');
-    const wordChoicesInput = document.getElementById('setting-wordchoices');
-    const roundsInput = document.getElementById('setting-rounds');
-    const fuzzyInput = document.getElementById('setting-fuzzy');
-    const hintsInput = document.getElementById('setting-hints');
-    const maxWordLengthInput = document.getElementById('setting-max-word-length');
-    const personalHintsInput = document.getElementById('setting-personal-hints');
-    const guessWordSettings = document.getElementById('settings-guess-word');
-    
-    // Actions
-    const startBtn = document.getElementById('btn-start-game');
-    const waitingMsg = document.getElementById('waiting-message');
+export class GameSettingsManager {
+    constructor(socket, isLeaderProvider, roomCodeProvider, playerCountProvider) {
+        this.socket = socket;
+        this.isLeaderProvider = isLeaderProvider;
+        this.roomCodeProvider = roomCodeProvider;
+        this.playerCountProvider = playerCountProvider;
 
-    if (!modal) return;
+        this.currentMode = 'guess-word';
+        this.previousHintsEnabled = true;
 
-    let currentMode = 'guess-word';
+        // Modal & Controls
+        this.modal = document.getElementById('lobby-settings-modal');
+        this.btnOpen = document.getElementById('btn-open-settings');
+        this.btnView = document.getElementById('btn-view-settings');
+        this.btnClose = document.getElementById('btn-close-settings');
+        this.lobbyControls = document.getElementById('lobby-controls');
+        
+        // Settings Inputs
+        this.cards = document.querySelectorAll('.gamemode-card');
+        this.timeInput = document.getElementById('setting-drawtime');
+        this.wordChoiceTimeInput = document.getElementById('setting-wordchoicetime');
+        this.wordChoicesInput = document.getElementById('setting-wordchoices');
+        this.roundsInput = document.getElementById('setting-rounds');
+        this.fuzzyInput = document.getElementById('setting-fuzzy');
+        this.hintsInput = document.getElementById('setting-hints');
+        this.maxWordLengthInput = document.getElementById('setting-max-word-length');
+        this.personalHintsInput = document.getElementById('setting-personal-hints');
+        this.guessWordSettings = document.getElementById('settings-guess-word');
+        
+        // Actions
+        this.startBtn = document.getElementById('btn-start-game');
+        this.waitingMsg = document.getElementById('waiting-message');
 
-    // --- UI Helpers ---
+        this.init();
+    }
 
-    function openModal() {
-        modal.classList.remove('hidden');
-        if (isLeaderFn()) {
-            socket.emit('leaderConfiguring', { roomCode: getRoomCode(), isConfiguring: true });
+    init() {
+        if (!this.modal) return;
+
+        // Modal Triggers
+        if (this.btnOpen) this.btnOpen.addEventListener('click', () => this.openModal());
+        if (this.btnView) this.btnView.addEventListener('click', () => this.openModal());
+        if (this.btnClose) this.btnClose.addEventListener('click', () => this.closeModal());
+
+        // Game Mode Cards
+        this.cards.forEach(card => {
+            card.addEventListener('click', () => {
+                if (!this.isLeaderProvider()) return;
+                const mode = card.dataset.mode;
+                this.selectCard(mode);
+                this.emitSettingsUpdate();
+            });
+        });
+
+        // Inputs
+        this.timeInput.addEventListener('change', () => this.emitSettingsUpdate());
+        this.wordChoiceTimeInput.addEventListener('change', () => this.emitSettingsUpdate());
+        this.wordChoicesInput.addEventListener('change', () => this.emitSettingsUpdate());
+        this.roundsInput.addEventListener('change', () => {
+            this.updatePersonalHints();
+            // emitSettingsUpdate is called inside updatePersonalHints
+        });
+        if (this.fuzzyInput) this.fuzzyInput.addEventListener('change', () => this.emitSettingsUpdate());
+        if (this.hintsInput) this.hintsInput.addEventListener('change', () => {
+            this.updatePersonalHints();
+        });
+        if (this.maxWordLengthInput) this.maxWordLengthInput.addEventListener('change', () => this.emitSettingsUpdate());
+        if (this.personalHintsInput) {
+            this.personalHintsInput.addEventListener('input', (e) => {
+                document.getElementById('setting-personal-hints-val').textContent = e.target.value;
+            });
+            // We disable manual change if rule is active, but keep listener just in case
+            this.personalHintsInput.addEventListener('change', () => this.emitSettingsUpdate());
+        }
+
+        // Start Game
+        this.startBtn.addEventListener('click', () => {
+            if (!this.isLeaderProvider()) return;
+            
+            if (this.playerCountProvider && this.playerCountProvider() < 2) {
+                showToast('Il faut au moins 2 joueurs pour lancer la partie !', 'error');
+                return;
+            }
+
+            this.socket.emit('startGame', this.roomCodeProvider());
+            this.closeModal();
+        });
+
+        // Socket Listeners
+        this.socket.on('userJoined', () => {
+            if (this.isLeaderProvider()) setTimeout(() => this.updatePersonalHints(), 100);
+        });
+        this.socket.on('userLeft', () => {
+            if (this.isLeaderProvider()) setTimeout(() => this.updatePersonalHints(), 100);
+        });
+        this.socket.on('switchRole', () => {
+             if (this.isLeaderProvider()) setTimeout(() => this.updatePersonalHints(), 100);
+        });
+
+        this.socket.on('roomJoined', (data) => {
+            if (data.settings) {
+                const s = data.settings;
+                if (this.currentMode !== s.mode) this.selectCard(s.mode);
+                if (this.timeInput) this.timeInput.value = s.drawTime;
+                if (this.wordChoiceTimeInput) this.wordChoiceTimeInput.value = s.wordChoiceTime;
+                if (this.wordChoicesInput) this.wordChoicesInput.value = s.wordChoices;
+                if (this.roundsInput) this.roundsInput.value = s.rounds;
+                if (this.fuzzyInput) this.fuzzyInput.checked = s.allowFuzzy;
+                if (this.hintsInput) this.hintsInput.checked = s.hintsEnabled;
+                if (this.maxWordLengthInput) this.maxWordLengthInput.value = s.maxWordLength || 20;
+                if (this.personalHintsInput) {
+                    this.personalHintsInput.value = s.personalHints;
+                    const valDisplay = document.getElementById('setting-personal-hints-val');
+                    if (valDisplay) valDisplay.textContent = s.personalHints;
+                }
+                
+                // If I am leader, enforce the rule immediately
+                if (this.isLeaderProvider()) {
+                    setTimeout(() => this.updatePersonalHints(), 100);
+                } else {
+                    // Even if not leader, update visibility
+                    setTimeout(() => this.updatePersonalHints(), 100);
+                }
+            }
+        });
+
+        this.socket.on('roomSettingsUpdated', (settings) => {
+            if (this.currentMode !== settings.mode) {
+                this.selectCard(settings.mode);
+            }
+            if (this.timeInput.value != settings.drawTime) this.timeInput.value = settings.drawTime;
+            if (this.wordChoiceTimeInput.value != settings.wordChoiceTime) this.wordChoiceTimeInput.value = settings.wordChoiceTime;
+            if (this.wordChoicesInput.value != settings.wordChoices) this.wordChoicesInput.value = settings.wordChoices;
+            if (this.roundsInput.value != settings.rounds) this.roundsInput.value = settings.rounds;
+            if (this.fuzzyInput && this.fuzzyInput.checked !== settings.allowFuzzy) this.fuzzyInput.checked = settings.allowFuzzy;
+            if (this.hintsInput && settings.hintsEnabled !== undefined && this.hintsInput.checked !== settings.hintsEnabled) {
+                this.hintsInput.checked = settings.hintsEnabled;
+                this.updatePersonalHints();
+            }
+            if (this.maxWordLengthInput && settings.maxWordLength !== undefined && this.maxWordLengthInput.value != settings.maxWordLength) this.maxWordLengthInput.value = settings.maxWordLength;
+            if (this.personalHintsInput && settings.personalHints !== undefined) {
+                this.personalHintsInput.value = settings.personalHints;
+                document.getElementById('setting-personal-hints-val').textContent = settings.personalHints;
+            }
+        });
+
+        this.socket.on('gameStateChanged', (state) => {
+            if (state === 'LOBBY') {
+                this.lobbyControls.classList.remove('hidden');
+            } else {
+                this.lobbyControls.classList.add('hidden');
+                this.closeModal();
+            }
+        });
+    }
+
+    openModal() {
+        this.modal.classList.remove('hidden');
+        if (this.isLeaderProvider()) {
+            this.socket.emit('leaderConfiguring', { roomCode: this.roomCodeProvider(), isConfiguring: true });
         }
     }
 
-    function closeModal() {
-        modal.classList.add('hidden');
-        if (isLeaderFn()) {
-            socket.emit('leaderConfiguring', { roomCode: getRoomCode(), isConfiguring: false });
+    closeModal() {
+        this.modal.classList.add('hidden');
+        if (this.isLeaderProvider()) {
+            this.socket.emit('leaderConfiguring', { roomCode: this.roomCodeProvider(), isConfiguring: false });
         }
     }
 
-    function selectCard(mode) {
-        const cards = document.querySelectorAll('.gamemode-card');
-        cards.forEach(card => {
+    selectCard(mode) {
+        this.cards.forEach(card => {
             if (card.dataset.mode === mode) {
                 card.classList.add('selected');
             } else {
@@ -54,7 +179,7 @@ export function initGameSettings(socket, isLeaderFn, getRoomCode, getPlayerCount
             }
         });
         
-        currentMode = mode;
+        this.currentMode = mode;
         
         // Hide all settings sections first
         const allSettings = document.querySelectorAll('[id^="settings-"]');
@@ -72,79 +197,75 @@ export function initGameSettings(socket, isLeaderFn, getRoomCode, getPlayerCount
             
             // Specific adjustments
             if (mode === 'custom-word') {
-                if (wordChoicesInput) wordChoicesInput.closest('.setting-group').classList.add('hidden');
-                if (maxWordLengthInput) maxWordLengthInput.closest('.setting-group').classList.remove('hidden');
+                if (this.wordChoicesInput) this.wordChoicesInput.closest('.setting-group').classList.add('hidden');
+                if (this.maxWordLengthInput) this.maxWordLengthInput.closest('.setting-group').classList.remove('hidden');
             } else {
-                if (wordChoicesInput) wordChoicesInput.closest('.setting-group').classList.remove('hidden');
-                if (maxWordLengthInput) maxWordLengthInput.closest('.setting-group').classList.add('hidden');
+                if (this.wordChoicesInput) this.wordChoicesInput.closest('.setting-group').classList.remove('hidden');
+                if (this.maxWordLengthInput) this.maxWordLengthInput.closest('.setting-group').classList.add('hidden');
             }
         }
     }
 
-    // --- State Management ---
-
-    function updateControlsState() {
-        const isLeader = isLeaderFn();
+    updateControlsState() {
+        const isLeader = this.isLeaderProvider();
         const disabled = !isLeader;
 
         // Inputs
-        timeInput.disabled = disabled;
-        wordChoiceTimeInput.disabled = disabled;
-        wordChoicesInput.disabled = disabled;
-        roundsInput.disabled = disabled;
-        if (fuzzyInput) fuzzyInput.disabled = disabled;
-        if (hintsInput) hintsInput.disabled = disabled;
-        if (maxWordLengthInput) maxWordLengthInput.disabled = disabled;
-        if (personalHintsInput) personalHintsInput.disabled = disabled;
+        this.timeInput.disabled = disabled;
+        this.wordChoiceTimeInput.disabled = disabled;
+        this.wordChoicesInput.disabled = disabled;
+        this.roundsInput.disabled = disabled;
+        if (this.fuzzyInput) this.fuzzyInput.disabled = disabled;
+        if (this.hintsInput) this.hintsInput.disabled = disabled;
+        if (this.maxWordLengthInput) this.maxWordLengthInput.disabled = disabled;
+        if (this.personalHintsInput) this.personalHintsInput.disabled = disabled;
         
         // Cards interaction
-        cards.forEach(card => {
+        this.cards.forEach(card => {
             card.style.pointerEvents = isLeader ? 'auto' : 'none';
             card.style.opacity = isLeader ? '1' : '0.7';
         });
 
         // Buttons visibility
         if (isLeader) {
-            if (btnOpen) btnOpen.classList.remove('hidden');
-            if (btnView) btnView.classList.add('hidden');
-            waitingMsg.classList.add('hidden');
-            startBtn.classList.remove('hidden'); // Inside modal
+            if (this.btnOpen) this.btnOpen.classList.remove('hidden');
+            if (this.btnView) this.btnView.classList.add('hidden');
+            this.waitingMsg.classList.add('hidden');
+            this.startBtn.classList.remove('hidden'); // Inside modal
         } else {
             // Non-leader can see settings but not edit
-            if (btnOpen) btnOpen.classList.add('hidden');
-            if (btnView) btnView.classList.remove('hidden');
-            waitingMsg.classList.remove('hidden');
-            startBtn.classList.add('hidden'); // Inside modal
+            if (this.btnOpen) this.btnOpen.classList.add('hidden');
+            if (this.btnView) this.btnView.classList.remove('hidden');
+            this.waitingMsg.classList.remove('hidden');
+            this.startBtn.classList.add('hidden'); // Inside modal
         }
     }
 
-    function emitSettingsUpdate() {
-        if (!isLeaderFn()) return;
+    emitSettingsUpdate() {
+        if (!this.isLeaderProvider()) return;
         const settings = {
-            mode: currentMode,
-            drawTime: parseInt(timeInput.value),
-            wordChoiceTime: parseInt(wordChoiceTimeInput.value),
-            wordChoices: parseInt(wordChoicesInput.value),
-            rounds: parseInt(roundsInput.value),
-            allowFuzzy: fuzzyInput ? fuzzyInput.checked : false,
-            hintsEnabled: hintsInput ? hintsInput.checked : true,
-            maxWordLength: maxWordLengthInput ? parseInt(maxWordLengthInput.value) : 20,
-            personalHints: personalHintsInput ? parseInt(personalHintsInput.value) : 3
+            mode: this.currentMode,
+            drawTime: parseInt(this.timeInput.value),
+            wordChoiceTime: parseInt(this.wordChoiceTimeInput.value),
+            wordChoices: parseInt(this.wordChoicesInput.value),
+            rounds: parseInt(this.roundsInput.value),
+            allowFuzzy: this.fuzzyInput ? this.fuzzyInput.checked : false,
+            hintsEnabled: this.hintsInput ? this.hintsInput.checked : true,
+            maxWordLength: this.maxWordLengthInput ? parseInt(this.maxWordLengthInput.value) : 20,
+            personalHints: this.personalHintsInput ? parseInt(this.personalHintsInput.value) : 3
         };
 
-        socket.emit('updateSettings', {
-            roomCode: getRoomCode(),
+        this.socket.emit('updateSettings', {
+            roomCode: this.roomCodeProvider(),
             settings
         });
     }
 
-    let previousHintsEnabled = true;
+    updatePersonalHints() {
+        if (!this.personalHintsInput) return;
 
-    function updatePersonalHints() {
-        if (!personalHintsInput) return;
-
-        const hintsEnabled = hintsInput ? hintsInput.checked : true;
-        const group = personalHintsInput.closest('.setting-group');
+        const hintsEnabled = this.hintsInput ? this.hintsInput.checked : true;
+        const group = this.personalHintsInput.closest('.setting-group');
 
         // Visibility Logic (Apply to everyone)
         if (hintsEnabled) {
@@ -153,167 +274,51 @@ export function initGameSettings(socket, isLeaderFn, getRoomCode, getPlayerCount
             group.classList.remove('hidden');
         }
 
-        if (isLeaderFn()) {
-            const activePlayers = getPlayerCount ? getPlayerCount() : 0;
-            const rounds = parseInt(roundsInput.value) || 3;
+        if (this.isLeaderProvider()) {
+            const activePlayers = this.playerCountProvider ? this.playerCountProvider() : 0;
+            const rounds = parseInt(this.roundsInput.value) || 3;
             
             // Calculate Max: rounds * 3 + players * 2
             const maxHints = (rounds * 3) + (activePlayers * 2);
-            personalHintsInput.max = maxHints;
+            this.personalHintsInput.max = maxHints;
 
             if (hintsEnabled) {
                 // Automatic hints enabled -> Personal hints = 0
-                personalHintsInput.value = 0;
-                personalHintsInput.disabled = true;
+                this.personalHintsInput.value = 0;
+                this.personalHintsInput.disabled = true;
             } else {
                 // Automatic hints disabled
-                personalHintsInput.disabled = false;
+                this.personalHintsInput.disabled = false;
                 
                 // If transitioning from Enabled to Disabled, set a default value
                 // Default: Players + Rounds (from previous rule)
-                if (previousHintsEnabled) {
-                    personalHintsInput.value = activePlayers + rounds;
+                if (this.previousHintsEnabled) {
+                    this.personalHintsInput.value = activePlayers + rounds;
                 }
 
                 // Ensure value is within bounds
-                if (parseInt(personalHintsInput.value) > maxHints) {
-                    personalHintsInput.value = maxHints;
+                if (parseInt(this.personalHintsInput.value) > maxHints) {
+                    this.personalHintsInput.value = maxHints;
                 }
             }
             
-            previousHintsEnabled = hintsEnabled;
+            this.previousHintsEnabled = hintsEnabled;
 
             // Update display
             const valDisplay = document.getElementById('setting-personal-hints-val');
-            if (valDisplay) valDisplay.textContent = personalHintsInput.value;
+            if (valDisplay) valDisplay.textContent = this.personalHintsInput.value;
 
-            emitSettingsUpdate();
+            this.emitSettingsUpdate();
         } else {
-            personalHintsInput.disabled = true;
+            this.personalHintsInput.disabled = true;
         }
     }
 
-    // --- Event Listeners ---
-
-    // Modal Triggers
-    if (btnOpen) btnOpen.addEventListener('click', openModal);
-    if (btnView) btnView.addEventListener('click', openModal);
-    if (btnClose) btnClose.addEventListener('click', closeModal);
-
-    // Game Mode Cards
-    // Re-query cards because we might add new ones dynamically or just to be safe
-    document.querySelectorAll('.gamemode-card').forEach(card => {
-        card.addEventListener('click', () => {
-            if (!isLeaderFn()) return;
-            const mode = card.dataset.mode;
-            selectCard(mode);
-            emitSettingsUpdate();
-        });
-    });
-    // Inputs
-    timeInput.addEventListener('change', emitSettingsUpdate);
-    wordChoiceTimeInput.addEventListener('change', emitSettingsUpdate);
-    wordChoicesInput.addEventListener('change', emitSettingsUpdate);
-    roundsInput.addEventListener('change', () => {
-        updatePersonalHints();
-        // emitSettingsUpdate is called inside updatePersonalHints
-    });
-    if (fuzzyInput) fuzzyInput.addEventListener('change', emitSettingsUpdate);
-    if (hintsInput) hintsInput.addEventListener('change', () => {
-        updatePersonalHints();
-    });
-    if (maxWordLengthInput) maxWordLengthInput.addEventListener('change', emitSettingsUpdate);
-    if (personalHintsInput) {
-        personalHintsInput.addEventListener('input', (e) => {
-            document.getElementById('setting-personal-hints-val').textContent = e.target.value;
-        });
-        // We disable manual change if rule is active, but keep listener just in case
-        personalHintsInput.addEventListener('change', emitSettingsUpdate);
+    show() {
+        this.lobbyControls.classList.remove('hidden');
     }
 
-    // Start Game
-    startBtn.addEventListener('click', () => {
-        if (!isLeaderFn()) return;
-        
-        if (getPlayerCount && getPlayerCount() < 2) {
-            showToast('Il faut au moins 2 joueurs pour lancer la partie !', 'error');
-            return;
-        }
-
-        socket.emit('startGame', getRoomCode());
-        closeModal();
-    });
-
-    // Socket Listeners
-    socket.on('userJoined', () => {
-        if (isLeaderFn()) setTimeout(updatePersonalHints, 100); // Small delay to ensure player count is updated
-    });
-    socket.on('userLeft', () => {
-        if (isLeaderFn()) setTimeout(updatePersonalHints, 100);
-    });
-    socket.on('switchRole', () => { // If someone switches role, active count changes
-         if (isLeaderFn()) setTimeout(updatePersonalHints, 100);
-    });
-
-    socket.on('roomJoined', (data) => {
-        if (data.settings) {
-            const s = data.settings;
-            if (currentMode !== s.mode) selectCard(s.mode);
-            if (timeInput) timeInput.value = s.drawTime;
-            if (wordChoiceTimeInput) wordChoiceTimeInput.value = s.wordChoiceTime;
-            if (wordChoicesInput) wordChoicesInput.value = s.wordChoices;
-            if (roundsInput) roundsInput.value = s.rounds;
-            if (fuzzyInput) fuzzyInput.checked = s.allowFuzzy;
-            if (hintsInput) hintsInput.checked = s.hintsEnabled;
-            if (maxWordLengthInput) maxWordLengthInput.value = s.maxWordLength || 20;
-            if (personalHintsInput) {
-                personalHintsInput.value = s.personalHints;
-                const valDisplay = document.getElementById('setting-personal-hints-val');
-                if (valDisplay) valDisplay.textContent = s.personalHints;
-            }
-            
-            // If I am leader, enforce the rule immediately
-            if (isLeaderFn()) {
-                setTimeout(updatePersonalHints, 100);
-            } else {
-                // Even if not leader, update visibility
-                setTimeout(updatePersonalHints, 100);
-            }
-        }
-    });
-
-    socket.on('roomSettingsUpdated', (settings) => {
-        if (currentMode !== settings.mode) {
-            selectCard(settings.mode);
-        }
-        if (timeInput.value != settings.drawTime) timeInput.value = settings.drawTime;
-        if (wordChoiceTimeInput.value != settings.wordChoiceTime) wordChoiceTimeInput.value = settings.wordChoiceTime;
-        if (wordChoicesInput.value != settings.wordChoices) wordChoicesInput.value = settings.wordChoices;
-        if (roundsInput.value != settings.rounds) roundsInput.value = settings.rounds;
-        if (fuzzyInput && fuzzyInput.checked !== settings.allowFuzzy) fuzzyInput.checked = settings.allowFuzzy;
-        if (hintsInput && settings.hintsEnabled !== undefined && hintsInput.checked !== settings.hintsEnabled) {
-            hintsInput.checked = settings.hintsEnabled;
-            updatePersonalHints();
-        }
-        if (maxWordLengthInput && settings.maxWordLength !== undefined && maxWordLengthInput.value != settings.maxWordLength) maxWordLengthInput.value = settings.maxWordLength;
-        if (personalHintsInput && settings.personalHints !== undefined) {
-            personalHintsInput.value = settings.personalHints;
-            document.getElementById('setting-personal-hints-val').textContent = settings.personalHints;
-        }
-    });
-
-    socket.on('gameStateChanged', (state) => {
-        if (state === 'LOBBY') {
-            lobbyControls.classList.remove('hidden');
-        } else {
-            lobbyControls.classList.add('hidden');
-            closeModal();
-        }
-    });
-
-    return {
-        updateControlsState,
-        show: () => lobbyControls.classList.remove('hidden'),
-        hide: () => lobbyControls.classList.add('hidden')
-    };
+    hide() {
+        this.lobbyControls.classList.add('hidden');
+    }
 }

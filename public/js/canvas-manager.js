@@ -4,32 +4,57 @@ import {
 } from './dom-elements.js';
 import { state } from './state.js';
 import { performDraw, performFloodFill } from './draw.js';
-import { handlePipette } from './tools-manager.js';
-import { handleSelectionMouseDown, handleSelectionMouseMove, handleSelectionMouseUp, drawSelectionOverlay } from './selection-manager.js';
+import { handleSelectionMouseDown, handleSelectionMouseMove, handleSelectionMouseUp, drawSelectionOverlay, setRenderCallback } from './selection-manager.js';
 
-export function render() {
-    // Clear screen
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Draw layers in order
-    state.layers.forEach(layer => {
-        const layerObj = state.layerCanvases[layer.id];
-        if (layerObj && layerObj.visible) {
-            ctx.drawImage(layerObj.canvas, 0, 0);
-        }
-    });
-}
+export class CanvasManager {
+    constructor(cursorManager, cameraManager, toolsManager) {
+        this.cursorManager = cursorManager;
+        this.cameraManager = cameraManager;
+        this.toolsManager = toolsManager;
+        
+        this.lastForbiddenTime = 0;
+        
+        this.init();
+    }
 
-export function initCanvasManager(cursorManager, cameraManager) {
-    canvas.width = 800;
-    canvas.height = 600;
+    render() {
+        // Clear screen
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw layers in order
+        state.layers.forEach(layer => {
+            const layerObj = state.layerCanvases[layer.id];
+            if (layerObj && layerObj.visible) {
+                ctx.drawImage(layerObj.canvas, 0, 0);
+            }
+        });
+    }
 
-    let lastForbiddenTime = 0;
-    function showForbiddenIcon(canvasX, canvasY) {
+    init() {
+        setRenderCallback(this.render.bind(this));
+
+        canvas.width = 800;
+        canvas.height = 600;
+
+        canvas.addEventListener('wheel', this.handleWheel.bind(this));
+        canvas.addEventListener('mousedown', this.handleMouseDown.bind(this));
+        canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
+        window.addEventListener('mouseup', this.handleMouseUp.bind(this));
+        canvas.addEventListener('mouseout', this.handleMouseOut.bind(this));
+        canvas.addEventListener('mouseenter', this.handleMouseEnter.bind(this));
+        
+        canvas.addEventListener('touchstart', this.handleTouch.bind(this), { passive: false });
+        canvas.addEventListener('touchmove', this.handleTouch.bind(this), { passive: false });
+        canvas.addEventListener('touchend', this.handleTouch.bind(this), { passive: false });
+
+        canvas.addEventListener('contextmenu', e => e.preventDefault());
+    }
+
+    showForbiddenIcon(canvasX, canvasY) {
         const now = Date.now();
-        if (now - lastForbiddenTime < 500) return; // Throttle to avoid spamming
-        lastForbiddenTime = now;
+        if (now - this.lastForbiddenTime < 500) return; // Throttle to avoid spamming
+        this.lastForbiddenTime = now;
 
         const icon = document.createElement('div');
         icon.className = 'forbidden-icon';
@@ -52,7 +77,7 @@ export function initCanvasManager(cursorManager, cameraManager) {
         }, 800);
     }
 
-    function getMousePos(e) {
+    getMousePos(e) {
         const rect = canvas.getBoundingClientRect();
         const scaleX = canvas.width / rect.width;
         const scaleY = canvas.height / rect.height;
@@ -63,20 +88,20 @@ export function initCanvasManager(cursorManager, cameraManager) {
         };
     }
 
-    function drawOnCanvas(x0, y0, x1, y1, color, size, opacity, tool, emit) {
+    drawOnCanvas(x0, y0, x1, y1, color, size, opacity, tool, emit) {
         if (!state.activeLayerId || !state.layerCanvases[state.activeLayerId]) return;
         
         // Prevent drawing on hidden layer
         if (!state.layerCanvases[state.activeLayerId].visible) {
             if (emit) {
-                showForbiddenIcon(x1, y1);
+                this.showForbiddenIcon(x1, y1);
             }
             return;
         }
 
         const targetCtx = state.layerCanvases[state.activeLayerId].ctx;
         performDraw(targetCtx, x0, y0, x1, y1, color, size, opacity, tool);
-        render();
+        this.render();
 
         if (emit) {
             socket.emit('draw', {
@@ -89,7 +114,7 @@ export function initCanvasManager(cursorManager, cameraManager) {
         }
     }
 
-    canvas.addEventListener('wheel', (e) => {
+    handleWheel(e) {
         if (e.ctrlKey) {
             e.preventDefault();
             const delta = Math.sign(e.deltaY) * -5; // Up is positive (increase size)
@@ -121,10 +146,10 @@ export function initCanvasManager(cursorManager, cameraManager) {
             penOpacityInput.dispatchEvent(new Event('input'));
             return;
         }
-        cameraManager.handleWheel(e);
-    });
+        this.cameraManager.handleWheel(e);
+    }
 
-    canvas.addEventListener('mousedown', (e) => {
+    handleMouseDown(e) {
         if (e.button === 1 || (e.button === 0 && e.altKey)) { // Middle click or Alt+Click
             state.isPanning = true;
             state.startPanX = e.clientX;
@@ -141,10 +166,10 @@ export function initCanvasManager(cursorManager, cameraManager) {
             return;
         }
 
-        const { x, y } = getMousePos(e);
+        const { x, y } = this.getMousePos(e);
 
         if (state.currentTool === 'pipette') {
-            handlePipette(x, y);
+            this.toolsManager.handlePipette(x, y);
             return;
         }
 
@@ -159,12 +184,12 @@ export function initCanvasManager(cursorManager, cameraManager) {
             if (state.activeLayerId && state.layerCanvases[state.activeLayerId]) {
                 // Prevent filling on hidden layer
                 if (!state.layerCanvases[state.activeLayerId].visible) {
-                    showForbiddenIcon(x, y);
+                    this.showForbiddenIcon(x, y);
                     return;
                 }
 
                 performFloodFill(state.layerCanvases[state.activeLayerId].ctx, 800, 600, Math.floor(x), Math.floor(y), color);
-                render();
+                this.render();
                 
                 socket.emit('draw', {
                     roomCode: state.currentRoom,
@@ -187,10 +212,10 @@ export function initCanvasManager(cursorManager, cameraManager) {
         state.lastY = y;
         state.shapeStartX = x;
         state.shapeStartY = y;
-    });
+    }
 
-    canvas.addEventListener('mousemove', (e) => {
-        const { x, y } = getMousePos(e);
+    handleMouseMove(e) {
+        const { x, y } = this.getMousePos(e);
         
         // Update local cursor position
         if (localCursor) {
@@ -200,13 +225,13 @@ export function initCanvasManager(cursorManager, cameraManager) {
 
         // Cursor Tracking
         if (!state.isSpectator && (state.currentGameState !== 'PLAYING' || socket.id === state.currentDrawerId)) {
-            cursorManager.emitCursorMove(x, y);
+            this.cursorManager.emitCursorMove(x, y);
         }
 
         if (state.isPanning) {
             const dx = e.clientX - state.startPanX;
             const dy = e.clientY - state.startPanY;
-            cameraManager.pan(dx, dy);
+            this.cameraManager.pan(dx, dy);
             state.startPanX = e.clientX;
             state.startPanY = e.clientY;
             return;
@@ -228,18 +253,18 @@ export function initCanvasManager(cursorManager, cameraManager) {
 
         if (['rectangle', 'circle', 'triangle', 'line'].includes(state.currentTool)) {
             // Preview shape
-            render();
+            this.render();
             performDraw(ctx, state.shapeStartX, state.shapeStartY, x, y, color, size, opacity, state.currentTool);
         } else {
-            drawOnCanvas(state.lastX, state.lastY, x, y, color, size, opacity, state.currentTool, true);
+            this.drawOnCanvas(state.lastX, state.lastY, x, y, color, size, opacity, state.currentTool, true);
             state.lastX = x;
             state.lastY = y;
         }
-    });
+    }
 
-    window.addEventListener('mouseup', (e) => {
+    handleMouseUp(e) {
         state.isPanning = false;
-        const { x, y } = getMousePos(e);
+        const { x, y } = this.getMousePos(e);
 
         if (state.currentTool === 'selection') {
             handleSelectionMouseUp(e, x, y);
@@ -253,27 +278,26 @@ export function initCanvasManager(cursorManager, cameraManager) {
 
             if (['rectangle', 'circle', 'triangle', 'line'].includes(state.currentTool) && state.hasMoved) {
                 // Finalize shape
-                drawOnCanvas(state.shapeStartX, state.shapeStartY, x, y, color, size, opacity, state.currentTool, true);
+                this.drawOnCanvas(state.shapeStartX, state.shapeStartY, x, y, color, size, opacity, state.currentTool, true);
             } else if (!state.hasMoved && state.currentTool !== 'fill' && !['rectangle', 'circle', 'triangle', 'line'].includes(state.currentTool)) {
                 // Dot for pen/eraser
-                drawOnCanvas(state.lastX, state.lastY, state.lastX, state.lastY, color, size, opacity, state.currentTool, true);
+                this.drawOnCanvas(state.lastX, state.lastY, state.lastX, state.lastY, color, size, opacity, state.currentTool, true);
             }
         }
         state.isDrawing = false;
         state.canvasSnapshot = null;
-    });
+    }
 
-    canvas.addEventListener('mouseout', () => {
+    handleMouseOut() {
         state.isPanning = false;
         if (localCursor) localCursor.classList.add('hidden');
-    });
+    }
 
-    canvas.addEventListener('mouseenter', () => {
+    handleMouseEnter() {
         if (localCursor) localCursor.classList.remove('hidden');
-    });
+    }
 
-    // Touch Support
-    function handleTouch(e) {
+    handleTouch(e) {
         if (e.type !== 'touchend' && e.touches.length !== 1) return;
         if (e.cancelable) e.preventDefault();
         
@@ -295,10 +319,4 @@ export function initCanvasManager(cursorManager, cameraManager) {
         
         canvas.dispatchEvent(mouseEvent);
     }
-
-    canvas.addEventListener('touchstart', handleTouch, { passive: false });
-    canvas.addEventListener('touchmove', handleTouch, { passive: false });
-    canvas.addEventListener('touchend', handleTouch, { passive: false });
-
-    canvas.addEventListener('contextmenu', e => e.preventDefault());
 }

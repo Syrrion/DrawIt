@@ -1,50 +1,57 @@
-export function initCamera(canvasWrapper, zoomLevelDisplay) {
-    let camera = { x: 0, y: 0, z: 1 };
-    let zoomTimeout;
+export class CameraManager {
+    constructor(canvasWrapper, zoomLevelDisplay) {
+        this.canvasWrapper = canvasWrapper;
+        this.zoomLevelDisplay = zoomLevelDisplay;
+        this.camera = { x: 0, y: 0, z: 1 };
+        this.zoomTimeout = null;
+    }
 
-    function updateCameraTransform() {
-        canvasWrapper.style.transform = `translate(${camera.x}px, ${camera.y}px) scale(${camera.z})`;
+    getCamera() {
+        return this.camera;
+    }
+
+    updateCameraTransform() {
+        this.canvasWrapper.style.transform = `translate(${this.camera.x}px, ${this.camera.y}px) scale(${this.camera.z})`;
         
-        zoomLevelDisplay.textContent = `${Math.round(camera.z * 100)}%`;
-        zoomLevelDisplay.classList.remove('hidden');
+        this.zoomLevelDisplay.textContent = `${Math.round(this.camera.z * 100)}%`;
+        this.zoomLevelDisplay.classList.remove('hidden');
         
-        if (zoomTimeout) clearTimeout(zoomTimeout);
-        zoomTimeout = setTimeout(() => {
-            zoomLevelDisplay.classList.add('hidden');
+        if (this.zoomTimeout) clearTimeout(this.zoomTimeout);
+        this.zoomTimeout = setTimeout(() => {
+            this.zoomLevelDisplay.classList.add('hidden');
         }, 1500);
     }
 
-    return {
-        getCamera: () => camera,
-        handleWheel: (e) => {
-            e.preventDefault();
-            
-            const zoomIntensity = 0.1;
-            const direction = e.deltaY < 0 ? 1 : -1;
-            const factor = 1 + (zoomIntensity * direction);
-            
-            const rect = canvasWrapper.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
-            
-            let newZ = camera.z * factor;
-            newZ = Math.max(0.1, Math.min(newZ, 5)); // Limit zoom
-            
-            // Adjust position to zoom towards mouse
-            camera.x += mouseX * (1 - newZ / camera.z);
-            camera.y += mouseY * (1 - newZ / camera.z);
-            camera.z = newZ;
-            
-            updateCameraTransform();
-        },
-        pan: (dx, dy) => {
-            camera.x += dx;
-            camera.y += dy;
-            updateCameraTransform();
-        },
-        reset: () => {
-            camera = { x: 0, y: 0, z: 1 };
-            updateCameraTransform();
-        }
-    };
+    handleWheel(e) {
+        e.preventDefault();
+        
+        const zoomIntensity = 0.1;
+        const direction = e.deltaY < 0 ? 1 : -1;
+        const factor = 1 + (zoomIntensity * direction);
+        
+        const rect = this.canvasWrapper.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        
+        let newZ = this.camera.z * factor;
+        newZ = Math.max(0.1, Math.min(newZ, 5)); // Limit zoom
+        
+        // Adjust position to zoom towards mouse
+        this.camera.x += mouseX * (1 - newZ / this.camera.z);
+        this.camera.y += mouseY * (1 - newZ / this.camera.z);
+        this.camera.z = newZ;
+        
+        this.updateCameraTransform();
+    }
+
+    pan(dx, dy) {
+        this.camera.x += dx;
+        this.camera.y += dy;
+        this.updateCameraTransform();
+    }
+
+    reset() {
+        this.camera = { x: 0, y: 0, z: 1 };
+        this.updateCameraTransform();
+    }
 }

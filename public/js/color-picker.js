@@ -1,128 +1,124 @@
 import { hexToRgb, rgbToHex, hsvToRgb, rgbToHsv, hsvToRgbString } from './utils.js';
 
-export function initColorPicker(
-    penColorInput, 
-    colorGrid, 
-    colorTrigger, 
-    colorPopover, 
-    currentColorPreview, 
-    avatarColorTrigger, 
-    avatarColorPreview, 
-    emojiColorTrigger,
-    emojiColorPreview,
-    setAvatarColor,
-    getActiveTarget,
-    setActiveTarget,
-    onColorChange
-) {
-    // Custom Picker Elements
-    const cpSaturationArea = document.getElementById('cp-saturation-area');
-    const cpSaturationCursor = document.getElementById('cp-saturation-cursor');
-    const cpHueArea = document.getElementById('cp-hue-area');
-    const cpHueCursor = document.getElementById('cp-hue-cursor');
-    const cpPreviewColor = document.getElementById('cp-preview-color');
-    const cpInputR = document.getElementById('cp-r');
-    const cpInputG = document.getElementById('cp-g');
-    const cpInputB = document.getElementById('cp-b');
+export class ColorPickerManager {
+    constructor(
+        penColorInput, 
+        colorGrid, 
+        colorTrigger, 
+        colorPopover, 
+        currentColorPreview, 
+        avatarColorTrigger, 
+        avatarColorPreview, 
+        emojiColorTrigger,
+        emojiColorPreview,
+        setAvatarColor,
+        getActiveTarget,
+        setActiveTarget,
+        onColorChange
+    ) {
+        this.penColorInput = penColorInput;
+        this.colorGrid = colorGrid;
+        this.colorTrigger = colorTrigger;
+        this.colorPopover = colorPopover;
+        this.currentColorPreview = currentColorPreview;
+        this.avatarColorTrigger = avatarColorTrigger;
+        this.avatarColorPreview = avatarColorPreview;
+        this.emojiColorTrigger = emojiColorTrigger;
+        this.emojiColorPreview = emojiColorPreview;
+        this.setAvatarColor = setAvatarColor;
+        this.getActiveTarget = getActiveTarget;
+        this.setActiveTarget = setActiveTarget;
+        this.onColorChange = onColorChange;
 
-    const presetColors = [
-        '#000000', '#ffffff', '#7f8c8d', '#c0392b', '#e74c3c',
-        '#d35400', '#e67e22', '#f39c12', '#f1c40f', '#27ae60',
-        '#2ecc71', '#16a085', '#1abc9c', '#2980b9', '#3498db',
-        '#8e44ad', '#9b59b6', '#2c3e50', '#34495e', '#95a5a6'
-    ];
+        // Custom Picker Elements
+        this.cpSaturationArea = document.getElementById('cp-saturation-area');
+        this.cpSaturationCursor = document.getElementById('cp-saturation-cursor');
+        this.cpHueArea = document.getElementById('cp-hue-area');
+        this.cpHueCursor = document.getElementById('cp-hue-cursor');
+        this.cpPreviewColor = document.getElementById('cp-preview-color');
+        this.cpInputR = document.getElementById('cp-r');
+        this.cpInputG = document.getElementById('cp-g');
+        this.cpInputB = document.getElementById('cp-b');
 
-    // Local state for picker internals
-    let cpState = { h: 0, s: 0, v: 0 };
-    let isDraggingSaturation = false;
-    let isDraggingHue = false;
-    let activeTrigger = null;
-    // We use the callbacks for external state (activeColorTarget, currentAvatarColor)
+        this.presetColors = [
+            '#000000', '#ffffff', '#7f8c8d', '#c0392b', '#e74c3c',
+            '#d35400', '#e67e22', '#f39c12', '#f1c40f', '#27ae60',
+            '#2ecc71', '#16a085', '#1abc9c', '#2980b9', '#3498db',
+            '#8e44ad', '#9b59b6', '#2c3e50', '#34495e', '#95a5a6'
+        ];
 
-    function init() {
+        // Local state for picker internals
+        this.cpState = { h: 0, s: 0, v: 0 };
+        this.isDraggingSaturation = false;
+        this.isDraggingHue = false;
+        this.activeTrigger = null;
+
+        this.init();
+    }
+
+    init() {
         // Generate grid
-        colorGrid.innerHTML = '';
-        presetColors.forEach(color => {
+        this.colorGrid.innerHTML = '';
+        this.presetColors.forEach(color => {
             const swatch = document.createElement('div');
             swatch.className = 'color-swatch';
             swatch.style.backgroundColor = color;
-            swatch.onclick = () => selectColor(color);
-            colorGrid.appendChild(swatch);
+            swatch.onclick = () => this.selectColor(color);
+            this.colorGrid.appendChild(swatch);
         });
 
         // Toggle popover for Game
-        colorTrigger.addEventListener('click', (e) => {
+        this.colorTrigger.addEventListener('click', (e) => {
             e.stopPropagation();
-            if (!colorPopover.classList.contains('hidden') && getActiveTarget() === 'game') {
-                colorPopover.classList.add('hidden');
+            if (!this.colorPopover.classList.contains('hidden') && this.getActiveTarget() === 'game') {
+                this.colorPopover.classList.add('hidden');
                 return;
             }
 
-            setActiveTarget('game');
-            activeTrigger = colorTrigger;
+            this.setActiveTarget('game');
+            this.activeTrigger = this.colorTrigger;
             // Initialize picker state from current game color
-            const rgb = hexToRgb(penColorInput.value);
+            const rgb = hexToRgb(this.penColorInput.value);
             if (rgb) {
-                cpState = rgbToHsv(rgb.r, rgb.g, rgb.b);
-                updateColorPickerVisuals();
-                cpPreviewColor.style.backgroundColor = penColorInput.value;
-                cpInputR.value = rgb.r;
-                cpInputG.value = rgb.g;
-                cpInputB.value = rgb.b;
+                this.cpState = rgbToHsv(rgb.r, rgb.g, rgb.b);
+                this.updateColorPickerVisuals();
+                this.cpPreviewColor.style.backgroundColor = this.penColorInput.value;
+                this.cpInputR.value = rgb.r;
+                this.cpInputG.value = rgb.g;
+                this.cpInputB.value = rgb.b;
             }
-            colorPopover.classList.remove('hidden');
-            positionPopover(colorTrigger);
+            this.colorPopover.classList.remove('hidden');
+            this.positionPopover(this.colorTrigger);
         });
 
         // Toggle popover for Avatar (Draw Mode)
-        if (avatarColorTrigger) {
-            avatarColorTrigger.addEventListener('click', (e) => {
+        if (this.avatarColorTrigger) {
+            this.avatarColorTrigger.addEventListener('click', (e) => {
                 e.stopPropagation();
-                if (!colorPopover.classList.contains('hidden') && getActiveTarget() === 'avatar' && activeTrigger === avatarColorTrigger) {
-                    colorPopover.classList.add('hidden');
+                if (!this.colorPopover.classList.contains('hidden') && this.getActiveTarget() === 'avatar' && this.activeTrigger === this.avatarColorTrigger) {
+                    this.colorPopover.classList.add('hidden');
                     return;
                 }
 
-                setActiveTarget('avatar');
-                activeTrigger = avatarColorTrigger;
-                openAvatarColorPicker(avatarColorTrigger, avatarColorPreview);
+                this.setActiveTarget('avatar');
+                this.activeTrigger = this.avatarColorTrigger;
+                this.openAvatarColorPicker(this.avatarColorTrigger, this.avatarColorPreview);
             });
         }
 
         // Toggle popover for Avatar (Emoji Mode)
-        if (emojiColorTrigger) {
-            emojiColorTrigger.addEventListener('click', (e) => {
+        if (this.emojiColorTrigger) {
+            this.emojiColorTrigger.addEventListener('click', (e) => {
                 e.stopPropagation();
-                if (!colorPopover.classList.contains('hidden') && getActiveTarget() === 'avatar' && activeTrigger === emojiColorTrigger) {
-                    colorPopover.classList.add('hidden');
+                if (!this.colorPopover.classList.contains('hidden') && this.getActiveTarget() === 'avatar' && this.activeTrigger === this.emojiColorTrigger) {
+                    this.colorPopover.classList.add('hidden');
                     return;
                 }
 
-                setActiveTarget('avatar');
-                activeTrigger = emojiColorTrigger;
-                openAvatarColorPicker(emojiColorTrigger, emojiColorPreview);
+                this.setActiveTarget('avatar');
+                this.activeTrigger = this.emojiColorTrigger;
+                this.openAvatarColorPicker(this.emojiColorTrigger, this.emojiColorPreview);
             });
-        }
-
-        function openAvatarColorPicker(trigger, preview) {
-            let currentAvatarColor = '#000000';
-            if (preview) {
-                 const styleColor = window.getComputedStyle(preview).backgroundColor;
-                 const hex = rgbToHex(styleColor);
-                 if (hex) currentAvatarColor = hex;
-            }
-
-            const rgb = hexToRgb(currentAvatarColor);
-            if (rgb) {
-                cpState = rgbToHsv(rgb.r, rgb.g, rgb.b);
-                updateColorPickerVisuals();
-                cpPreviewColor.style.backgroundColor = currentAvatarColor;
-                cpInputR.value = rgb.r;
-                cpInputG.value = rgb.g;
-                cpInputB.value = rgb.b;
-            }
-            colorPopover.classList.remove('hidden');
-            positionPopover(trigger);
         }
 
         // Close popover when clicking outside
@@ -131,61 +127,82 @@ export function initColorPicker(
             if (e.target.closest('.canvas-container')) return;
             if (e.target.closest('#avatar-canvas')) return; // Keep open when drawing on avatar
 
-            if (!colorPopover.contains(e.target) && 
-                !colorTrigger.contains(e.target) && 
-                (!avatarColorTrigger || !avatarColorTrigger.contains(e.target)) &&
-                (!emojiColorTrigger || !emojiColorTrigger.contains(e.target))) {
-                colorPopover.classList.add('hidden');
+            if (!this.colorPopover.contains(e.target) && 
+                !this.colorTrigger.contains(e.target) && 
+                (!this.avatarColorTrigger || !this.avatarColorTrigger.contains(e.target)) &&
+                (!this.emojiColorTrigger || !this.emojiColorTrigger.contains(e.target))) {
+                this.colorPopover.classList.add('hidden');
             }
         });
 
         // Prevent closing when clicking inside popover
-        colorPopover.addEventListener('click', (e) => {
+        this.colorPopover.addEventListener('click', (e) => {
             e.stopPropagation();
         });
 
         // Reposition on resize if open
         window.addEventListener('resize', () => {
-            if (!colorPopover.classList.contains('hidden') && activeTrigger) {
-                positionPopover(activeTrigger);
+            if (!this.colorPopover.classList.contains('hidden') && this.activeTrigger) {
+                this.positionPopover(this.activeTrigger);
             }
         });
 
         // Custom Picker Interactions
-        if (cpSaturationArea) {
-            cpSaturationArea.addEventListener('mousedown', (e) => {
-                isDraggingSaturation = true;
-                updateSaturationFromEvent(e);
+        if (this.cpSaturationArea) {
+            this.cpSaturationArea.addEventListener('mousedown', (e) => {
+                this.isDraggingSaturation = true;
+                this.updateSaturationFromEvent(e);
             });
 
-            cpHueArea.addEventListener('mousedown', (e) => {
-                isDraggingHue = true;
-                updateHueFromEvent(e);
+            this.cpHueArea.addEventListener('mousedown', (e) => {
+                this.isDraggingHue = true;
+                this.updateHueFromEvent(e);
             });
 
             window.addEventListener('mousemove', (e) => {
-                if (isDraggingSaturation) updateSaturationFromEvent(e);
-                if (isDraggingHue) updateHueFromEvent(e);
+                if (this.isDraggingSaturation) this.updateSaturationFromEvent(e);
+                if (this.isDraggingHue) this.updateHueFromEvent(e);
             });
 
             window.addEventListener('mouseup', () => {
-                isDraggingSaturation = false;
-                isDraggingHue = false;
+                this.isDraggingSaturation = false;
+                this.isDraggingHue = false;
             });
 
-            [cpInputR, cpInputG, cpInputB].forEach(input => {
-                input.addEventListener('input', updateColorFromRGBInputs);
+            [this.cpInputR, this.cpInputG, this.cpInputB].forEach(input => {
+                input.addEventListener('input', () => this.updateColorFromRGBInputs());
             });
         }
 
         // Initialize with default color
-        selectColor(penColorInput.value, false);
+        this.selectColor(this.penColorInput.value, false);
     }
 
-    function positionPopover(trigger) {
+    openAvatarColorPicker(trigger, preview) {
+        let currentAvatarColor = '#000000';
+        if (preview) {
+             const styleColor = window.getComputedStyle(preview).backgroundColor;
+             const hex = rgbToHex(styleColor);
+             if (hex) currentAvatarColor = hex;
+        }
+
+        const rgb = hexToRgb(currentAvatarColor);
+        if (rgb) {
+            this.cpState = rgbToHsv(rgb.r, rgb.g, rgb.b);
+            this.updateColorPickerVisuals();
+            this.cpPreviewColor.style.backgroundColor = currentAvatarColor;
+            this.cpInputR.value = rgb.r;
+            this.cpInputG.value = rgb.g;
+            this.cpInputB.value = rgb.b;
+        }
+        this.colorPopover.classList.remove('hidden');
+        this.positionPopover(trigger);
+    }
+
+    positionPopover(trigger) {
         const rect = trigger.getBoundingClientRect();
         // We need to show it to get dimensions, but it's already shown by the caller
-        const popoverRect = colorPopover.getBoundingClientRect();
+        const popoverRect = this.colorPopover.getBoundingClientRect();
         
         // Default: above the trigger, centered horizontally
         let top = rect.top - popoverRect.height - 10;
@@ -203,90 +220,90 @@ export function initColorPicker(
             left = window.innerWidth - popoverRect.width - 10;
         }
         
-        colorPopover.style.top = `${top}px`;
-        colorPopover.style.left = `${left}px`;
+        this.colorPopover.style.top = `${top}px`;
+        this.colorPopover.style.left = `${left}px`;
     }
 
-    function updateSaturationFromEvent(e) {
-        const rect = cpSaturationArea.getBoundingClientRect();
+    updateSaturationFromEvent(e) {
+        const rect = this.cpSaturationArea.getBoundingClientRect();
         let x = e.clientX - rect.left;
         let y = e.clientY - rect.top;
 
         x = Math.max(0, Math.min(x, rect.width));
         y = Math.max(0, Math.min(y, rect.height));
 
-        cpState.s = x / rect.width;
-        cpState.v = 1 - (y / rect.height);
+        this.cpState.s = x / rect.width;
+        this.cpState.v = 1 - (y / rect.height);
 
-        updateColorPickerVisuals();
-        updateColorFromPicker();
+        this.updateColorPickerVisuals();
+        this.updateColorFromPicker();
     }
 
-    function updateHueFromEvent(e) {
-        const rect = cpHueArea.getBoundingClientRect();
+    updateHueFromEvent(e) {
+        const rect = this.cpHueArea.getBoundingClientRect();
         let x = e.clientX - rect.left;
         x = Math.max(0, Math.min(x, rect.width));
 
-        cpState.h = (x / rect.width) * 360;
+        this.cpState.h = (x / rect.width) * 360;
 
-        updateColorPickerVisuals();
-        updateColorFromPicker();
+        this.updateColorPickerVisuals();
+        this.updateColorFromPicker();
     }
 
-    function updateColorFromRGBInputs() {
-        const r = parseInt(cpInputR.value) || 0;
-        const g = parseInt(cpInputG.value) || 0;
-        const b = parseInt(cpInputB.value) || 0;
+    updateColorFromRGBInputs() {
+        const r = parseInt(this.cpInputR.value) || 0;
+        const g = parseInt(this.cpInputG.value) || 0;
+        const b = parseInt(this.cpInputB.value) || 0;
 
         const hsv = rgbToHsv(r, g, b);
-        cpState = hsv;
+        this.cpState = hsv;
 
-        updateColorPickerVisuals();
+        this.updateColorPickerVisuals();
         
         const hex = rgbToHex(`rgb(${r}, ${g}, ${b})`);
-        applyColorSelection(hex);
+        this.applyColorSelection(hex);
     }
 
-    function updateColorPickerVisuals() {
+    updateColorPickerVisuals() {
         // Update Saturation Area Background (Hue)
-        cpSaturationArea.style.backgroundColor = `hsl(${cpState.h}, 100%, 50%)`;
+        this.cpSaturationArea.style.backgroundColor = `hsl(${this.cpState.h}, 100%, 50%)`;
 
         // Update Cursors
-        cpSaturationCursor.style.left = `${cpState.s * 100}%`;
-        cpSaturationCursor.style.top = `${(1 - cpState.v) * 100}%`;
-        cpHueCursor.style.left = `${(cpState.h / 360) * 100}%`;
+        this.cpSaturationCursor.style.left = `${this.cpState.s * 100}%`;
+        this.cpSaturationCursor.style.top = `${(1 - this.cpState.v) * 100}%`;
+        this.cpHueCursor.style.left = `${(this.cpState.h / 360) * 100}%`;
 
         // Update Cursor Colors for visibility
-        cpSaturationCursor.style.backgroundColor = hsvToRgbString(cpState.h, cpState.s, cpState.v);
+        this.cpSaturationCursor.style.backgroundColor = hsvToRgbString(this.cpState.h, this.cpState.s, this.cpState.v);
     }
 
-    function updateColorFromPicker() {
-        const rgb = hsvToRgb(cpState.h, cpState.s, cpState.v);
+    updateColorFromPicker() {
+        const rgb = hsvToRgb(this.cpState.h, this.cpState.s, this.cpState.v);
         const hex = rgbToHex(`rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`);
         
-        applyColorSelection(hex);
+        this.applyColorSelection(hex);
 
         // Update Inputs without triggering event
-        cpInputR.value = rgb.r;
-        cpInputG.value = rgb.g;
-        cpInputB.value = rgb.b;
+        this.cpInputR.value = rgb.r;
+        this.cpInputG.value = rgb.g;
+        this.cpInputB.value = rgb.b;
         
         // Update active state in grid (likely none)
         document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
     }
 
-    function selectColor(color, updateInput = true) {
-        if (updateInput) applyColorSelection(color);
+    selectColor(color, updateInput = true) {
+        if (updateInput) this.applyColorSelection(color);
         
         // Update custom picker state
         const rgb = hexToRgb(color);
         if (rgb) {
-            cpState = rgbToHsv(rgb.r, rgb.g, rgb.b);
-            updateColorPickerVisuals();
-            cpPreviewColor.style.backgroundColor = color;
-            cpInputR.value = rgb.r;
-            cpInputG.value = rgb.g;
-            cpInputB.value = rgb.b;
+            this.cpState = rgbToHsv(rgb.r, rgb.g, rgb.b);
+            this.updateColorPickerVisuals();
+            this.cpPreviewColor.style.backgroundColor = color;
+            this.cpInputR.value = rgb.r;
+            this.cpInputG.value = rgb.g;
+            this.cpInputB.value = rgb.b;
         }
         
         // Update active state in grid
@@ -299,24 +316,18 @@ export function initColorPicker(
         });
     }
 
-    function applyColorSelection(hex) {
-        cpPreviewColor.style.backgroundColor = hex;
+    applyColorSelection(hex) {
+        this.cpPreviewColor.style.backgroundColor = hex;
         
-        if (getActiveTarget() === 'game') {
-            penColorInput.value = hex;
-            currentColorPreview.style.backgroundColor = hex;
-        } else if (getActiveTarget() === 'avatar') {
-            setAvatarColor(hex);
-            if (avatarColorPreview) avatarColorPreview.style.backgroundColor = hex;
-            if (emojiColorPreview) emojiColorPreview.style.backgroundColor = hex;
+        if (this.getActiveTarget() === 'game') {
+            this.penColorInput.value = hex;
+            this.currentColorPreview.style.backgroundColor = hex;
+        } else if (this.getActiveTarget() === 'avatar') {
+            this.setAvatarColor(hex);
+            if (this.avatarColorPreview) this.avatarColorPreview.style.backgroundColor = hex;
+            if (this.emojiColorPreview) this.emojiColorPreview.style.backgroundColor = hex;
         }
         
-        if (onColorChange) onColorChange(hex);
+        if (this.onColorChange) this.onColorChange(hex);
     }
-
-    init();
-
-    return {
-        // No need to expose getCurrentAvatarColor as we use callbacks
-    };
 }

@@ -1,0 +1,14 @@
+---
+applyTo: '**'
+---
+- Tes réponses doivent être en français.
+- Les commentaires dans le code doivent être en français.
+- Réutilise les fonctions et classes existantes autant que possible.
+- Programme de manière modulaire et maintenable.
+- Orienté objet lorsque c'est pertinent.
+- Prends en compte les performances.
+- Respecte les bonnes pratiques de codage.
+- Ne fait pas de commentaires expliquant les modifications apportées.
+- Ne fait pas de suggestions pour du code supprimé.
+- Ne fait pas de commentaires trop verbeux. Sois concis.
+- Bien comprendre le contexte avant de répondre.

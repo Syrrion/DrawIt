@@ -1,12 +1,25 @@
 import { stringToColor } from './utils.js';
 
-export function initCursorManager(socket, cursorsLayer, getRoomCode, getUsername) {
-    const cursors = {};
-    let lastCursorEmit = 0;
-    let areCursorsVisible = true;
+export class CursorManager {
+    constructor(socket, cursorsLayer, roomCodeProvider, usernameProvider) {
+        this.socket = socket;
+        this.cursorsLayer = cursorsLayer;
+        this.roomCodeProvider = roomCodeProvider;
+        this.usernameProvider = usernameProvider;
 
-    socket.on('cursorMove', ({ id, x, y, username }) => {
-        if (!cursors[id]) {
+        this.cursors = {};
+        this.lastCursorEmit = 0;
+        this.areCursorsVisible = true;
+
+        this.init();
+    }
+
+    init() {
+        this.socket.on('cursorMove', (data) => this.handleCursorMove(data));
+    }
+
+    handleCursorMove({ id, x, y, username }) {
+        if (!this.cursors[id]) {
             const cursor = document.createElement('div');
             cursor.className = 'cursor';
             // Ensure username is safe
@@ -15,19 +28,19 @@ export function initCursorManager(socket, cursorsLayer, getRoomCode, getUsername
                 <div class="cursor-pointer" style="background: ${stringToColor(safeUsername)}"></div>
                 <div class="cursor-name">${safeUsername}</div>
             `;
-            cursorsLayer.appendChild(cursor);
-            cursors[id] = { element: cursor, x, y };
+            this.cursorsLayer.appendChild(cursor);
+            this.cursors[id] = { element: cursor, x, y };
         }
         
-        cursors[id].x = x;
-        cursors[id].y = y;
-        cursors[id].username = username; 
+        this.cursors[id].x = x;
+        this.cursors[id].y = y;
+        this.cursors[id].username = username; 
         
-        updateCursorPosition(id);
-    });
+        this.updateCursorPosition(id);
+    }
 
-    function updateCursorPosition(id) {
-        const cursor = cursors[id];
+    updateCursorPosition(id) {
+        const cursor = this.cursors[id];
         if (cursor) {
             // Position is relative to the canvas (0-800)
             // The canvasWrapper scaling handles the visual position on screen
@@ -35,7 +48,7 @@ export function initCursorManager(socket, cursorsLayer, getRoomCode, getUsername
             cursor.element.style.top = `${cursor.y}px`;
             
             // Visibility check
-            if (areCursorsVisible) {
+            if (this.areCursorsVisible) {
                 cursor.element.style.display = 'flex';
             } else {
                 cursor.element.style.display = 'none';
@@ -43,49 +56,49 @@ export function initCursorManager(socket, cursorsLayer, getRoomCode, getUsername
         }
     }
 
-    function updateAllCursorsVisibility() {
-        for (const id in cursors) {
-            updateCursorPosition(id);
+    updateAllCursorsVisibility() {
+        for (const id in this.cursors) {
+            this.updateCursorPosition(id);
         }
     }
 
-    return {
-        emitCursorMove: (x, y) => {
-            const now = Date.now();
-            if (now - lastCursorEmit > 50) { // Throttle 20fps
-                const roomCode = getRoomCode();
-                const username = getUsername();
-                if (roomCode && username) {
-                    socket.emit('cursorMove', {
-                        roomCode: roomCode,
-                        x: x,
-                        y: y,
-                        username: username
-                    });
-                    lastCursorEmit = now;
-                }
+    emitCursorMove(x, y) {
+        const now = Date.now();
+        if (now - this.lastCursorEmit > 50) { // Throttle 20fps
+            const roomCode = this.roomCodeProvider();
+            const username = this.usernameProvider();
+            if (roomCode && username) {
+                this.socket.emit('cursorMove', {
+                    roomCode: roomCode,
+                    x: x,
+                    y: y,
+                    username: username
+                });
+                this.lastCursorEmit = now;
             }
-        },
-        // Add method to clear other cursors if needed
-        clearCursors: () => {
-            for (const id in cursors) {
-                if (cursors[id].element.parentNode) {
-                    cursors[id].element.parentNode.removeChild(cursors[id].element);
-                }
-                delete cursors[id];
-            }
-        },
-        removeCursor: (id) => {
-            if (cursors[id]) {
-                if (cursors[id].element.parentNode) {
-                    cursors[id].element.parentNode.removeChild(cursors[id].element);
-                }
-                delete cursors[id];
-            }
-        },
-        setCursorsVisible: (visible) => {
-            areCursorsVisible = visible;
-            updateAllCursorsVisibility();
         }
-    };
+    }
+
+    clearCursors() {
+        for (const id in this.cursors) {
+            if (this.cursors[id].element.parentNode) {
+                this.cursors[id].element.parentNode.removeChild(this.cursors[id].element);
+            }
+            delete this.cursors[id];
+        }
+    }
+
+    removeCursor(id) {
+        if (this.cursors[id]) {
+            if (this.cursors[id].element.parentNode) {
+                this.cursors[id].element.parentNode.removeChild(this.cursors[id].element);
+            }
+            delete this.cursors[id];
+        }
+    }
+
+    setCursorsVisible(visible) {
+        this.areCursorsVisible = visible;
+        this.updateAllCursorsVisibility();
+    }
 }

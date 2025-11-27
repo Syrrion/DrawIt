@@ -1,28 +1,28 @@
 import { socket, penColorInput, colorGrid, colorTrigger, colorPopover, currentColorPreview, avatarColorTrigger, avatarColorPreview, emojiColorTrigger, emojiColorPreview, cursorsLayer, playersList, canvasWrapper, zoomLevelDisplay, layersList, chatMessages, chatForm, chatInput, cursorIcon } from './js/dom-elements.js';
 import { state } from './js/state.js';
 import { showToast } from './js/utils.js';
-import { initLayerManagement } from './js/layers.js';
-import { initColorPicker } from './js/color-picker.js';
-import { initAvatarManager } from './js/avatar.js';
-import { initChat } from './js/chat.js';
-import { initCursorManager } from './js/cursors.js';
-import { initPlayerList } from './js/players.js';
-import { initCamera } from './js/camera.js';
-import { initGameSettings } from './js/game-settings.js';
+import { LayerManager } from './js/layers.js';
+import { ColorPickerManager } from './js/color-picker.js';
+import { AvatarManager } from './js/avatar.js';
+import { ChatManager } from './js/chat.js';
+import { CursorManager } from './js/cursors.js';
+import { PlayerListManager } from './js/players.js';
+import { CameraManager } from './js/camera.js';
+import { GameSettingsManager } from './js/game-settings.js';
 import { AnimationSystem } from './js/animations.js';
 
-import { initTools } from './js/tools-manager.js';
-import { initCanvasManager, render } from './js/canvas-manager.js';
-import { initUIManager } from './js/ui-manager.js';
+import { ToolsManager } from './js/tools-manager.js';
+import { CanvasManager } from './js/canvas-manager.js';
+import { UIManager } from './js/ui-manager.js';
 import { SocketManager } from './js/socket-manager.js';
 
 const animationSystem = new AnimationSystem();
 
 // Avatar Manager
-const avatarManager = initAvatarManager();
+const avatarManager = new AvatarManager();
 
 // Color Picker
-initColorPicker(
+new ColorPickerManager(
     penColorInput, 
     colorGrid, 
     colorTrigger, 
@@ -44,33 +44,39 @@ initColorPicker(
 );
 
 // Player List
-const playerListManager = initPlayerList(socket, playersList, (id, username) => window.showKickModal(id, username));
+const playerListManager = new PlayerListManager(socket, playersList, (id, username) => window.showKickModal(id, username));
 
 // Chat
-const chatManager = initChat(socket, () => state.currentRoom, () => state.user.username, (username) => playerListManager.getPlayerByUsername(username));
+const chatManager = new ChatManager(socket, () => state.currentRoom, () => state.user.username, (username) => playerListManager.getPlayerByUsername(username));
 
 // Cursors
-const cursorManager = initCursorManager(socket, cursorsLayer, () => state.currentRoom, () => state.user.username);
+const cursorManager = new CursorManager(socket, cursorsLayer, () => state.currentRoom, () => state.user.username);
 
 // Camera
-const cameraManager = initCamera(canvasWrapper, zoomLevelDisplay);
+const cameraManager = new CameraManager(canvasWrapper, zoomLevelDisplay);
 
 // Game Settings
-const gameSettingsManager = initGameSettings(
+const gameSettingsManager = new GameSettingsManager(
     socket, 
     () => socket.id === state.leaderId, 
     () => state.currentRoom, 
     () => playerListManager.getPlayerList().filter(u => !u.isSpectator).length
 );
 
+// Tools
+const toolsManager = new ToolsManager();
+
+// Canvas
+const canvasManager = new CanvasManager(cursorManager, cameraManager, toolsManager);
+
 // Layers
-const layerManager = initLayerManagement(
+const layerManager = new LayerManager(
     socket, 
     () => state.currentRoom, 
     state.layers, 
     state.layerCanvases, 
     state.activeLayerId, 
-    render, 
+    () => canvasManager.render(), 
     showToast,
     (newActiveId) => {
         state.activeLayerId = newActiveId;
@@ -80,9 +86,7 @@ const layerManager = initLayerManagement(
 );
 
 // Initialize Managers
-initTools();
-initCanvasManager(cursorManager, cameraManager);
-initUIManager(avatarManager, animationSystem, gameSettingsManager, render, cursorManager, layerManager);
+new UIManager(avatarManager, animationSystem, gameSettingsManager, () => canvasManager.render(), cursorManager, layerManager);
 new SocketManager({
     gameSettingsManager, 
     playerListManager, 
@@ -90,5 +94,5 @@ new SocketManager({
     chatManager, 
     cursorManager, 
     animationSystem,
-    render
+    render: () => canvasManager.render()
 });

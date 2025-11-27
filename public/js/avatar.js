@@ -1,186 +1,229 @@
 import { performDraw, performFloodFill } from './draw.js';
 
-export function initAvatarManager() {
-    // DOM Elements
-    const avatarCanvas = document.getElementById('avatar-canvas');
-    const avatarCtx = avatarCanvas.getContext('2d', { willReadFrequently: true });
-    const avatarPreview = document.getElementById('avatar-preview');
-    const avatarColorInput = document.getElementById('avatar-color');
-    // const avatarEmojiSelect = document.getElementById('avatar-emoji-select'); // Removed
-    const avatarEmojiDisplay = document.getElementById('avatar-emoji');
-    const avatarClearBtn = document.getElementById('avatar-clear-btn');
-    const avatarUpload = document.getElementById('avatar-upload');
-    const avatarPreviewDiv = document.getElementById('avatar-preview');
-    const avatarSizeInput = document.getElementById('avatar-size');
-    
-    // Color Previews
-    const emojiColorPreview = document.getElementById('emoji-color-preview');
-    const avatarColorPreview = document.getElementById('avatar-color-preview');
+export class AvatarManager {
+    constructor() {
+        // DOM Elements
+        this.avatarCanvas = document.getElementById('avatar-canvas');
+        this.avatarCtx = this.avatarCanvas.getContext('2d', { willReadFrequently: true });
+        this.avatarPreview = document.getElementById('avatar-preview');
+        this.avatarColorInput = document.getElementById('avatar-color');
+        this.avatarEmojiDisplay = document.getElementById('avatar-emoji');
+        this.avatarClearBtn = document.getElementById('avatar-clear-btn');
+        this.avatarUpload = document.getElementById('avatar-upload');
+        this.avatarPreviewDiv = document.getElementById('avatar-preview');
+        this.avatarSizeInput = document.getElementById('avatar-size');
+        
+        // Color Previews
+        this.emojiColorPreview = document.getElementById('emoji-color-preview');
+        this.avatarColorPreview = document.getElementById('avatar-color-preview');
 
-    // New Elements for Image Mode
-    const avatarZoomInput = document.getElementById('avatar-zoom');
-    const avatarImageControls = document.getElementById('avatar-image-controls');
-    const btnTriggerUpload = document.getElementById('btn-trigger-upload');
+        // New Elements for Image Mode
+        this.avatarZoomInput = document.getElementById('avatar-zoom');
+        this.avatarImageControls = document.getElementById('avatar-image-controls');
+        this.btnTriggerUpload = document.getElementById('btn-trigger-upload');
 
-    // Tabs
-    const tabEmoji = document.getElementById('tab-emoji');
-    const tabDraw = document.getElementById('tab-draw');
-    const tabUpload = document.getElementById('tab-upload');
-    
-    // Modes
-    const modeEmoji = document.getElementById('mode-emoji');
-    const modeDraw = document.getElementById('mode-draw');
-    const modeUpload = document.getElementById('mode-upload');
+        // Tabs
+        this.tabEmoji = document.getElementById('tab-emoji');
+        this.tabDraw = document.getElementById('tab-draw');
+        this.tabUpload = document.getElementById('tab-upload');
+        
+        // Modes
+        this.modeEmoji = document.getElementById('mode-emoji');
+        this.modeDraw = document.getElementById('mode-draw');
+        this.modeUpload = document.getElementById('mode-upload');
 
-    // Tools
-    const avatarToolPen = document.getElementById('avatar-tool-pen');
-    const avatarToolFill = document.getElementById('avatar-tool-fill');
-    const avatarToolEraser = document.getElementById('avatar-tool-eraser');
+        // Tools
+        this.avatarToolPen = document.getElementById('avatar-tool-pen');
+        this.avatarToolFill = document.getElementById('avatar-tool-fill');
+        this.avatarToolEraser = document.getElementById('avatar-tool-eraser');
 
-    // State
-    let avatarMode = 'emoji'; // 'emoji', 'draw', 'upload'
-    let currentAvatarTool = 'pen';
-    let currentAvatarColor = '#000000';
-    let isAvatarDrawing = false;
-    let lastAvatarX = 0;
-    let lastAvatarY = 0;
-    
-    // Image Upload State
-    let imgState = {
-        img: null,
-        x: 0,
-        y: 0,
-        scale: 1,
-        isPanning: false,
-        lastPanX: 0,
-        lastPanY: 0
-    };
-    
-    // Emoji State
-    let emojiState = {
-        color: '#3498db',
-        emoji: '🎨'
-    };
+        // State
+        this.avatarMode = 'emoji'; // 'emoji', 'draw', 'upload'
+        this.currentAvatarTool = 'pen';
+        this.currentAvatarColor = '#000000';
+        this.isAvatarDrawing = false;
+        this.lastAvatarX = 0;
+        this.lastAvatarY = 0;
+        
+        // Image Upload State
+        this.imgState = {
+            img: null,
+            x: 0,
+            y: 0,
+            scale: 1,
+            isPanning: false,
+            lastPanX: 0,
+            lastPanY: 0
+        };
+        
+        // Emoji State
+        this.emojiState = {
+            color: '#3498db',
+            emoji: '🎨'
+        };
 
-    // Custom Emoji Picker Logic
-    const emojiPickerWrapper = document.getElementById('emoji-picker-wrapper');
-    const emojiTrigger = document.getElementById('emoji-picker-trigger');
-    const emojiOptions = document.getElementById('emoji-options');
-    const currentEmojiSpan = emojiTrigger ? emojiTrigger.querySelector('.current-emoji') : null;
-    const emojiOptionElements = document.querySelectorAll('.emoji-option');
+        // Custom Emoji Picker Logic
+        this.emojiPickerWrapper = document.getElementById('emoji-picker-wrapper');
+        this.emojiTrigger = document.getElementById('emoji-picker-trigger');
+        this.emojiOptions = document.getElementById('emoji-options');
+        this.currentEmojiSpan = this.emojiTrigger ? this.emojiTrigger.querySelector('.current-emoji') : null;
+        this.emojiOptionElements = document.querySelectorAll('.emoji-option');
 
-    if (emojiTrigger && emojiOptions) {
-        emojiTrigger.addEventListener('click', (e) => {
-            e.stopPropagation();
-            emojiOptions.classList.toggle('hidden');
-
-            if (!emojiOptions.classList.contains('hidden')) {
-                // Check available space
-                const rect = emojiTrigger.getBoundingClientRect();
-                const pickerHeight = 320; // Max height + padding
-                const spaceBelow = window.innerHeight - rect.bottom;
-                
-                if (spaceBelow < pickerHeight) {
-                    emojiOptions.classList.add('open-up');
-                } else {
-                    emojiOptions.classList.remove('open-up');
-                }
-            }
-        });
-
-        // Close emoji picker when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!emojiPickerWrapper.contains(e.target)) {
-                emojiOptions.classList.add('hidden');
-            }
-        });
-
-        emojiOptionElements.forEach(opt => {
-            opt.addEventListener('click', () => {
-                const val = opt.dataset.value;
-                emojiState.emoji = val;
-                avatarEmojiDisplay.textContent = val;
-                if (currentEmojiSpan) currentEmojiSpan.textContent = val;
-                emojiOptions.classList.add('hidden');
-                
-                // Update selected visual
-                emojiOptionElements.forEach(o => o.classList.remove('selected'));
-                opt.classList.add('selected');
-            });
-        });
+        this.init();
     }
 
-    // Initialize avatar canvas
-    avatarCtx.fillStyle = '#ffffff';
-    avatarCtx.fillRect(0, 0, 100, 100);
+    init() {
+        // Initialize avatar canvas
+        this.avatarCtx.fillStyle = '#ffffff';
+        this.avatarCtx.fillRect(0, 0, 100, 100);
 
-    // --- Tab Switching Logic ---
-    function switchAvatarMode(mode) {
-        avatarMode = mode;
+        if (this.emojiTrigger && this.emojiOptions) {
+            this.emojiTrigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.emojiOptions.classList.toggle('hidden');
+
+                if (!this.emojiOptions.classList.contains('hidden')) {
+                    // Check available space
+                    const rect = this.emojiTrigger.getBoundingClientRect();
+                    const pickerHeight = 320; // Max height + padding
+                    const spaceBelow = window.innerHeight - rect.bottom;
+                    
+                    if (spaceBelow < pickerHeight) {
+                        this.emojiOptions.classList.add('open-up');
+                    } else {
+                        this.emojiOptions.classList.remove('open-up');
+                    }
+                }
+            });
+
+            // Close emoji picker when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!this.emojiPickerWrapper.contains(e.target)) {
+                    this.emojiOptions.classList.add('hidden');
+                }
+            });
+
+            this.emojiOptionElements.forEach(opt => {
+                opt.addEventListener('click', () => {
+                    const val = opt.dataset.value;
+                    this.emojiState.emoji = val;
+                    this.avatarEmojiDisplay.textContent = val;
+                    if (this.currentEmojiSpan) this.currentEmojiSpan.textContent = val;
+                    this.emojiOptions.classList.add('hidden');
+                    
+                    // Update selected visual
+                    this.emojiOptionElements.forEach(o => o.classList.remove('selected'));
+                    opt.classList.add('selected');
+                });
+            });
+        }
+
+        this.tabEmoji.addEventListener('click', () => this.switchAvatarMode('emoji'));
+        this.tabDraw.addEventListener('click', () => this.switchAvatarMode('draw'));
+        this.tabUpload.addEventListener('click', () => this.switchAvatarMode('upload'));
+
+        this.avatarToolPen.addEventListener('click', () => {
+            this.currentAvatarTool = 'pen';
+            this.updateAvatarTool(this.avatarToolPen);
+        });
+
+        this.avatarToolFill.addEventListener('click', () => {
+            this.currentAvatarTool = 'fill';
+            this.updateAvatarTool(this.avatarToolFill);
+        });
+
+        this.avatarToolEraser.addEventListener('click', () => {
+            this.currentAvatarTool = 'eraser';
+            this.updateAvatarTool(this.avatarToolEraser);
+        });
+
+        this.avatarCanvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
+        this.avatarCanvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+
+        const stopAction = () => {
+            this.isAvatarDrawing = false;
+            this.imgState.isPanning = false;
+        };
+
+        window.addEventListener('mouseup', stopAction);
+
+        this.avatarCanvas.addEventListener('touchstart', (e) => this.handleAvatarTouch(e), { passive: false });
+        this.avatarCanvas.addEventListener('touchmove', (e) => this.handleAvatarTouch(e), { passive: false });
+        this.avatarCanvas.addEventListener('touchend', (e) => this.handleAvatarTouch(e), { passive: false });
+
+        this.avatarCanvas.addEventListener('wheel', (e) => this.handleWheel(e), { passive: false });
+
+        this.avatarClearBtn.addEventListener('click', () => {
+            this.avatarCtx.fillStyle = '#ffffff';
+            this.avatarCtx.fillRect(0, 0, 100, 100);
+        });
+
+        if (this.btnTriggerUpload) {
+            this.btnTriggerUpload.addEventListener('click', () => {
+                this.avatarUpload.click();
+            });
+        }
+
+        this.avatarUpload.addEventListener('change', (e) => this.handleUpload(e));
+        
+        if (this.avatarZoomInput) {
+            this.avatarZoomInput.addEventListener('input', (e) => {
+                this.imgState.scale = parseFloat(e.target.value);
+                this.drawAvatarImage();
+            });
+        }
+
+        const btnRandomAvatar = document.getElementById('btn-random-avatar');
+        if (btnRandomAvatar) {
+            btnRandomAvatar.addEventListener('click', () => this.randomizeAvatar());
+        }
+
+        this.loadAvatar();
+    }
+
+    switchAvatarMode(mode) {
+        this.avatarMode = mode;
         
         // Update tabs
-        [tabEmoji, tabDraw, tabUpload].forEach(t => t.classList.remove('active'));
-        if (mode === 'emoji') tabEmoji.classList.add('active');
-        if (mode === 'draw') tabDraw.classList.add('active');
-        if (mode === 'upload') tabUpload.classList.add('active');
+        [this.tabEmoji, this.tabDraw, this.tabUpload].forEach(t => t.classList.remove('active'));
+        if (mode === 'emoji') this.tabEmoji.classList.add('active');
+        if (mode === 'draw') this.tabDraw.classList.add('active');
+        if (mode === 'upload') this.tabUpload.classList.add('active');
 
         // Update content visibility
-        [modeEmoji, modeDraw, modeUpload].forEach(m => m.classList.add('hidden'));
-        if (mode === 'emoji') modeEmoji.classList.remove('hidden');
-        if (mode === 'draw') modeDraw.classList.remove('hidden');
-        if (mode === 'upload') modeUpload.classList.remove('hidden');
+        [this.modeEmoji, this.modeDraw, this.modeUpload].forEach(m => m.classList.add('hidden'));
+        if (mode === 'emoji') this.modeEmoji.classList.remove('hidden');
+        if (mode === 'draw') this.modeDraw.classList.remove('hidden');
+        if (mode === 'upload') this.modeUpload.classList.remove('hidden');
 
         // Update preview visibility
         if (mode === 'emoji') {
-            avatarPreviewDiv.classList.remove('hidden');
-            avatarCanvas.classList.add('hidden');
+            this.avatarPreviewDiv.classList.remove('hidden');
+            this.avatarCanvas.classList.add('hidden');
         } else {
-            avatarPreviewDiv.classList.add('hidden');
-            avatarCanvas.classList.remove('hidden');
+            this.avatarPreviewDiv.classList.add('hidden');
+            this.avatarCanvas.classList.remove('hidden');
         }
         
         // If switching to upload and we have an image, redraw it
-        if (mode === 'upload' && imgState.img) {
-            drawAvatarImage();
-        } else if (mode === 'upload' && !imgState.img) {
+        if (mode === 'upload' && this.imgState.img) {
+            this.drawAvatarImage();
+        } else if (mode === 'upload' && !this.imgState.img) {
              // Clear canvas if no image
-             avatarCtx.fillStyle = '#ffffff';
-             avatarCtx.fillRect(0, 0, 100, 100);
+             this.avatarCtx.fillStyle = '#ffffff';
+             this.avatarCtx.fillRect(0, 0, 100, 100);
         }
     }
 
-    tabEmoji.addEventListener('click', () => switchAvatarMode('emoji'));
-    tabDraw.addEventListener('click', () => switchAvatarMode('draw'));
-    tabUpload.addEventListener('click', () => switchAvatarMode('upload'));
-
-    // --- Emoji Logic ---
-    // Removed dead code for avatarColorInput
-
-    // --- Drawing Logic ---
-    function updateAvatarTool(activeBtn) {
-        [avatarToolPen, avatarToolFill, avatarToolEraser].forEach(btn => btn.classList.remove('active'));
+    updateAvatarTool(activeBtn) {
+        [this.avatarToolPen, this.avatarToolFill, this.avatarToolEraser].forEach(btn => btn.classList.remove('active'));
         activeBtn.classList.add('active');
     }
 
-    avatarToolPen.addEventListener('click', () => {
-        currentAvatarTool = 'pen';
-        updateAvatarTool(avatarToolPen);
-    });
-
-    avatarToolFill.addEventListener('click', () => {
-        currentAvatarTool = 'fill';
-        updateAvatarTool(avatarToolFill);
-    });
-
-    avatarToolEraser.addEventListener('click', () => {
-        currentAvatarTool = 'eraser';
-        updateAvatarTool(avatarToolEraser);
-    });
-
-    function getAvatarMousePos(e) {
-        const rect = avatarCanvas.getBoundingClientRect();
-        const scaleX = avatarCanvas.width / rect.width;
-        const scaleY = avatarCanvas.height / rect.height;
+    getAvatarMousePos(e) {
+        const rect = this.avatarCanvas.getBoundingClientRect();
+        const scaleX = this.avatarCanvas.width / rect.width;
+        const scaleY = this.avatarCanvas.height / rect.height;
         
         return {
             x: (e.clientX - rect.left) * scaleX,
@@ -188,71 +231,62 @@ export function initAvatarManager() {
         };
     }
 
-    avatarCanvas.addEventListener('mousedown', (e) => {
-        if (avatarMode === 'upload') {
-            if (!imgState.img) {
-                avatarUpload.click();
+    handleMouseDown(e) {
+        if (this.avatarMode === 'upload') {
+            if (!this.imgState.img) {
+                this.avatarUpload.click();
                 return;
             }
-            imgState.isPanning = true;
-            imgState.lastPanX = e.clientX;
-            imgState.lastPanY = e.clientY;
+            this.imgState.isPanning = true;
+            this.imgState.lastPanX = e.clientX;
+            this.imgState.lastPanY = e.clientY;
             return;
         }
 
-        const { x, y } = getAvatarMousePos(e);
+        const { x, y } = this.getAvatarMousePos(e);
 
-        if (currentAvatarTool === 'fill') {
-            performFloodFill(avatarCtx, 100, 100, Math.floor(x), Math.floor(y), currentAvatarColor);
+        if (this.currentAvatarTool === 'fill') {
+            performFloodFill(this.avatarCtx, 100, 100, Math.floor(x), Math.floor(y), this.currentAvatarColor);
             return;
         }
 
-        isAvatarDrawing = true;
-        [lastAvatarX, lastAvatarY] = [x, y];
+        this.isAvatarDrawing = true;
+        [this.lastAvatarX, this.lastAvatarY] = [x, y];
         
-        const size = avatarSizeInput ? parseInt(avatarSizeInput.value) : 3;
-        performDraw(avatarCtx, x, y, x, y, currentAvatarColor, size, 1, currentAvatarTool);
-    });
+        const size = this.avatarSizeInput ? parseInt(this.avatarSizeInput.value) : 3;
+        performDraw(this.avatarCtx, x, y, x, y, this.currentAvatarColor, size, 1, this.currentAvatarTool);
+    }
 
-    avatarCanvas.addEventListener('mousemove', (e) => {
-        if (avatarMode === 'upload') {
-            if (!imgState.isPanning || !imgState.img) return;
-            const dx = e.clientX - imgState.lastPanX;
-            const dy = e.clientY - imgState.lastPanY;
+    handleMouseMove(e) {
+        if (this.avatarMode === 'upload') {
+            if (!this.imgState.isPanning || !this.imgState.img) return;
+            const dx = e.clientX - this.imgState.lastPanX;
+            const dy = e.clientY - this.imgState.lastPanY;
             
             // Convert screen delta to canvas delta
-            const rect = avatarCanvas.getBoundingClientRect();
-            const scaleX = avatarCanvas.width / rect.width;
-            const scaleY = avatarCanvas.height / rect.height;
+            const rect = this.avatarCanvas.getBoundingClientRect();
+            const scaleX = this.avatarCanvas.width / rect.width;
+            const scaleY = this.avatarCanvas.height / rect.height;
             
-            imgState.x += dx * scaleX;
-            imgState.y += dy * scaleY;
+            this.imgState.x += dx * scaleX;
+            this.imgState.y += dy * scaleY;
             
-            imgState.lastPanX = e.clientX;
-            imgState.lastPanY = e.clientY;
+            this.imgState.lastPanX = e.clientX;
+            this.imgState.lastPanY = e.clientY;
             
-            drawAvatarImage();
+            this.drawAvatarImage();
             return;
         }
 
-        if (!isAvatarDrawing) return;
-        const { x, y } = getAvatarMousePos(e);
+        if (!this.isAvatarDrawing) return;
+        const { x, y } = this.getAvatarMousePos(e);
         
-        const size = avatarSizeInput ? parseInt(avatarSizeInput.value) : 3;
-        performDraw(avatarCtx, lastAvatarX, lastAvatarY, x, y, currentAvatarColor, size, 1, currentAvatarTool);
-        [lastAvatarX, lastAvatarY] = [x, y];
-    });
+        const size = this.avatarSizeInput ? parseInt(this.avatarSizeInput.value) : 3;
+        performDraw(this.avatarCtx, this.lastAvatarX, this.lastAvatarY, x, y, this.currentAvatarColor, size, 1, this.currentAvatarTool);
+        [this.lastAvatarX, this.lastAvatarY] = [x, y];
+    }
 
-    const stopAction = () => {
-        isAvatarDrawing = false;
-        imgState.isPanning = false;
-    };
-
-    window.addEventListener('mouseup', stopAction);
-    // avatarCanvas.addEventListener('mouseout', stopAction);
-
-    // Touch Support
-    function handleAvatarTouch(e) {
+    handleAvatarTouch(e) {
         if (e.type !== 'touchend' && e.touches.length !== 1) return;
         if (e.cancelable) e.preventDefault();
         
@@ -272,112 +306,88 @@ export function initAvatarManager() {
             view: window
         });
         
-        avatarCanvas.dispatchEvent(mouseEvent);
+        this.avatarCanvas.dispatchEvent(mouseEvent);
     }
 
-    avatarCanvas.addEventListener('touchstart', handleAvatarTouch, { passive: false });
-    avatarCanvas.addEventListener('touchmove', handleAvatarTouch, { passive: false });
-    avatarCanvas.addEventListener('touchend', handleAvatarTouch, { passive: false });
-
-    avatarCanvas.addEventListener('wheel', (e) => {
-        if (avatarMode === 'upload' && imgState.img) {
+    handleWheel(e) {
+        if (this.avatarMode === 'upload' && this.imgState.img) {
             e.preventDefault();
             const delta = -Math.sign(e.deltaY) * 0.1;
-            let newScale = imgState.scale + delta;
+            let newScale = this.imgState.scale + delta;
             
             // Clamp scale
-            const maxZoom = parseFloat(avatarZoomInput.max) || 3;
-            const minZoom = parseFloat(avatarZoomInput.min) || 0.1;
+            const maxZoom = parseFloat(this.avatarZoomInput.max) || 3;
+            const minZoom = parseFloat(this.avatarZoomInput.min) || 0.1;
             newScale = Math.max(minZoom, Math.min(maxZoom, newScale));
             
-            imgState.scale = newScale;
-            if (avatarZoomInput) avatarZoomInput.value = newScale;
-            drawAvatarImage();
+            this.imgState.scale = newScale;
+            if (this.avatarZoomInput) this.avatarZoomInput.value = newScale;
+            this.drawAvatarImage();
         }
-    }, { passive: false });
-
-    avatarClearBtn.addEventListener('click', () => {
-        avatarCtx.fillStyle = '#ffffff';
-        avatarCtx.fillRect(0, 0, 100, 100);
-    });
-
-    // --- Upload Logic ---
-    if (btnTriggerUpload) {
-        btnTriggerUpload.addEventListener('click', () => {
-            avatarUpload.click();
-        });
     }
 
-    function drawAvatarImage() {
-        if (!imgState.img) return;
+    drawAvatarImage() {
+        if (!this.imgState.img) return;
         
-        avatarCtx.fillStyle = '#ffffff';
-        avatarCtx.fillRect(0, 0, 100, 100);
+        this.avatarCtx.fillStyle = '#ffffff';
+        this.avatarCtx.fillRect(0, 0, 100, 100);
         
-        const w = imgState.img.width;
-        const h = imgState.img.height;
+        const w = this.imgState.img.width;
+        const h = this.imgState.img.height;
         
         // Calculate scaled dimensions
         const baseScale = Math.min(100 / w, 100 / h);
-        const currentScale = baseScale * imgState.scale;
+        const currentScale = baseScale * this.imgState.scale;
         
         const drawW = w * currentScale;
         const drawH = h * currentScale;
         
-        avatarCtx.save();
-        avatarCtx.translate(imgState.x, imgState.y);
-        avatarCtx.drawImage(imgState.img, 0, 0, drawW, drawH);
-        avatarCtx.restore();
+        this.avatarCtx.save();
+        this.avatarCtx.translate(this.imgState.x, this.imgState.y);
+        this.avatarCtx.drawImage(this.imgState.img, 0, 0, drawW, drawH);
+        this.avatarCtx.restore();
     }
 
-    avatarUpload.addEventListener('change', (e) => {
+    handleUpload(e) {
         const file = e.target.files[0];
         if (file) {
             const reader = new FileReader();
             reader.onload = (event) => {
                 const img = new Image();
                 img.onload = () => {
-                    imgState.img = img;
-                    imgState.x = 0;
-                    imgState.y = 0;
-                    imgState.scale = 1;
+                    this.imgState.img = img;
+                    this.imgState.x = 0;
+                    this.imgState.y = 0;
+                    this.imgState.scale = 1;
                     
                     // Center the image initially
                     const baseScale = Math.min(100 / img.width, 100 / img.height);
                     const drawW = img.width * baseScale;
                     const drawH = img.height * baseScale;
-                    imgState.x = (100 - drawW) / 2;
-                    imgState.y = (100 - drawH) / 2;
+                    this.imgState.x = (100 - drawW) / 2;
+                    this.imgState.y = (100 - drawH) / 2;
                     
-                    if (avatarZoomInput) {
-                        avatarZoomInput.value = 1;
+                    if (this.avatarZoomInput) {
+                        this.avatarZoomInput.value = 1;
                         // Calculate max zoom based on image size
                         // Allow zooming up to 100% of original size (1/baseScale)
                         // But keep a minimum of 3x zoom
                         const maxZoom = Math.max(3, 1 / baseScale);
-                        avatarZoomInput.max = maxZoom;
-                        avatarZoomInput.step = maxZoom / 50; // Adjust step for smoother experience
+                        this.avatarZoomInput.max = maxZoom;
+                        this.avatarZoomInput.step = maxZoom / 50; // Adjust step for smoother experience
                     }
                     
-                    if (avatarImageControls) avatarImageControls.classList.remove('hidden');
+                    if (this.avatarImageControls) this.avatarImageControls.classList.remove('hidden');
                     
-                    drawAvatarImage();
+                    this.drawAvatarImage();
                 };
                 img.src = event.target.result;
             };
             reader.readAsDataURL(file);
         }
-    });
-    
-    if (avatarZoomInput) {
-        avatarZoomInput.addEventListener('input', (e) => {
-            imgState.scale = parseFloat(e.target.value);
-            drawAvatarImage();
-        });
     }
 
-    // Randomize Avatar on Init
-    function randomizeAvatar() {
+    randomizeAvatar() {
         // Random Color (Pastel to Dark)
         // Hue: 0-360, Saturation: 50-90%, Lightness: 20-80%
         const h = Math.floor(Math.random() * 360);
@@ -399,108 +409,99 @@ export function initAvatarManager() {
         const randomColor = hslToHex(h, s, l);
         
         // Random Emoji
-        if (emojiOptionElements.length > 0) {
-            const randomIndex = Math.floor(Math.random() * emojiOptionElements.length);
-            const randomOption = emojiOptionElements[randomIndex];
+        if (this.emojiOptionElements.length > 0) {
+            const randomIndex = Math.floor(Math.random() * this.emojiOptionElements.length);
+            const randomOption = this.emojiOptionElements[randomIndex];
             const val = randomOption.dataset.value;
             
             // Update State
-            emojiState.color = randomColor;
-            emojiState.emoji = val;
-            currentAvatarColor = randomColor;
+            this.emojiState.color = randomColor;
+            this.emojiState.emoji = val;
+            this.currentAvatarColor = randomColor;
             
             // Update UI
-            avatarPreview.style.backgroundColor = randomColor;
-            avatarEmojiDisplay.textContent = val;
-            if (currentEmojiSpan) currentEmojiSpan.textContent = val;
-            
-            // Update UI
-            avatarPreview.style.backgroundColor = randomColor;
-            avatarEmojiDisplay.textContent = val;
-            if (currentEmojiSpan) currentEmojiSpan.textContent = val;
+            this.avatarPreview.style.backgroundColor = randomColor;
+            this.avatarEmojiDisplay.textContent = val;
+            if (this.currentEmojiSpan) this.currentEmojiSpan.textContent = val;
             
             // Update Color Picker Previews
-            if (emojiColorPreview) emojiColorPreview.style.backgroundColor = randomColor;
-            if (avatarColorPreview) avatarColorPreview.style.backgroundColor = randomColor;
+            if (this.emojiColorPreview) this.emojiColorPreview.style.backgroundColor = randomColor;
+            if (this.avatarColorPreview) this.avatarColorPreview.style.backgroundColor = randomColor;
             
             // Update Selected Class
-            emojiOptionElements.forEach(o => o.classList.remove('selected'));
+            this.emojiOptionElements.forEach(o => o.classList.remove('selected'));
             randomOption.classList.add('selected');
         }
     }
 
-    const btnRandomAvatar = document.getElementById('btn-random-avatar');
-    if (btnRandomAvatar) {
-        btnRandomAvatar.addEventListener('click', randomizeAvatar);
+    loadAvatar() {
+        const savedAvatar = localStorage.getItem('drawit_avatar');
+        if (savedAvatar) {
+            try {
+                const data = JSON.parse(savedAvatar);
+                if (data.type === 'emoji') {
+                    this.switchAvatarMode('emoji');
+                    this.emojiState.emoji = data.emoji;
+                    this.emojiState.color = data.color;
+                    this.currentAvatarColor = data.color;
+                    
+                    // Update UI
+                    this.avatarPreview.style.backgroundColor = data.color;
+                    this.avatarEmojiDisplay.textContent = data.emoji;
+                    if (this.currentEmojiSpan) this.currentEmojiSpan.textContent = data.emoji;
+                    if (this.emojiColorPreview) this.emojiColorPreview.style.backgroundColor = data.color;
+                    if (this.avatarColorPreview) this.avatarColorPreview.style.backgroundColor = data.color;
+                    
+                    // Update selected emoji in list
+                    this.emojiOptionElements.forEach(o => {
+                        if (o.dataset.value === data.emoji) o.classList.add('selected');
+                        else o.classList.remove('selected');
+                    });
+                } else if (data.type === 'image') {
+                    this.switchAvatarMode('draw'); // Default to draw mode if image type, but could be upload
+                    // For simplicity, we load it into the canvas
+                    const img = new Image();
+                    img.onload = () => {
+                        this.avatarCtx.drawImage(img, 0, 0);
+                    };
+                    img.src = data.value;
+                }
+            } catch (e) {
+                console.error('Failed to load avatar', e);
+                this.randomizeAvatar();
+            }
+        } else {
+            this.randomizeAvatar();
+        }
     }
 
-    // Initial Randomization or Load
-    const savedAvatar = localStorage.getItem('drawit_avatar');
-    if (savedAvatar) {
-        try {
-            const data = JSON.parse(savedAvatar);
-            if (data.type === 'emoji') {
-                switchAvatarMode('emoji');
-                emojiState.emoji = data.emoji;
-                emojiState.color = data.color;
-                currentAvatarColor = data.color;
-                
-                // Update UI
-                avatarPreview.style.backgroundColor = data.color;
-                avatarEmojiDisplay.textContent = data.emoji;
-                if (currentEmojiSpan) currentEmojiSpan.textContent = data.emoji;
-                if (emojiColorPreview) emojiColorPreview.style.backgroundColor = data.color;
-                if (avatarColorPreview) avatarColorPreview.style.backgroundColor = data.color;
-                
-                // Update selected emoji in list
-                emojiOptionElements.forEach(o => {
-                    if (o.dataset.value === data.emoji) o.classList.add('selected');
-                    else o.classList.remove('selected');
-                });
-            } else if (data.type === 'image') {
-                switchAvatarMode('draw'); // Default to draw mode if image type, but could be upload
-                // For simplicity, we load it into the canvas
-                const img = new Image();
-                img.onload = () => {
-                    avatarCtx.drawImage(img, 0, 0);
-                };
-                img.src = data.value;
-            }
-        } catch (e) {
-            console.error('Failed to load avatar', e);
-            randomizeAvatar();
-        }
-    } else {
-        randomizeAvatar();
+    setAvatarColor(color) { 
+        this.currentAvatarColor = color; 
+        this.emojiState.color = color;
+        if (this.avatarPreview) this.avatarPreview.style.backgroundColor = color;
+        if (this.emojiColorPreview) this.emojiColorPreview.style.backgroundColor = color;
+        if (this.avatarColorPreview) this.avatarColorPreview.style.backgroundColor = color;
     }
 
-    return {
-        setAvatarColor: (color) => { 
-            currentAvatarColor = color; 
-            emojiState.color = color;
-            if (avatarPreview) avatarPreview.style.backgroundColor = color;
-            if (emojiColorPreview) emojiColorPreview.style.backgroundColor = color;
-            if (avatarColorPreview) avatarColorPreview.style.backgroundColor = color;
-        },
-        getAvatarData: () => {
-            if (avatarMode === 'emoji') {
-                return { 
-                    type: 'emoji', 
-                    emoji: emojiState.emoji, 
-                    color: emojiState.color 
-                };
-            } else {
-                return { 
-                    type: 'image', 
-                    value: avatarCanvas.toDataURL() 
-                };
-            }
-        },
-        saveAvatarToStorage: () => {
-            const data = avatarMode === 'emoji' ? 
-                { type: 'emoji', emoji: emojiState.emoji, color: emojiState.color } :
-                { type: 'image', value: avatarCanvas.toDataURL() };
-            localStorage.setItem('drawit_avatar', JSON.stringify(data));
+    getAvatarData() {
+        if (this.avatarMode === 'emoji') {
+            return { 
+                type: 'emoji', 
+                emoji: this.emojiState.emoji, 
+                color: this.emojiState.color 
+            };
+        } else {
+            return { 
+                type: 'image', 
+                value: this.avatarCanvas.toDataURL() 
+            };
         }
-    };
+    }
+
+    saveAvatarToStorage() {
+        const data = this.avatarMode === 'emoji' ? 
+            { type: 'emoji', emoji: this.emojiState.emoji, color: this.emojiState.color } :
+            { type: 'image', value: this.avatarCanvas.toDataURL() };
+        localStorage.setItem('drawit_avatar', JSON.stringify(data));
+    }
 }
