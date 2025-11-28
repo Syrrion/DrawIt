@@ -55,7 +55,25 @@ export class UIManager {
                     joinTab.textContent = isSpectator ? 'Observer' : 'Rejoindre';
                 }
 
+                // Show/Hide Filter Section
+                const filterSection = document.getElementById('spectator-filter-section');
+                if (filterSection) {
+                    if (isSpectator) {
+                        filterSection.classList.remove('hidden');
+                    } else {
+                        filterSection.classList.add('hidden');
+                    }
+                }
+
                 // Update Game Count
+                this.updateGameCountDisplay();
+            });
+        }
+
+        // Spectator Filter Change
+        const filterSelect = document.getElementById('spectator-filter-select');
+        if (filterSelect) {
+            filterSelect.addEventListener('change', () => {
                 this.updateGameCountDisplay();
             });
         }
@@ -66,6 +84,12 @@ export class UIManager {
                 let username = usernameInput.value.trim();
                 const isSpectator = spectatorCheckbox.checked;
                 
+                // Get filter value
+                let filter = 'all';
+                if (isSpectator && filterSelect) {
+                    filter = filterSelect.value;
+                }
+                
                 if (!username) {
                     username = generateRandomUsername();
                     usernameInput.value = username;
@@ -75,7 +99,7 @@ export class UIManager {
                 username = escapeHtml(username);
                 
                 state.user.username = username;
-                socket.emit('joinRandomRoom', { username, isSpectator });
+                socket.emit('joinRandomRoom', { username, isSpectator, filter });
             });
         }
 
@@ -366,7 +390,21 @@ export class UIManager {
         if (!activeGamesCount) return;
         
         const isSpectator = spectatorCheckbox ? spectatorCheckbox.checked : false;
-        const count = isSpectator ? this.currentCounts.observable : this.currentCounts.playable;
+        let count = 0;
+
+        if (isSpectator) {
+            const filterSelect = document.getElementById('spectator-filter-select');
+            const filter = filterSelect ? filterSelect.value : 'all';
+            
+            if (this.currentCounts.observable && typeof this.currentCounts.observable === 'object') {
+                count = this.currentCounts.observable[filter] || 0;
+            } else {
+                // Fallback for legacy or simple count
+                count = typeof this.currentCounts.observable === 'number' ? this.currentCounts.observable : 0;
+            }
+        } else {
+            count = this.currentCounts.playable || 0;
+        }
         
         if (count === 0) {
             activeGamesCount.textContent = "Aucune";

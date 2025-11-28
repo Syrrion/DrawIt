@@ -84,6 +84,7 @@ export const customWordTimerVal = document.getElementById('custom-word-timer-val
 export const roundResultOverlay = document.getElementById('round-result-overlay');
 export const roundResultTitle = document.getElementById('round-result-title');
 export const roundResultWord = document.getElementById('round-result-word');
+export const roundResultWordLabel = document.getElementById('round-result-word-label');
 export const roundResultScores = document.getElementById('round-result-scores');
 
 export const gameEndModal = document.getElementById('game-end-modal');

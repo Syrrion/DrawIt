@@ -52,6 +52,7 @@ class Game {
         this.presentationOrder = [];
         this.presentationIndex = 0;
         this.phase = 'IDLE';
+        this.spectatorSubscriptions = {}; // spectatorId -> targetId
 
         this.room.users.forEach(u => {
             u.score = 0;
@@ -86,6 +87,7 @@ class Game {
         this.phase = 'DRAWING';
         this.playerDrawings = {};
         this.votes = {};
+        this.spectatorSubscriptions = {};
         this.currentWord = getRandomWord().toUpperCase();
         
         this.room.getPlayers().forEach(p => {
@@ -112,6 +114,23 @@ class Game {
             this.playerDrawings[action.userId] = [];
         }
         this.playerDrawings[action.userId].push(action);
+
+        // Broadcast to subscribers
+        Object.entries(this.spectatorSubscriptions).forEach(([spectatorId, targetId]) => {
+            if (targetId === action.userId) {
+                this.io.to(spectatorId).emit('draw', action);
+            }
+        });
+    }
+
+    subscribeSpectator(spectatorId, targetId) {
+        if (this.phase !== 'DRAWING') return;
+        
+        this.spectatorSubscriptions[spectatorId] = targetId;
+        
+        // Send current history
+        const history = this.playerDrawings[targetId] || [];
+        this.io.to(spectatorId).emit('creativeHistory', history);
     }
 
     handleCreativeUndo(userId) {
@@ -134,6 +153,13 @@ class Game {
                 
                 // Send back new history
                 this.io.to(userId).emit('creativeHistory', this.playerDrawings[userId]);
+
+                // Broadcast new history to subscribers
+                Object.entries(this.spectatorSubscriptions).forEach(([spectatorId, targetId]) => {
+                    if (targetId === userId) {
+                        this.io.to(spectatorId).emit('creativeHistory', this.playerDrawings[userId]);
+                    }
+                });
             }
         }
     }
@@ -250,6 +276,12 @@ class Game {
 
         roundResults.sort((a, b) => b.score - a.score);
 
+        // Add drawing data to top 3 for podium display
+        const top3 = roundResults.slice(0, 3);
+        top3.forEach(res => {
+            res.drawing = this.playerDrawings[res.userId];
+        });
+
         this.io.to(this.room.code).emit('creativeRoundEnd', {
             results: roundResults,
             scores: this.scores
@@ -257,7 +289,7 @@ class Game {
 
         setTimeout(() => {
             this.nextCreativeRound();
-        }, 10000);
+        }, 15000);
     }
 
     nextCreativeRound() {

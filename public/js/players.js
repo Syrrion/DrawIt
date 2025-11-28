@@ -1,3 +1,5 @@
+import { state } from './state.js';
+
 export class PlayerListManager {
     constructor(socket, playersListElement, onKickRequest) {
         this.socket = socket;
@@ -145,6 +147,16 @@ export class PlayerListManager {
                 `;
             }
 
+            // Spectator Button Logic
+            let spectateBtn = '';
+            if (state.isSpectator && state.currentGameState === 'PLAYING' && state.settings && state.settings.mode === 'creative' && !u.isSpectator) {
+                spectateBtn = `
+                    <button class="spectate-btn secondary small-btn" title="Observer" style="margin-left: 5px; padding: 4px 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; cursor: pointer; color: var(--text-main);">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                `;
+            }
+
             div.innerHTML = `
                 ${turnOrderBadge}
                 ${avatarHtml}
@@ -155,8 +167,35 @@ export class PlayerListManager {
                     </div>
                     ${score}
                 </div>
+                ${spectateBtn}
                 ${kickBtn}
             `;
+
+            // Add event listener for spectate button
+            if (spectateBtn) {
+                const btn = div.querySelector('.spectate-btn');
+                if (btn) {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        
+                        this.socket.emit('spectatePlayer', { roomCode: state.currentRoom, targetId: u.id });
+                        
+                        // Update UI to show selected
+                        document.querySelectorAll('.player-card').forEach(c => c.classList.remove('spectating'));
+                        div.classList.add('spectating');
+                        
+                        // Update button style to show active state
+                        document.querySelectorAll('.spectate-btn').forEach(b => {
+                            b.style.background = 'rgba(255,255,255,0.1)';
+                            b.style.borderColor = 'rgba(255,255,255,0.2)';
+                            b.style.color = 'var(--text-main)';
+                        });
+                        btn.style.background = 'var(--primary)';
+                        btn.style.borderColor = 'var(--primary)';
+                        btn.style.color = 'white';
+                    });
+                }
+            }
             
             // Add event listener for switch role button
             if (switchRoleBtn) {

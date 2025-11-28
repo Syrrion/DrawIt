@@ -650,3 +650,9 @@ canvas {
 }
 
 
+
+.player-card.spectating {
+ border: 1px solid var(--primary);
+ background: rgba(var(--primary-rgb), 0.1);
+}
+

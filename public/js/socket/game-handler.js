@@ -1,4 +1,4 @@
-import { socket, gameTopBar, wordChoiceModal, wordChoicesContainer, timerValue, wordDisplay, roundCurrent, roundTotal, roundResultOverlay, roundResultTitle, roundResultWord, roundResultScores, gameEndModal, gameEndScores, readyCheckModal, btnIamReady, btnRefuseGame, readyCountVal, readyTotalVal, readyTimerVal, readyPlayersList, helpModal, lobbySettingsModal, confirmationModal, kickModal, alertModal, btnUseHint, hintsCount } from '../dom-elements.js';
+import { socket, gameTopBar, wordChoiceModal, wordChoicesContainer, timerValue, wordDisplay, roundCurrent, roundTotal, roundResultOverlay, roundResultTitle, roundResultWord, roundResultWordLabel, roundResultScores, gameEndModal, gameEndScores, readyCheckModal, btnIamReady, btnRefuseGame, readyCountVal, readyTotalVal, readyTimerVal, readyPlayersList, helpModal, lobbySettingsModal, confirmationModal, kickModal, alertModal, btnUseHint, hintsCount } from '../dom-elements.js';
 import { state } from '../state.js';
 import { showToast, playTickSound } from '../utils.js';
 import { performDraw, performFloodFill } from '../draw.js';
@@ -223,6 +223,10 @@ export class GameHandler {
 
         roundResultTitle.textContent = data.reason;
         roundResultWord.textContent = data.word;
+        
+        // Ensure label is visible for normal modes
+        if (roundResultWordLabel) roundResultWordLabel.style.display = 'block';
+        roundResultWord.style.display = 'block';
 
         this.chatManager.addSystemMessage(`Le mot était : ${data.word}`);
 
@@ -416,7 +420,8 @@ export class GameHandler {
 
         const modeLabels = {
             'guess-word': 'Devine le dessin',
-            'custom-word': 'Mot personnalisé'
+            'custom-word': 'Mot personnalisé',
+            'creative': 'Mode Créatif'
         };
 
         const modeLabel = modeLabels[data.settings.mode] || data.settings.mode;
@@ -587,6 +592,7 @@ export class GameHandler {
     }
 
     handleCreativeRoundStart(data) {
+        roundResultOverlay.classList.add('hidden');
         gameTopBar.classList.remove('hidden');
         if (timerValue) timerValue.textContent = data.duration;
         wordDisplay.textContent = data.word;
@@ -801,23 +807,122 @@ export class GameHandler {
         
         roundResultTitle.textContent = "Résultats du vote";
         roundResultWord.textContent = ""; 
+        
+        // Hide label and word for creative mode
+        if (roundResultWordLabel) roundResultWordLabel.style.display = 'none';
+        roundResultWord.style.display = 'none';
 
         roundResultScores.innerHTML = '';
         
-        data.results.forEach(res => {
-            const row = document.createElement('div');
-            row.className = 'score-row';
-            row.innerHTML = `
-                <span class="score-name">${res.username}</span>
-                <span class="score-points">+${res.score} (${res.average} <i class="fas fa-star"></i>)</span>
+        // Create Podium Container
+        const podiumContainer = document.createElement('div');
+        podiumContainer.className = 'podium-container';
+        podiumContainer.style.display = 'flex';
+        podiumContainer.style.justifyContent = 'center';
+        podiumContainer.style.alignItems = 'flex-end';
+        podiumContainer.style.gap = '20px';
+        podiumContainer.style.marginBottom = '20px';
+        podiumContainer.style.marginTop = '-20px'; // Move up
+        podiumContainer.style.minHeight = '250px';
+
+        // Top 3 Logic
+        const top3 = data.results.slice(0, 3);
+        
+        // Reorder for podium: 2nd, 1st, 3rd
+        const podiumOrder = [];
+        if (top3[1]) podiumOrder.push({ ...top3[1], rank: 2 });
+        if (top3[0]) podiumOrder.push({ ...top3[0], rank: 1 });
+        if (top3[2]) podiumOrder.push({ ...top3[2], rank: 3 });
+
+        podiumOrder.forEach(res => {
+            const item = document.createElement('div');
+            item.className = `podium-item rank-${res.rank}`;
+            item.style.display = 'flex';
+            item.style.flexDirection = 'column';
+            item.style.alignItems = 'center';
+            item.style.gap = '10px';
+            item.style.position = 'relative';
+            
+            // Thumbnail
+            const thumbWrapper = document.createElement('div');
+            thumbWrapper.style.width = res.rank === 1 ? '160px' : '120px';
+            thumbWrapper.style.height = res.rank === 1 ? '120px' : '90px';
+            thumbWrapper.style.background = 'white';
+            thumbWrapper.style.borderRadius = '8px';
+            thumbWrapper.style.overflow = 'hidden';
+            thumbWrapper.style.border = `3px solid ${res.rank === 1 ? '#ffd700' : res.rank === 2 ? '#c0c0c0' : '#cd7f32'}`;
+            thumbWrapper.style.boxShadow = '0 4px 10px rgba(0,0,0,0.3)';
+            
+            const cvs = document.createElement('canvas');
+            cvs.width = 800;
+            cvs.height = 600;
+            cvs.style.width = '100%';
+            cvs.style.height = '100%';
+            
+            const ctx = cvs.getContext('2d');
+            this.replayDrawing(ctx, res.drawing);
+            
+            thumbWrapper.appendChild(cvs);
+            item.appendChild(thumbWrapper);
+
+            // Info
+            const info = document.createElement('div');
+            info.style.textAlign = 'center';
+            info.innerHTML = `
+                <div style="font-weight:bold; color:var(--text-main); font-size:${res.rank === 1 ? '1.2rem' : '1rem'}">${res.username}</div>
+                <div style="color:var(--primary); font-weight:bold;">+${res.score} <span style="font-size:0.8em">(${res.average}★)</span></div>
             `;
-            roundResultScores.appendChild(row);
+            item.appendChild(info);
+
+            // Rank Badge
+            const badge = document.createElement('div');
+            badge.textContent = `#${res.rank}`;
+            badge.style.position = 'absolute';
+            badge.style.top = '-10px';
+            badge.style.left = '50%';
+            badge.style.transform = 'translateX(-50%)';
+            badge.style.background = res.rank === 1 ? '#ffd700' : res.rank === 2 ? '#c0c0c0' : '#cd7f32';
+            badge.style.color = 'black';
+            badge.style.fontWeight = 'bold';
+            badge.style.width = '30px';
+            badge.style.height = '30px';
+            badge.style.borderRadius = '50%';
+            badge.style.display = 'flex';
+            badge.style.alignItems = 'center';
+            badge.style.justifyContent = 'center';
+            badge.style.boxShadow = '0 2px 5px rgba(0,0,0,0.3)';
+            item.appendChild(badge);
+
+            podiumContainer.appendChild(item);
         });
+
+        roundResultScores.appendChild(podiumContainer);
+
+        // List remaining players if any
+        if (data.results.length > 3) {
+            const othersContainer = document.createElement('div');
+            othersContainer.style.marginTop = '20px';
+            othersContainer.style.borderTop = '1px solid rgba(255,255,255,0.1)';
+            othersContainer.style.paddingTop = '10px';
+            othersContainer.style.width = '100%';
+
+            data.results.slice(3).forEach((res, idx) => {
+                const row = document.createElement('div');
+                row.className = 'score-row';
+                row.innerHTML = `
+                    <span class="score-rank" style="color:var(--text-dim)">#${idx + 4}</span>
+                    <span class="score-name">${res.username}</span>
+                    <span class="score-points">+${res.score} (${res.average} <i class="fas fa-star"></i>)</span>
+                `;
+                othersContainer.appendChild(row);
+            });
+            roundResultScores.appendChild(othersContainer);
+        }
 
         roundResultOverlay.classList.remove('hidden');
         setTimeout(() => {
             roundResultOverlay.classList.add('hidden');
-        }, 8000);
+        }, 20000);
     }
 
     handleCreativeHistory(actions) {

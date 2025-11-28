@@ -115,13 +115,15 @@
 
             <div class="login-form-side">
                 <div class="form-group">
-                    <label for="username">Pseudo</label>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <label for="username" style="margin-bottom: 0;">Pseudo</label>
+                        <div class="checkbox-group" style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="spectator-checkbox">
+                            <label for="spectator-checkbox" style="margin: 0; font-size: 0.8rem; cursor: pointer; color: var(--text-dim);">Mode Observateur</label>
+                        </div>
+                    </div>
                     <div class="input-group">
                         <input type="text" id="username" placeholder="Ton pseudo" maxlength="15">
-                    </div>
-                    <div class="checkbox-group" style="margin-top: 8px; display: flex; align-items: center; gap: 8px;">
-                        <input type="checkbox" id="spectator-checkbox">
-                        <label for="spectator-checkbox" style="margin: 0; font-size: 0.9rem; cursor: pointer;">Mode Observateur</label>
                     </div>
                 </div>
 
@@ -136,6 +138,15 @@
                             <div class="active-games-info" style="text-align: center; margin-bottom: 10px; color: var(--text-dim);">
                                 <span id="active-games-count" style="font-weight: bold; color: var(--primary);">0</span> room disponible
                             </div>
+                            
+                            <div id="spectator-filter-section" class="hidden" style="margin-bottom: 10px;">
+                                <select id="spectator-filter-select" class="custom-select">
+                                    <option value="all">Toutes les parties</option>
+                                    <option value="lobby">En attente (Lobby)</option>
+                                    <option value="playing">En cours (Jeu)</option>
+                                </select>
+                            </div>
+
                             <button id="btn-join-random" class="secondary full-width">
                                 <i class="fas fa-random"></i> Aléatoire
                             </button>

@@ -9,12 +9,22 @@ module.exports = (io, socket) => {
     });
 
     // Join Random Room
-    socket.on('joinRandomRoom', ({ username, isSpectator }) => {
-        // Find a public room in LOBBY state
+    socket.on('joinRandomRoom', ({ username, isSpectator, filter }) => {
+        // Find a public room
         // If spectator, can join any public room that allows spectators
         // If player, must join room with space
         const publicRooms = Object.entries(rooms).filter(([code, room]) => {
-            if (room.isPrivate || room.gameState !== 'LOBBY') return false;
+            if (room.isPrivate) return false;
+
+            // Filter logic
+            if (isSpectator) {
+                if (filter === 'lobby' && room.gameState !== 'LOBBY') return false;
+                if (filter === 'playing' && room.gameState !== 'PLAYING') return false;
+                if (room.gameState !== 'LOBBY' && room.gameState !== 'PLAYING') return false;
+            } else {
+                // Players can only join LOBBY
+                if (room.gameState !== 'LOBBY') return false;
+            }
 
             if (isSpectator) {
                 return room.allowSpectators;
@@ -284,12 +294,27 @@ module.exports = (io, socket) => {
                 room.removeUser(socket.id);
 
                 // Handle leader transfer
-                if (room.leaderId === socket.id && room.users.length > 0) {
-                    room.leaderId = room.users[0].id;
-                    io.to(roomCode).emit('chatMessage', {
-                        username: 'System',
-                        message: `${room.users[0].username} est maintenant le leader !`
-                    });
+                if (room.leaderId === socket.id) {
+                    if (room.users.length > 0) {
+                        // Try to find a non-spectator leader
+                        const potentialLeader = room.users.find(u => !u.isSpectator);
+                        
+                        if (potentialLeader) {
+                            room.leaderId = potentialLeader.id;
+                            io.to(roomCode).emit('chatMessage', {
+                                username: 'System',
+                                message: `${potentialLeader.username} est maintenant le leader !`
+                            });
+                        } else {
+                            // Only spectators left
+                            room.users.forEach(u => {
+                                io.to(u.id).emit('error', 'La partie est terminée car il n\'y a plus de joueurs.');
+                                io.to(u.id).emit('kicked');
+                            });
+                            // Clear users to force room deletion
+                            room.users = [];
+                        }
+                    }
                 }
 
                 io.to(roomCode).emit('userLeft', {

@@ -284,3 +284,41 @@ input[type="text"]:focus {
 .slider::-moz-range-thumb:hover {
     transform: scale(1.2);
 }
+
+/* Custom Select */
+.custom-select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-color: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-main);
+    padding: 0.8rem;
+    padding-right: 2.5rem;
+    width: 100%;
+    cursor: pointer;
+    font-size: 0.9rem;
+    outline: none;
+    transition: all 0.3s;
+    
+    /* SVG Arrow - White by default */
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 1em;
+}
+
+.custom-select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px var(--primary-glow);
+    background-color: rgba(0, 0, 0, 0.4);
+    /* SVG Arrow - Primary Color on Focus */
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236366f1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+}
+
+option {
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    padding: 10px;
+}

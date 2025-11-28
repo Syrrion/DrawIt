@@ -80,6 +80,26 @@
 				"\n/* Presentation Modal - Larger */\n.presentation-content {\n    max-width: 900px !important;\n    width: 90%;\n}\n"
 			],
 			"group": "build"
+		},
+		{
+			"label": "append_css_spectating",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\game-ui.css",
+				"\n.player-card.spectating {\n    border: 1px solid var(--primary);\n    background: rgba(var(--primary-rgb), 0.1);\n}\n"
+			],
+			"group": "build"
+		},
+		{
+			"label": "append_css_select",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\components.css",
+				"\n/* Select Inputs */\nselect {\n    background: rgba(0, 0, 0, 0.2);\n    border: 1px solid var(--border-color);\n    color: var(--text-main);\n    padding: 0.8rem;\n    border-radius: var(--radius-md);\n    outline: none;\n    transition: all 0.3s;\n    width: 100%;\n    cursor: pointer;\n    appearance: none;\n    -webkit-appearance: none;\n    -moz-appearance: none;\n    background-image: url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\");\n    background-repeat: no-repeat;\n    background-position: right 1rem center;\n    background-size: 1em;\n}\n\nselect:focus {\n    border-color: var(--primary);\n    box-shadow: 0 0 0 2px var(--primary-glow);\n    background-color: rgba(0, 0, 0, 0.4);\n}\n\noption {\n    background-color: var(--bg-dark);\n    color: var(--text-main);\n    padding: 10px;\n}\n"
+			],
+			"group": "build"
 		}
 	]
 }
