@@ -2,7 +2,45 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-    font-family: 'Roboto', sans-serif;
+    font-family: 'Exo 2', sans-serif;
+}
+
+/* Responsive Scaling Based on Screen Resolution */
+:root {
+    /* Base scale for 1920x1080 */
+    --scale-factor: 1;
+}
+
+/* Scaling for smaller resolutions */
+@media screen and (max-width: 1600px) {
+    :root {
+        --scale-factor: 0.85;
+    }
+}
+
+@media screen and (max-width: 1366px) {
+    :root {
+        --scale-factor: 0.75;
+    }
+}
+
+@media screen and (max-width: 1280px) {
+    :root {
+        --scale-factor: 0.7;
+    }
+}
+
+/* Scaling for larger resolutions */
+@media screen and (min-width: 2560px) {
+    :root {
+        --scale-factor: 1.3;
+    }
+}
+
+@media screen and (min-width: 3840px) {
+    :root {
+        --scale-factor: 1.8;
+    }
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -11,10 +49,29 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 body {
-    background: radial-gradient(circle at top left, #1e1b4b, #0f172a);
+    background: linear-gradient(135deg, #ef4444, #f59e0b, #10b981, #06b6d4, #3b82f6, #8b5cf6, #ec4899);
+    background-size: 400% 400%;
+    animation: gradientBG 60s ease infinite;
     color: var(--text-main);
     height: 100vh;
     overflow: hidden;
+    position: relative;
+}
+
+body::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-color: rgba(18, 18, 24, 0.6);
+    backdrop-filter: blur(100px);
+    z-index: -1;
+    pointer-events: none;
+}
+
+@keyframes gradientBG {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
 }
 
 /* Custom Scrollbar */

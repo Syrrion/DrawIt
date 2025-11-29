@@ -31,9 +31,10 @@ export const addLayerBtn = document.getElementById('add-layer-btn');
 
 // Toolbar
 export const penColorInput = document.getElementById('pen-color');
-export const colorTrigger = document.getElementById('color-trigger');
-export const colorPopover = document.getElementById('color-popover');
-export const colorGrid = document.getElementById('color-grid');
+// export const colorTrigger = document.getElementById('color-trigger'); // Removed
+export const avatarColorPopover = document.getElementById('avatar-color-popover');
+export const gameColorGrid = document.getElementById('game-color-grid');
+export const avatarColorGrid = document.getElementById('avatar-color-grid');
 export const currentColorPreview = document.getElementById('current-color-preview');
 
 export const penSizeInput = document.getElementById('pen-size');
@@ -142,3 +143,9 @@ export const chatInput = document.getElementById('chat-input');
 export const localCursor = document.getElementById('local-cursor');
 export const cursorBrushPreview = document.getElementById('cursor-brush-preview');
 export const cursorIcon = document.getElementById('cursor-icon');
+
+// Clear Options Modal
+export const clearOptionsModal = document.getElementById('clear-options-modal');
+export const btnClearLayer = document.getElementById('btn-clear-layer');
+export const btnClearAll = document.getElementById('btn-clear-all');
+export const btnCancelClear = document.getElementById('btn-cancel-clear');

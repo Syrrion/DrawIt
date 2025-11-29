@@ -175,9 +175,47 @@
 }
 
 .leader-crown {
-    color: #f1c40f;
+    color: #fbbf24;
     margin-right: 6px;
     font-size: 0.9rem;
+    filter: drop-shadow(0 0 4px rgba(251, 191, 36, 0.6));
+    animation: crownFloat 3s ease-in-out infinite;
+}
+
+@keyframes crownFloat {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-2px) rotate(5deg); }
+}
+
+.player-name {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 2px;
+}
+
+.name-text {
+    font-family: 'Exo 2', sans-serif;
+    font-weight: 700;
+    font-size: 0.95rem;
+    letter-spacing: 0.5px;
+    color: var(--text-main);
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 140px;
+}
+
+.drawing-icon {
+    font-size: 0.8rem;
+    animation: pencilWiggle 2s ease-in-out infinite;
+}
+
+@keyframes pencilWiggle {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(-10deg); }
+    75% { transform: rotate(10deg); }
 }
 
 .kick-btn {
@@ -220,6 +258,7 @@
 .canvas-container {
     flex: 1;
     padding: 2rem;
+    padding-bottom: calc(160px * var(--scale-factor));
     display: flex;
     justify-content: center;
     align-items: center;
@@ -306,43 +345,86 @@ canvas {
 /* Game Top Bar */
 .game-top-bar {
     position: absolute;
-    top: 0;
-    left: 350px; /* Sidebar width */
-    right: 350px; /* Chat width */
-    height: 60px;
-    background: var(--bg-glass-strong);
-    display: flex;
-    justify-content: space-between;
+    top: calc(20px * var(--scale-factor));
+    /* Center between sidebars: Left (560px) + Right (280px) = 840px occupied. 
+       Center of free space = 560 + (100% - 840)/2 = 50% + 140px */
+    left: calc(50% + (140px * var(--scale-factor)));
+    transform: translateX(-50%);
+    
+    width: auto;
+    min-width: 600px;
+    height: auto;
+    padding: 12px 30px;
+    
+    /* Toolbar Style Match */
+    background: rgba(18, 18, 24, 0.9);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
-    padding: 0 2rem;
+    gap: 2rem;
     z-index: 50;
-    border-bottom: 1px solid var(--border-color);
-    border-bottom-left-radius: var(--radius-md);
-    border-bottom-right-radius: var(--radius-md);
-    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+}
+
+.game-top-bar:hover {
+    border-color: rgba(255, 255, 255, 0.25);
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
 }
 
 .timer-display {
+    justify-self: start;
     font-size: 1.5rem;
     font-weight: bold;
-    color: var(--text-main);
+    color: #fbbf24; /* Amber/Gold */
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.8rem;
+    font-family: 'Orbitron', sans-serif;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 6px 16px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    min-width: 100px;
+    justify-content: center;
 }
 
 .word-display {
+    justify-self: center;
     font-size: 2rem;
     font-weight: bold;
-    letter-spacing: 5px;
-    color: var(--primary);
-    text-shadow: 0 0 10px var(--primary-glow);
+    letter-spacing: 3px;
+    color: var(--text-main);
+    text-shadow: 0 0 20px rgba(99, 102, 241, 0.6);
     white-space: pre;
+    font-family: 'Orbitron', sans-serif;
+    padding: 0 2rem;
+}
+
+.word-display::after {
+    display: none; /* Remove the underline from previous style */
 }
 
 .round-info {
+    justify-self: end;
     color: var(--text-dim);
-    font-size: 0.9rem;
+    font-size: 1rem;
+    font-family: 'Orbitron', sans-serif;
+    letter-spacing: 1px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 6px 16px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    min-width: 100px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: auto;
 }
 
 /* Custom Local Cursor */
@@ -476,14 +558,17 @@ canvas {
     border: 1px solid var(--primary);
     color: white;
     font-weight: 600;
-    font-size: 1rem;
+    font-size: 0.9rem;
     padding: 0.8rem;
     text-transform: uppercase;
     letter-spacing: 1px;
     box-shadow: 0 0 20px var(--primary-glow);
     animation: btnPulse 2s infinite;
     height: auto;
-    white-space: nowrap;
+    white-space: normal;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    line-height: 1.3;
 }
 
 #btn-open-settings:hover {
@@ -654,5 +739,210 @@ canvas {
 .player-card.spectating {
  border: 1px solid var(--primary);
  background: rgba(var(--primary-rgb), 0.1);
+}
+
+
+/* Color Sidebar Styles */
+.color-sidebar-header {
+    padding: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.color-sidebar-header h3 {
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+    margin: 0;
+}
+
+/* Override Color Popover for Sidebar */
+.sidebar-col-2 .game-color-picker {
+    position: static;
+    width: 100%;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 1rem;
+    display: flex !important; /* Force display */
+    flex-direction: column;
+    gap: 1.5rem;
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+}
+
+.sidebar-col-2 .color-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 4px;
+}
+
+.sidebar-col-2 .color-swatch {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 6px;
+    cursor: pointer;
+    border: 2px solid #404040;
+    transition: transform 0.2s, border-color 0.2s;
+}
+
+.sidebar-col-2 .color-swatch:hover {
+    transform: scale(1.1);
+    border-color: white;
+    z-index: 2;
+}
+
+.sidebar-col-2 .color-swatch.active {
+    border-color: white;
+    box-shadow: 0 0 10px rgba(255,255,255,0.5);
+    transform: scale(1.1);
+    z-index: 2;
+}
+
+.sidebar-col-2 .custom-color-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.sidebar-col-2 .cp-saturation-area {
+    width: 100%;
+    height: 150px;
+    background: linear-gradient(to bottom, transparent, #000), linear-gradient(to right, #fff, rgba(255,255,255,0));
+    position: relative;
+    border-radius: 6px;
+    cursor: crosshair;
+    border: 1px solid #404040;
+}
+
+.sidebar-col-2 .cp-hue-area {
+    width: 100%;
+    height: 20px;
+    background: linear-gradient(to right, #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%);
+    position: relative;
+    border-radius: 6px;
+    cursor: crosshair;
+    border: 1px solid #404040;
+}
+
+.sidebar-col-2 .cp-controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.sidebar-col-2 .cp-preview-color {
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    border: 1px solid #404040;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.sidebar-col-2 .cp-rgb-inputs {
+    display: flex;
+    gap: 5px;
+    flex: 1;
+}
+
+.sidebar-col-2 .cp-input-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+}
+
+.sidebar-col-2 .cp-input-group label {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    margin-bottom: 2px;
+}
+
+.sidebar-col-2 .cp-input-group input {
+    width: 100%;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: white;
+    padding: 4px;
+    border-radius: 4px;
+    text-align: center;
+    font-size: 0.8rem;
+}
+
+.sidebar-col-2 .cp-saturation-cursor {
+    width: 12px;
+    height: 12px;
+    border: 2px solid white;
+    border-radius: 50%;
+    position: absolute;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    box-shadow: 0 0 2px rgba(0,0,0,0.5);
+}
+
+.sidebar-col-2 .cp-hue-cursor {
+    width: 8px;
+    height: 100%;
+    border: 2px solid white;
+    border-radius: 2px;
+    position: absolute;
+    top: 0;
+    transform: translateX(-50%);
+    pointer-events: none;
+    box-shadow: 0 0 2px rgba(0,0,0,0.5);
+    background: transparent;
+}
+
+
+/* Adjustments for Double Sidebar Layout */
+
+/* Column 1 Specifics */
+.sidebar-col-1 .room-info {
+ padding: 1rem;
+}
+
+.sidebar-col-1 .players-list {
+ flex: 1;
+ overflow-y: auto;
+}
+
+.sidebar-col-1 .sidebar-footer {
+ margin-top: auto;
+ padding: 1rem;
+ background: rgba(0, 0, 0, 0.2);
+}
+
+/* Column 2 Specifics */
+.sidebar-col-2 .color-panel {
+ padding: 0;
+ border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.sidebar-col-2 .layers-panel {
+ flex: 1;
+ display: flex;
+ flex-direction: column;
+ overflow: hidden;
+}
+
+.sidebar-col-2 .layers-list {
+ flex: 1;
+ overflow-y: auto;
+ padding: 0.5rem;
+}
+
+
+
+/* Self Player Highlight */
+.player-card.is-me .name-text {
+    color: #fbbf24;
+    text-shadow: 0 0 12px rgba(251, 191, 36, 0.5);
+}
+
+.player-card.is-me {
+ background: rgba(255, 255, 255, 0.03);
+ border: 1px solid rgba(255, 255, 255, 0.05);
 }
 

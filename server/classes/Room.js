@@ -201,6 +201,12 @@ class Room {
         this.io.to(this.code).emit('clearCanvas');
     }
 
+    clearLayer(layerId) {
+        // Remove draw actions for this layer
+        this.drawHistory = this.drawHistory.filter(action => action.layerId !== layerId);
+        this.io.to(this.code).emit('clearLayer', layerId);
+    }
+
     startGame() {
         this.setGameState('PLAYING');
         this.game.init(this.settings);

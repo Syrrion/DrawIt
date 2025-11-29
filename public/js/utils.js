@@ -81,6 +81,19 @@ export function stringToColor(str) {
     return '#' + '00000'.substring(0, 6 - c.length) + c;
 }
 
+export function getContrastColor(hex) {
+    if (!hex) return '#ffffff';
+    const rgb = hexToRgb(hex);
+    if (!rgb) return '#ffffff';
+    
+    // Calculate relative luminance
+    // Formula: 0.299*R + 0.587*G + 0.114*B
+    const brightness = (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000;
+    
+    // Return black for bright colors, white for dark colors
+    return brightness > 128 ? '#000000' : '#ffffff';
+}
+
 export function showToast(message, type = 'info') {
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');

@@ -1,53 +1,50 @@
 import { hexToRgb, rgbToHex, hsvToRgb, rgbToHsv, hsvToRgbString } from './utils.js';
 
 export class ColorPickerManager {
-    constructor(
-        penColorInput, 
-        colorGrid, 
-        colorTrigger, 
-        colorPopover, 
-        currentColorPreview, 
-        avatarColorTrigger, 
-        avatarColorPreview, 
-        emojiColorTrigger,
-        emojiColorPreview,
-        setAvatarColor,
-        getActiveTarget,
-        setActiveTarget,
-        onColorChange
-    ) {
-        this.penColorInput = penColorInput;
-        this.colorGrid = colorGrid;
-        this.colorTrigger = colorTrigger;
-        this.colorPopover = colorPopover;
-        this.currentColorPreview = currentColorPreview;
-        this.avatarColorTrigger = avatarColorTrigger;
-        this.avatarColorPreview = avatarColorPreview;
-        this.emojiColorTrigger = emojiColorTrigger;
-        this.emojiColorPreview = emojiColorPreview;
-        this.setAvatarColor = setAvatarColor;
-        this.getActiveTarget = getActiveTarget;
-        this.setActiveTarget = setActiveTarget;
-        this.onColorChange = onColorChange;
+    constructor(options) {
+        this.grid = options.grid;
+        this.popover = options.popover || null; // If null, it's static
+        this.triggers = options.triggers || []; // Array of { element, preview }
+        this.input = options.input || null; // Input to update (e.g. penColor)
+        this.preview = options.preview || null; // Preview to update (e.g. toolbar icon)
+        this.onColorChange = options.onColorChange || null;
+        this.initialColor = options.initialColor || '#000000';
+        
+        // IDs for internal elements
+        this.ids = options.ids || {
+            saturationArea: 'cp-saturation-area',
+            saturationCursor: 'cp-saturation-cursor',
+            hueArea: 'cp-hue-area',
+            hueCursor: 'cp-hue-cursor',
+            previewColor: 'cp-preview-color',
+            r: 'cp-r',
+            g: 'cp-g',
+            b: 'cp-b'
+        };
 
-        // Custom Picker Elements
-        this.cpSaturationArea = document.getElementById('cp-saturation-area');
-        this.cpSaturationCursor = document.getElementById('cp-saturation-cursor');
-        this.cpHueArea = document.getElementById('cp-hue-area');
-        this.cpHueCursor = document.getElementById('cp-hue-cursor');
-        this.cpPreviewColor = document.getElementById('cp-preview-color');
-        this.cpInputR = document.getElementById('cp-r');
-        this.cpInputG = document.getElementById('cp-g');
-        this.cpInputB = document.getElementById('cp-b');
+        // Get internal elements
+        this.cpSaturationArea = document.getElementById(this.ids.saturationArea);
+        this.cpSaturationCursor = document.getElementById(this.ids.saturationCursor);
+        this.cpHueArea = document.getElementById(this.ids.hueArea);
+        this.cpHueCursor = document.getElementById(this.ids.hueCursor);
+        this.cpPreviewColor = document.getElementById(this.ids.previewColor);
+        this.cpInputR = document.getElementById(this.ids.r);
+        this.cpInputG = document.getElementById(this.ids.g);
+        this.cpInputB = document.getElementById(this.ids.b);
 
         this.presetColors = [
-            '#000000', '#ffffff', '#7f8c8d', '#c0392b', '#e74c3c',
-            '#d35400', '#e67e22', '#f39c12', '#f1c40f', '#27ae60',
-            '#2ecc71', '#16a085', '#1abc9c', '#2980b9', '#3498db',
-            '#8e44ad', '#9b59b6', '#2c3e50', '#34495e', '#95a5a6'
+            // Row 1: Grayscale
+            '#000000', '#2c3e50', '#34495e', '#7f8c8d', '#95a5a6', '#bdc3c7', '#ecf0f1', '#ffffff',
+            // Row 2: Reds & Oranges
+            '#c0392b', '#e74c3c', '#ff4757', '#d35400', '#e67e22', '#f39c12', '#f1c40f', '#fdcb6e',
+            // Row 3: Greens & Teals
+            '#1e8449', '#27ae60', '#2ecc71', '#00d084', '#16a085', '#1abc9c', '#0abde3', '#48dbfb',
+            // Row 4: Blues & Purples
+            '#3498db', '#2980b9', '#00a8ff', '#74b9ff', '#1e3799', '#5f27cd', '#8e44ad', '#9b59b6',
+            // Row 5: Pinks & Magentas
+            '#b44ad6', '#9c88ff', '#e056fd', '#ff9ff3', '#fd79a8', '#ff7675', '#ff6b6b', '#ff6348'
         ];
 
-        // Local state for picker internals
         this.cpState = { h: 0, s: 0, v: 0 };
         this.isDraggingSaturation = false;
         this.isDraggingHue = false;
@@ -58,94 +55,59 @@ export class ColorPickerManager {
 
     init() {
         // Generate grid
-        this.colorGrid.innerHTML = '';
-        this.presetColors.forEach(color => {
-            const swatch = document.createElement('div');
-            swatch.className = 'color-swatch';
-            swatch.style.backgroundColor = color;
-            swatch.onclick = () => this.selectColor(color);
-            this.colorGrid.appendChild(swatch);
-        });
-
-        // Toggle popover for Game
-        this.colorTrigger.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (!this.colorPopover.classList.contains('hidden') && this.getActiveTarget() === 'game') {
-                this.colorPopover.classList.add('hidden');
-                return;
-            }
-
-            this.setActiveTarget('game');
-            this.activeTrigger = this.colorTrigger;
-            // Initialize picker state from current game color
-            const rgb = hexToRgb(this.penColorInput.value);
-            if (rgb) {
-                this.cpState = rgbToHsv(rgb.r, rgb.g, rgb.b);
-                this.updateColorPickerVisuals();
-                this.cpPreviewColor.style.backgroundColor = this.penColorInput.value;
-                this.cpInputR.value = rgb.r;
-                this.cpInputG.value = rgb.g;
-                this.cpInputB.value = rgb.b;
-            }
-            this.colorPopover.classList.remove('hidden');
-            this.positionPopover(this.colorTrigger);
-        });
-
-        // Toggle popover for Avatar (Draw Mode)
-        if (this.avatarColorTrigger) {
-            this.avatarColorTrigger.addEventListener('click', (e) => {
-                e.stopPropagation();
-                if (!this.colorPopover.classList.contains('hidden') && this.getActiveTarget() === 'avatar' && this.activeTrigger === this.avatarColorTrigger) {
-                    this.colorPopover.classList.add('hidden');
-                    return;
-                }
-
-                this.setActiveTarget('avatar');
-                this.activeTrigger = this.avatarColorTrigger;
-                this.openAvatarColorPicker(this.avatarColorTrigger, this.avatarColorPreview);
+        if (this.grid) {
+            this.grid.innerHTML = '';
+            this.presetColors.forEach(color => {
+                const swatch = document.createElement('div');
+                swatch.className = 'color-swatch';
+                swatch.style.backgroundColor = color;
+                swatch.onclick = () => this.selectColor(color);
+                this.grid.appendChild(swatch);
             });
         }
 
-        // Toggle popover for Avatar (Emoji Mode)
-        if (this.emojiColorTrigger) {
-            this.emojiColorTrigger.addEventListener('click', (e) => {
-                e.stopPropagation();
-                if (!this.colorPopover.classList.contains('hidden') && this.getActiveTarget() === 'avatar' && this.activeTrigger === this.emojiColorTrigger) {
-                    this.colorPopover.classList.add('hidden');
-                    return;
-                }
+        // Triggers (for popover mode)
+        if (this.popover) {
+            this.triggers.forEach(triggerObj => {
+                const trigger = triggerObj.element;
+                const preview = triggerObj.preview;
+                
+                if (trigger) {
+                    trigger.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        if (!this.popover.classList.contains('hidden') && this.activeTrigger === trigger) {
+                            this.popover.classList.add('hidden');
+                            return;
+                        }
 
-                this.setActiveTarget('avatar');
-                this.activeTrigger = this.emojiColorTrigger;
-                this.openAvatarColorPicker(this.emojiColorTrigger, this.emojiColorPreview);
+                        this.activeTrigger = trigger;
+                        this.openPopover(trigger, preview);
+                    });
+                }
+            });
+
+            // Close popover when clicking outside
+            document.addEventListener('click', (e) => {
+                if (this.popover.classList.contains('hidden')) return;
+                
+                // Keep open when drawing (clicking on canvas area)
+                if (e.target.closest('.canvas-container')) return;
+                if (e.target.closest('#avatar-canvas')) return;
+
+                if (!this.popover.contains(e.target) && 
+                    !this.triggers.some(t => t.element.contains(e.target))) {
+                    this.popover.classList.add('hidden');
+                }
+            });
+
+            this.popover.addEventListener('click', (e) => e.stopPropagation());
+
+            window.addEventListener('resize', () => {
+                if (!this.popover.classList.contains('hidden') && this.activeTrigger) {
+                    this.positionPopover(this.activeTrigger);
+                }
             });
         }
-
-        // Close popover when clicking outside
-        document.addEventListener('click', (e) => {
-            // Keep open when drawing (clicking on canvas area)
-            if (e.target.closest('.canvas-container')) return;
-            if (e.target.closest('#avatar-canvas')) return; // Keep open when drawing on avatar
-
-            if (!this.colorPopover.contains(e.target) && 
-                !this.colorTrigger.contains(e.target) && 
-                (!this.avatarColorTrigger || !this.avatarColorTrigger.contains(e.target)) &&
-                (!this.emojiColorTrigger || !this.emojiColorTrigger.contains(e.target))) {
-                this.colorPopover.classList.add('hidden');
-            }
-        });
-
-        // Prevent closing when clicking inside popover
-        this.colorPopover.addEventListener('click', (e) => {
-            e.stopPropagation();
-        });
-
-        // Reposition on resize if open
-        window.addEventListener('resize', () => {
-            if (!this.colorPopover.classList.contains('hidden') && this.activeTrigger) {
-                this.positionPopover(this.activeTrigger);
-            }
-        });
 
         // Custom Picker Interactions
         if (this.cpSaturationArea) {
@@ -170,58 +132,52 @@ export class ColorPickerManager {
             });
 
             [this.cpInputR, this.cpInputG, this.cpInputB].forEach(input => {
-                input.addEventListener('input', () => this.updateColorFromRGBInputs());
+                if(input) input.addEventListener('input', () => this.updateColorFromRGBInputs());
+            });
+        }
+
+        // Listen to external input changes
+        if (this.input) {
+            this.input.addEventListener('input', () => {
+                this.selectColor(this.input.value, false);
+            });
+            this.input.addEventListener('change', () => {
+                this.selectColor(this.input.value, false);
             });
         }
 
         // Initialize with default color
-        this.selectColor(this.penColorInput.value, false);
+        this.selectColor(this.initialColor, false);
     }
 
-    openAvatarColorPicker(trigger, preview) {
-        let currentAvatarColor = '#000000';
+    openPopover(trigger, preview) {
+        let currentColor = this.initialColor;
         if (preview) {
-             const styleColor = window.getComputedStyle(preview).backgroundColor;
-             const hex = rgbToHex(styleColor);
-             if (hex) currentAvatarColor = hex;
+            const styleColor = window.getComputedStyle(preview).backgroundColor;
+            const hex = rgbToHex(styleColor);
+            if (hex) currentColor = hex;
         }
 
-        const rgb = hexToRgb(currentAvatarColor);
-        if (rgb) {
-            this.cpState = rgbToHsv(rgb.r, rgb.g, rgb.b);
-            this.updateColorPickerVisuals();
-            this.cpPreviewColor.style.backgroundColor = currentAvatarColor;
-            this.cpInputR.value = rgb.r;
-            this.cpInputG.value = rgb.g;
-            this.cpInputB.value = rgb.b;
-        }
-        this.colorPopover.classList.remove('hidden');
+        this.selectColor(currentColor, false);
+        this.popover.classList.remove('hidden');
         this.positionPopover(trigger);
     }
 
     positionPopover(trigger) {
         const rect = trigger.getBoundingClientRect();
-        // We need to show it to get dimensions, but it's already shown by the caller
-        const popoverRect = this.colorPopover.getBoundingClientRect();
-        
-        // Default: above the trigger, centered horizontally
+        const popoverRect = this.popover.getBoundingClientRect();
+
         let top = rect.top - popoverRect.height - 10;
         let left = rect.left + (rect.width / 2) - (popoverRect.width / 2);
-        
-        // Check if it goes off screen top
-        if (top < 10) {
-            // Place below
-            top = rect.bottom + 10;
-        }
-        
-        // Check left/right bounds
+
+        if (top < 10) top = rect.bottom + 10;
         if (left < 10) left = 10;
         if (left + popoverRect.width > window.innerWidth - 10) {
             left = window.innerWidth - popoverRect.width - 10;
         }
-        
-        this.colorPopover.style.top = `${top}px`;
-        this.colorPopover.style.left = `${left}px`;
+
+        this.popover.style.top = `${top}px`;
+        this.popover.style.left = `${left}px`;
     }
 
     updateSaturationFromEvent(e) {
@@ -259,75 +215,72 @@ export class ColorPickerManager {
         this.cpState = hsv;
 
         this.updateColorPickerVisuals();
-        
+
         const hex = rgbToHex(`rgb(${r}, ${g}, ${b})`);
         this.applyColorSelection(hex);
     }
 
     updateColorPickerVisuals() {
-        // Update Saturation Area Background (Hue)
-        this.cpSaturationArea.style.backgroundColor = `hsl(${this.cpState.h}, 100%, 50%)`;
-
-        // Update Cursors
-        this.cpSaturationCursor.style.left = `${this.cpState.s * 100}%`;
-        this.cpSaturationCursor.style.top = `${(1 - this.cpState.v) * 100}%`;
-        this.cpHueCursor.style.left = `${(this.cpState.h / 360) * 100}%`;
-
-        // Update Cursor Colors for visibility
-        this.cpSaturationCursor.style.backgroundColor = hsvToRgbString(this.cpState.h, this.cpState.s, this.cpState.v);
+        if(this.cpSaturationArea) this.cpSaturationArea.style.backgroundColor = `hsl(${this.cpState.h}, 100%, 50%)`;
+        if(this.cpSaturationCursor) {
+            this.cpSaturationCursor.style.left = `${this.cpState.s * 100}%`;
+            this.cpSaturationCursor.style.top = `${(1 - this.cpState.v) * 100}%`;
+            this.cpSaturationCursor.style.backgroundColor = hsvToRgbString(this.cpState.h, this.cpState.s, this.cpState.v);
+        }
+        if(this.cpHueCursor) this.cpHueCursor.style.left = `${(this.cpState.h / 360) * 100}%`;
     }
 
     updateColorFromPicker() {
         const rgb = hsvToRgb(this.cpState.h, this.cpState.s, this.cpState.v);
         const hex = rgbToHex(`rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`);
-        
         this.applyColorSelection(hex);
-
-        // Update Inputs without triggering event
-        this.cpInputR.value = rgb.r;
-        this.cpInputG.value = rgb.g;
-        this.cpInputB.value = rgb.b;
-        
-        // Update active state in grid (likely none)
-        document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+        if(this.cpInputR) this.cpInputR.value = rgb.r;
+        if(this.cpInputG) this.cpInputG.value = rgb.g;
+        if(this.cpInputB) this.cpInputB.value = rgb.b;
     }
 
     selectColor(color, updateInput = true) {
         if (updateInput) this.applyColorSelection(color);
-        
-        // Update custom picker state
+
         const rgb = hexToRgb(color);
         if (rgb) {
             this.cpState = rgbToHsv(rgb.r, rgb.g, rgb.b);
             this.updateColorPickerVisuals();
-            this.cpPreviewColor.style.backgroundColor = color;
-            this.cpInputR.value = rgb.r;
-            this.cpInputG.value = rgb.g;
-            this.cpInputB.value = rgb.b;
+            if(this.cpPreviewColor) this.cpPreviewColor.style.backgroundColor = color;
+            if(this.cpInputR) this.cpInputR.value = rgb.r;
+            if(this.cpInputG) this.cpInputG.value = rgb.g;
+            if(this.cpInputB) this.cpInputB.value = rgb.b;
         }
-        
-        // Update active state in grid
-        document.querySelectorAll('.color-swatch').forEach(s => {
-            if (rgbToHex(s.style.backgroundColor) === color.toLowerCase()) {
-                s.classList.add('active');
-            } else {
-                s.classList.remove('active');
-            }
-        });
+
+        if (this.grid) {
+            this.grid.querySelectorAll('.color-swatch').forEach(s => {
+                if (rgbToHex(s.style.backgroundColor) === color.toLowerCase()) {
+                    s.classList.add('active');
+                } else {
+                    s.classList.remove('active');
+                }
+            });
+        }
     }
 
     applyColorSelection(hex) {
-        this.cpPreviewColor.style.backgroundColor = hex;
-        
-        if (this.getActiveTarget() === 'game') {
-            this.penColorInput.value = hex;
-            this.currentColorPreview.style.backgroundColor = hex;
-        } else if (this.getActiveTarget() === 'avatar') {
-            this.setAvatarColor(hex);
-            if (this.avatarColorPreview) this.avatarColorPreview.style.backgroundColor = hex;
-            if (this.emojiColorPreview) this.emojiColorPreview.style.backgroundColor = hex;
+        if(this.cpPreviewColor) this.cpPreviewColor.style.backgroundColor = hex;
+        if (this.input) {
+            this.input.value = hex;
+            // Dispatch input event to notify listeners (e.g. ToolsManager for cursor contrast)
+            this.input.dispatchEvent(new Event('input'));
         }
+        if (this.preview) this.preview.style.backgroundColor = hex;
         
+        // Update trigger preview if active
+        if (this.activeTrigger) {
+             // Find the preview associated with this trigger
+             const triggerObj = this.triggers.find(t => t.element === this.activeTrigger);
+             if (triggerObj && triggerObj.preview) {
+                 triggerObj.preview.style.backgroundColor = hex;
+             }
+        }
+
         if (this.onColorChange) this.onColorChange(hex);
     }
 }

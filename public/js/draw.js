@@ -1,6 +1,8 @@
 // Smudge Tool Helper
 const smudgeCanvas = document.createElement('canvas');
 const smudgeCtx = smudgeCanvas.getContext('2d', { willReadFrequently: true });
+const maskCanvas = document.createElement('canvas');
+const maskCtx = maskCanvas.getContext('2d', { willReadFrequently: true });
 
 import { hexToRgb } from './utils.js';
 
@@ -11,31 +13,48 @@ export function performDraw(targetCtx, x0, y0, x1, y1, color, size, opacity, too
         if (!rgb) return;
 
         const dist = Math.sqrt((x1 - x0) ** 2 + (y1 - y0) ** 2);
-        const step = Math.max(1, size / 10); 
+        // Larger steps to reduce spray frequency
+        const step = Math.max(1, size / 2); 
         const steps = Math.ceil(dist / step);
+        
+        // Calculate number of particles based on size
+        const radius = size / 2;
+        const area = Math.PI * radius * radius;
+        // Adjust density factor - reduced slightly since particles are larger/diffuse
+        const particleCount = Math.max(1, Math.floor(area * 0.04)); 
+
+        // Use lower opacity for individual particles to create diffuse effect
+        targetCtx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity * 0.5})`;
+        targetCtx.globalCompositeOperation = 'source-over';
 
         for (let i = 0; i <= steps; i++) {
             const t = steps === 0 ? 0 : i / steps;
-            const x = x0 + (x1 - x0) * t;
-            const y = y0 + (y1 - y0) * t;
+            const cx = x0 + (x1 - x0) * t;
+            const cy = y0 + (y1 - y0) * t;
 
-            const rad = size / 2;
-            const grad = targetCtx.createRadialGradient(x, y, 0, x, y, rad);
-            grad.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`);
-            grad.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
+            for (let j = 0; j < particleCount; j++) {
+                // Random offset within radius
+                // Use sqrt(random) for uniform distribution over the disk
+                const r = radius * Math.sqrt(Math.random());
+                const angle = Math.random() * Math.PI * 2;
+                
+                const x = cx + r * Math.cos(angle);
+                const y = cy + r * Math.sin(angle);
 
-            targetCtx.fillStyle = grad;
-            targetCtx.globalCompositeOperation = 'source-over';
-            targetCtx.beginPath();
-            targetCtx.arc(x, y, rad, 0, Math.PI * 2);
-            targetCtx.fill();
+                // Draw diffuse particle (circle with random size)
+                const partSize = Math.random() * 1.5 + 0.5; // Radius 0.5 to 2.0
+                
+                targetCtx.beginPath();
+                targetCtx.arc(x, y, partSize, 0, Math.PI * 2);
+                targetCtx.fill();
+            }
         }
         return;
     }
 
     if (tool === 'smudge') {
         // Increase size factor for smudge tool to make it larger than other tools
-        const effectiveSize = size * 3;
+        const effectiveSize = size;
         
         const dist = Math.sqrt((x1 - x0) ** 2 + (y1 - y0) ** 2);
         // Smoother steps for better finesse
@@ -44,18 +63,22 @@ export function performDraw(targetCtx, x0, y0, x1, y1, color, size, opacity, too
         const r = effectiveSize / 2;
 
         // Resize temp canvas if needed
-        // Use Math.ceil to ensure integer dimensions
-        const canvasSize = Math.ceil(effectiveSize);
+        const canvasSize = effectiveSize;
         if (smudgeCanvas.width !== canvasSize || smudgeCanvas.height !== canvasSize) {
             smudgeCanvas.width = canvasSize;
             smudgeCanvas.height = canvasSize;
-        }
+            maskCanvas.width = canvasSize;
+            maskCanvas.height = canvasSize;
 
-        // Pre-calculate gradient for soft round brush
-        // Start from 0 for a peak (softer center) instead of a plateau
-        const grad = smudgeCtx.createRadialGradient(r, r, 0, r, r, r);
-        grad.addColorStop(0, 'rgba(0,0,0,1)');
-        grad.addColorStop(1, 'rgba(0,0,0,0)');
+            // Pre-calculate gradient for soft round brush on maskCanvas
+            const grad = maskCtx.createRadialGradient(r, r, 0, r, r, r);
+            grad.addColorStop(0, 'rgba(255,255,255,1)');
+            grad.addColorStop(1, 'rgba(255,255,255,0)');
+
+            maskCtx.clearRect(0, 0, canvasSize, canvasSize);
+            maskCtx.fillStyle = grad;
+            maskCtx.fillRect(0, 0, canvasSize, canvasSize);
+        }
 
         let prevX = x0;
         let prevY = y0;
@@ -68,23 +91,28 @@ export function performDraw(targetCtx, x0, y0, x1, y1, color, size, opacity, too
             // 1. Copy source (from prev position) to temp canvas
             smudgeCtx.globalCompositeOperation = 'source-over';
             smudgeCtx.clearRect(0, 0, canvasSize, canvasSize);
+            // Use integer coordinates to avoid interpolation with transparent black
             smudgeCtx.drawImage(
                 targetCtx.canvas,
-                prevX - r, prevY - r, effectiveSize, effectiveSize,
+                Math.floor(prevX - r), Math.floor(prevY - r), effectiveSize, effectiveSize,
                 0, 0, effectiveSize, effectiveSize
             );
 
-            // 2. Apply soft round mask
+            // 2. Apply soft round mask using maskCanvas
             smudgeCtx.globalCompositeOperation = 'destination-in';
-            smudgeCtx.fillStyle = grad;
-            smudgeCtx.fillRect(0, 0, canvasSize, canvasSize);
+            smudgeCtx.drawImage(maskCanvas, 0, 0);
 
-            // 3. Draw to destination
-            targetCtx.globalCompositeOperation = 'source-over';
-            // Apply opacity factor and reduce slightly for a more diffuse effect
+            // 3. Erase destination (Make room for new paint - simulates dragging transparency)
+            targetCtx.globalCompositeOperation = 'destination-out';
             targetCtx.globalAlpha = opacity * 0.9;
-            targetCtx.drawImage(smudgeCanvas, currX - r, currY - r);
+            targetCtx.drawImage(maskCanvas, Math.floor(currX - r), Math.floor(currY - r));
+
+            // 4. Draw to destination
+            targetCtx.globalCompositeOperation = 'lighter';
+            targetCtx.globalAlpha = opacity * 0.9;
+            targetCtx.drawImage(smudgeCanvas, Math.floor(currX - r), Math.floor(currY - r));
             targetCtx.globalAlpha = 1;
+            targetCtx.globalCompositeOperation = 'source-over';
 
             prevX = currX;
             prevY = currY;

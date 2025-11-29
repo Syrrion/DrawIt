@@ -21,6 +21,7 @@ export class DrawingHandler {
         socket.on('canvasState', this.handleCanvasState.bind(this));
         socket.on('draw', this.handleDraw.bind(this));
         socket.on('clearCanvas', this.handleClearCanvas.bind(this));
+        socket.on('clearLayer', this.handleClearLayer.bind(this));
     }
 
     handleLayerAdded(layer) {
@@ -145,5 +146,12 @@ export class DrawingHandler {
             l.ctx.clearRect(0, 0, 800, 600);
         });
         if (this.render) this.render();
+    }
+
+    handleClearLayer(layerId) {
+        if (state.layerCanvases[layerId]) {
+            state.layerCanvases[layerId].ctx.clearRect(0, 0, 800, 600);
+            if (this.render) this.render();
+        }
     }
 }

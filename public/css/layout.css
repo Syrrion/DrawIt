@@ -13,7 +13,7 @@
 
 /* Game Screen Layout */
 #game-screen {
-    background: var(--bg-dark);
+    background: transparent;
     display: flex;
     flex-direction: row;
 }
@@ -40,17 +40,13 @@
     height: 100%;
     display: flex;
     flex-direction: column;
-    background-image: 
-        radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.08) 0%, transparent 60%),
-        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-    background-size: 100% 100%, 40px 40px, 40px 40px;
+    background: transparent;
     position: relative;
 }
 
 /* Chat Sidebar */
 .chat-sidebar {
-    width: 350px;
+    width: calc(280px * var(--scale-factor));
     flex-shrink: 0;
     height: 100%;
     background: rgba(18, 18, 24, 0.6);
@@ -62,3 +58,57 @@
     z-index: 10;
     box-shadow: -5px 0 30px rgba(0, 0, 0, 0.2);
 }
+
+/* Color Sidebar */
+.color-sidebar {
+ width: 260px;
+ flex-shrink: 0;
+ height: 100%;
+ background: rgba(18, 18, 24, 0.6);
+ border-right: 1px solid rgba(255, 255, 255, 0.08);
+ display: flex;
+ flex-direction: column;
+ backdrop-filter: blur(20px);
+ -webkit-backdrop-filter: blur(20px);
+ z-index: 9;
+ box-shadow: 5px 0 30px rgba(0, 0, 0, 0.1);
+}
+
+
+/* Sidebar Group (Double Sidebar) */
+.sidebar-group {
+    display: flex;
+    height: 100%;
+    z-index: 10;
+    /* Shadow moved to col-1 */
+}
+
+.sidebar-col-1 {
+    width: calc(280px * var(--scale-factor));
+    flex-shrink: 0;
+    height: 100%;
+    background: rgba(18, 18, 24, 0.6);
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    flex-direction: column;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+}
+
+.sidebar-col-2 {
+    width: calc(280px * var(--scale-factor));
+    flex-shrink: 0;
+    height: 100%;
+    background: rgba(18, 18, 24, 0.6);
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    flex-direction: column;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 5px 0 30px rgba(0, 0, 0, 0.2);
+    z-index: 9;
+}/* Hide old sidebars if they exist in CSS but not HTML */
+.sidebar, .color-sidebar {
+ display: none;
+}
+

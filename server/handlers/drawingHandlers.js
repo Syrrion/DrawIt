@@ -85,6 +85,13 @@ module.exports = (io, socket) => {
         }
     });
 
+    socket.on('clearLayer', ({ roomCode, layerId }) => {
+        const room = rooms[roomCode];
+        if (room) {
+            room.clearLayer(layerId);
+        }
+    });
+
     socket.on('cursorMove', ({ roomCode, x, y, username }) => {
         const room = rooms[roomCode];
         if (room) {

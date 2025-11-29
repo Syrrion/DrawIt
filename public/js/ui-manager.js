@@ -1,4 +1,4 @@
-import { 
+import {
     joinBtn, createBtn, roomCodeInput, usernameInput, loginScreen, gameScreen, displayRoomCode,
     toggleCodeBtn, iconEye, iconEyeOff, copyCodeBtn,
     kickModal, btnKickCancel, btnKickConfirm, kickPlayerName,
@@ -8,7 +8,8 @@ import {
     btnIamReady, btnRefuseGame, readyCheckModal,
     socket, spectatorCheckbox, btnJoinRandom, activeGamesCount, privateRoomCheckbox, allowSpectatorsCheckbox,
     btnUserSettings, userSettingsModal, btnCloseUserSettings, settingShowCursors, settingShowLayerAvatars,
-    maxPlayersInput, btnSubmitCustomWord, customWordInput, customWordModal, waitingMessage
+    maxPlayersInput, btnSubmitCustomWord, customWordInput, customWordModal, waitingMessage,
+    clearOptionsModal, btnClearLayer, btnClearAll, btnCancelClear
 } from './dom-elements.js';
 import { state } from './state.js';
 import { showToast, generateRandomUsername, copyToClipboard, escapeHtml } from './utils.js';
@@ -31,6 +32,9 @@ export class UIManager {
     }
 
     init() {
+        // Randomize background gradient start
+        document.body.style.animationDelay = `-${Math.random() * 60}s`;
+
         // Login Tabs Logic
         this.loginTabs = new Tabs('.login-tab', '.login-tab-content');
 
@@ -48,7 +52,7 @@ export class UIManager {
         if (spectatorCheckbox) {
             spectatorCheckbox.addEventListener('change', () => {
                 const isSpectator = spectatorCheckbox.checked;
-                
+
                 // Update Join Tab Label
                 const joinTab = document.querySelector('.login-tab[data-target="tab-join"]');
                 if (joinTab) {
@@ -83,21 +87,21 @@ export class UIManager {
             btnJoinRandom.addEventListener('click', () => {
                 let username = usernameInput.value.trim();
                 const isSpectator = spectatorCheckbox.checked;
-                
+
                 // Get filter value
                 let filter = 'all';
                 if (isSpectator && filterSelect) {
                     filter = filterSelect.value;
                 }
-                
+
                 if (!username) {
                     username = generateRandomUsername();
                     usernameInput.value = username;
                 }
-                
+
                 // Sanitize username
                 username = escapeHtml(username);
-                
+
                 state.user.username = username;
                 socket.emit('joinRandomRoom', { username, isSpectator, filter });
             });
@@ -125,7 +129,7 @@ export class UIManager {
                     }
                 }
             }
-            
+
             // Animate settings button for non-leaders
             const btnViewSettings = document.getElementById('btn-view-settings');
             if (btnViewSettings) {
@@ -152,7 +156,7 @@ export class UIManager {
             let username = usernameInput.value.trim();
             let roomCode = roomCodeInput.value.trim();
             const isSpectator = spectatorCheckbox.checked;
-            
+
             if (!username) {
                 username = generateRandomUsername();
                 usernameInput.value = username;
@@ -162,7 +166,7 @@ export class UIManager {
                 // Sanitize
                 username = escapeHtml(username);
                 roomCode = escapeHtml(roomCode);
-                
+
                 this.joinRoom(roomCode, username, isSpectator);
             } else {
                 showToast('Merci de remplir le pseudo et le code de la room', 'error');
@@ -180,7 +184,7 @@ export class UIManager {
             const isPrivate = privateRoomCheckbox ? privateRoomCheckbox.checked : false;
             const allowSpectators = allowSpectatorsCheckbox ? allowSpectatorsCheckbox.checked : true;
             const maxPlayers = maxPlayersInput ? parseInt(maxPlayersInput.value) : 8;
-            
+
             if (!username) {
                 username = generateRandomUsername();
                 usernameInput.value = username;
@@ -189,7 +193,7 @@ export class UIManager {
             if (username) {
                 // Sanitize
                 username = escapeHtml(username);
-                
+
                 const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
                 this.joinRoom(roomCode, username, false, isPrivate, maxPlayers, allowSpectators);
             } else {
@@ -244,14 +248,14 @@ export class UIManager {
         window.showAlert = (title, message, callback) => {
             alertTitle.textContent = title;
             alertMessage.textContent = message;
-            
+
             // Override close behavior for callback
             const originalOnClose = this.alertModalInstance.options.onClose;
             this.alertModalInstance.options.onClose = () => {
                 if (callback) callback();
                 this.alertModalInstance.options.onClose = originalOnClose; // Restore
             };
-            
+
             this.alertModalInstance.open();
         };
 
@@ -260,32 +264,34 @@ export class UIManager {
             closeBtn: confirmCancelBtn
         });
 
-        window.showConfirmModal = (title, message, onConfirm) => {
+        window.showConfirmModal = (title, message, onConfirm, confirmText = 'Tout effacer') => {
             const titleEl = confirmationModal.querySelector('h3');
             const msgEl = confirmationModal.querySelector('p');
-            
+            const confirmBtn = confirmationModal.querySelector('#confirm-ok');
+
             if (titleEl) titleEl.textContent = title;
             if (msgEl) msgEl.textContent = message;
-            
+            if (confirmBtn) confirmBtn.textContent = confirmText;
+
             // Handle Confirm
             const handleConfirm = () => {
                 this.confirmationModalInstance.close();
                 confirmOkBtn.removeEventListener('click', handleConfirm);
                 if (onConfirm) onConfirm();
             };
-            
+
             // We need to remove old listeners or clone the button to avoid stacking listeners
             // A cleaner way is to use a one-time listener or manage it via the class
             // For now, let's use the removeEventListener approach but we need to be careful about previous listeners
             // Actually, creating a new function every time is problematic for removal if we don't store reference.
             // Let's use a property on the instance to store the current confirm handler
-            
+
             if (this.currentConfirmHandler) {
                 confirmOkBtn.removeEventListener('click', this.currentConfirmHandler);
             }
             this.currentConfirmHandler = handleConfirm;
             confirmOkBtn.addEventListener('click', this.currentConfirmHandler);
-            
+
             this.confirmationModalInstance.open();
         };
 
@@ -296,7 +302,7 @@ export class UIManager {
                 this.animationSystem.stop();
                 this.gameSettingsManager.show();
                 this.gameSettingsManager.updateControlsState();
-                
+
                 // Clear canvas
                 Object.values(state.layerCanvases).forEach(l => {
                     l.ctx.clearRect(0, 0, 800, 600);
@@ -383,19 +389,48 @@ export class UIManager {
                     btnSubmitCustomWord.click();
                 }
             });
+
         }
+
+        // Clear Options Modal
+        this.clearOptionsModalInstance = new Modal(clearOptionsModal, {
+            closeBtn: btnCancelClear
+        });
+
+        window.showClearOptionsModal = (onClearLayer, onClearAll) => {
+            const btnLayer = document.getElementById('btn-clear-layer');
+            const btnAll = document.getElementById('btn-clear-all');
+
+            if (!btnLayer || !btnAll) {
+                console.error('Clear buttons not found in DOM');
+                return;
+            }
+
+            // Use onclick to automatically replace previous listeners
+            btnLayer.onclick = () => {
+                this.clearOptionsModalInstance.close();
+                if (onClearLayer) onClearLayer();
+            };
+
+            btnAll.onclick = () => {
+                this.clearOptionsModalInstance.close();
+                if (onClearAll) onClearAll();
+            };
+
+            this.clearOptionsModalInstance.open();
+        };
     }
 
     updateGameCountDisplay() {
         if (!activeGamesCount) return;
-        
+
         const isSpectator = spectatorCheckbox ? spectatorCheckbox.checked : false;
         let count = 0;
 
         if (isSpectator) {
             const filterSelect = document.getElementById('spectator-filter-select');
             const filter = filterSelect ? filterSelect.value : 'all';
-            
+
             if (this.currentCounts.observable && typeof this.currentCounts.observable === 'object') {
                 count = this.currentCounts.observable[filter] || 0;
             } else {
@@ -405,13 +440,13 @@ export class UIManager {
         } else {
             count = this.currentCounts.playable || 0;
         }
-        
+
         if (count === 0) {
             activeGamesCount.textContent = "Aucune";
         } else {
             activeGamesCount.textContent = count;
         }
-        
+
         const suffix = count > 1 ? ' rooms disponibles' : ' room disponible';
         if (activeGamesCount.nextSibling) {
             activeGamesCount.nextSibling.textContent = ` ${suffix}`;
@@ -430,7 +465,7 @@ export class UIManager {
             }
             this.updateGameCountDisplay();
         });
-        
+
         setInterval(() => {
             if (!state.currentRoom) {
                 socket.emit('getPublicGameCount');
@@ -441,10 +476,10 @@ export class UIManager {
     joinRoom(roomCode, username, isSpectator = false, isPrivate = false, maxPlayers = 8, allowSpectators = true) {
         state.user.username = username;
         state.currentRoom = roomCode;
-        
+
         // Save username
         localStorage.setItem('drawit_username', username);
-        
+
         const avatarData = this.avatarManager.getAvatarData();
         // Save avatar
         this.avatarManager.saveAvatarToStorage();

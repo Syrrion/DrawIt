@@ -1,4 +1,4 @@
-import { socket, penColorInput, colorGrid, colorTrigger, colorPopover, currentColorPreview, avatarColorTrigger, avatarColorPreview, emojiColorTrigger, emojiColorPreview, cursorsLayer, playersList, canvasWrapper, zoomLevelDisplay, layersList, chatMessages, chatForm, chatInput, cursorIcon } from './js/dom-elements.js';
+import { socket, penColorInput, gameColorGrid, avatarColorGrid, avatarColorPopover, currentColorPreview, avatarColorTrigger, avatarColorPreview, emojiColorTrigger, emojiColorPreview, cursorsLayer, playersList, canvasWrapper, zoomLevelDisplay, layersList, chatMessages, chatForm, chatInput, cursorIcon } from './js/dom-elements.js';
 import { state } from './js/state.js';
 import { showToast } from './js/utils.js';
 import { LayerManager } from './js/layers.js';
@@ -21,27 +21,46 @@ const animationSystem = new AnimationSystem();
 // Avatar Manager
 const avatarManager = new AvatarManager();
 
-// Color Picker
-new ColorPickerManager(
-    penColorInput, 
-    colorGrid, 
-    colorTrigger, 
-    colorPopover, 
-    currentColorPreview, 
-    avatarColorTrigger, 
-    avatarColorPreview, 
-    emojiColorTrigger,
-    emojiColorPreview,
-    (color) => avatarManager.setAvatarColor(color), 
-    () => state.activeColorTarget, 
-    (target) => state.activeColorTarget = target,
-    (color) => {
-        // Callback when color changes
-        if (state.activeColorTarget === 'game' && cursorIcon) {
-            cursorIcon.style.backgroundColor = color;
-        }
+// Game Color Picker
+new ColorPickerManager({
+    grid: gameColorGrid,
+    input: penColorInput,
+    preview: currentColorPreview,
+    ids: {
+        saturationArea: 'game-cp-saturation-area',
+        saturationCursor: 'game-cp-saturation-cursor',
+        hueArea: 'game-cp-hue-area',
+        hueCursor: 'game-cp-hue-cursor',
+        previewColor: 'game-cp-preview-color',
+        r: 'game-cp-r',
+        g: 'game-cp-g',
+        b: 'game-cp-b'
+    },
+    onColorChange: (color) => {
+        if (cursorIcon) cursorIcon.style.backgroundColor = color;
     }
-);
+});
+
+// Avatar Color Picker
+new ColorPickerManager({
+    grid: avatarColorGrid,
+    popover: avatarColorPopover,
+    triggers: [
+        { element: avatarColorTrigger, preview: avatarColorPreview },
+        { element: emojiColorTrigger, preview: emojiColorPreview }
+    ],
+    ids: {
+        saturationArea: 'avatar-cp-saturation-area',
+        saturationCursor: 'avatar-cp-saturation-cursor',
+        hueArea: 'avatar-cp-hue-area',
+        hueCursor: 'avatar-cp-hue-cursor',
+        previewColor: 'avatar-cp-preview-color',
+        r: 'avatar-cp-r',
+        g: 'avatar-cp-g',
+        b: 'avatar-cp-b'
+    },
+    onColorChange: (color) => avatarManager.setAvatarColor(color)
+});
 
 // Player List
 const playerListManager = new PlayerListManager(socket, playersList, (id, username) => window.showKickModal(id, username));
@@ -57,9 +76,9 @@ const cameraManager = new CameraManager(canvasWrapper, zoomLevelDisplay);
 
 // Game Settings
 const gameSettingsManager = new GameSettingsManager(
-    socket, 
-    () => socket.id === state.leaderId, 
-    () => state.currentRoom, 
+    socket,
+    () => socket.id === state.leaderId,
+    () => state.currentRoom,
     () => playerListManager.getPlayerList().filter(u => !u.isSpectator).length
 );
 
@@ -71,12 +90,12 @@ const canvasManager = new CanvasManager(cursorManager, cameraManager, toolsManag
 
 // Layers
 const layerManager = new LayerManager(
-    socket, 
-    () => state.currentRoom, 
-    state.layers, 
-    state.layerCanvases, 
-    state.activeLayerId, 
-    () => canvasManager.render(), 
+    socket,
+    () => state.currentRoom,
+    state.layers,
+    state.layerCanvases,
+    state.activeLayerId,
+    () => canvasManager.render(),
     showToast,
     (newActiveId) => {
         state.activeLayerId = newActiveId;
@@ -88,11 +107,11 @@ const layerManager = new LayerManager(
 // Initialize Managers
 new UIManager(avatarManager, animationSystem, gameSettingsManager, () => canvasManager.render(), cursorManager, layerManager);
 new SocketManager({
-    gameSettingsManager, 
-    playerListManager, 
-    layerManager, 
-    chatManager, 
-    cursorManager, 
+    gameSettingsManager,
+    playerListManager,
+    layerManager,
+    chatManager,
+    cursorManager,
     animationSystem,
-    render: () => canvasManager.render()
+    render: () => canvasManager.renderAsync()
 });

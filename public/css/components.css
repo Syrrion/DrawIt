@@ -46,7 +46,20 @@ input[type="text"], input[type="number"] {
     width: 100%;
 }
 
-input[type="text"]:focus {
+/* Hide spin buttons for number inputs */
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { 
+  -webkit-appearance: none; 
+  margin: 0; 
+}
+input[type=number] {
+  -moz-appearance: textfield;
+  text-align: center;
+  font-family: 'Orbitron', sans-serif; /* Match theme font for numbers */
+  letter-spacing: 1px;
+}
+
+input[type="text"]:focus, input[type="number"]:focus {
     border-color: var(--primary);
     box-shadow: 0 0 0 2px var(--primary-glow);
     background: rgba(0, 0, 0, 0.4);
@@ -322,3 +335,245 @@ option {
     color: var(--text-main);
     padding: 10px;
 }
+
+/* Color Popover & Generic Color Picker Styles */
+.color-popover {
+ position: fixed;
+ background: var(--bg-glass-strong);
+ border: 1px solid var(--border-color);
+ border-radius: var(--radius-md);
+ padding: 1rem;
+ box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+ backdrop-filter: blur(10px);
+ z-index: 2000;
+ width: 280px;
+ display: flex;
+ flex-direction: column;
+ gap: 1rem;
+}
+
+.color-popover.hidden {
+ display: none;
+}
+
+.color-grid {
+ display: grid;
+ grid-template-columns: repeat(6, 1fr);
+ gap: 6px;
+ padding: 0 10px;
+}
+
+.color-swatch {
+ width: 100%;
+ aspect-ratio: 1;
+ border-radius: 6px;
+ cursor: pointer;
+ border: 2px solid #404040;
+ transition: transform 0.2s, border-color 0.2s;
+}
+
+.color-swatch:hover {
+ transform: scale(1.1);
+ border-color: white;
+ z-index: 2;
+}
+
+.color-swatch.active {
+ border-color: white;
+ box-shadow: 0 0 10px rgba(255,255,255,0.5);
+ transform: scale(1.1);
+ z-index: 2;
+}
+
+.custom-color-picker {
+ display: flex;
+ flex-direction: column;
+ gap: 1rem;
+}
+
+.cp-saturation-area {
+ width: 100%;
+ height: 150px;
+ background: linear-gradient(to bottom, transparent, #000), linear-gradient(to right, #fff, rgba(255,255,255,0));
+ position: relative;
+ border-radius: 6px;
+ cursor: crosshair;
+ border: 1px solid #404040;
+}
+
+.cp-hue-area {
+ width: 100%;
+ height: 20px;
+ background: linear-gradient(to right, #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%);
+ position: relative;
+ border-radius: 6px;
+ cursor: crosshair;
+ border: 1px solid #404040;
+}
+
+.cp-controls {
+ display: flex;
+ gap: 10px;
+ align-items: center;
+}
+
+.cp-preview-color {
+ width: 40px;
+ height: 40px;
+ border-radius: 6px;
+ border: 1px solid #404040;
+ box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.cp-rgb-inputs {
+ display: flex;
+ gap: 5px;
+ flex: 1;
+}
+
+.cp-input-group {
+ display: flex;
+ flex-direction: column;
+ align-items: center;
+ flex: 1;
+}
+
+.cp-input-group label {
+ font-size: 0.7rem;
+ color: var(--text-dim);
+ margin-bottom: 2px;
+}
+
+.cp-input-group input {
+ width: 100%;
+ background: rgba(0,0,0,0.3);
+ border: 1px solid rgba(255,255,255,0.1);
+ color: white;
+ padding: 4px;
+ border-radius: 4px;
+ text-align: center;
+ font-size: 0.8rem;
+}
+
+.cp-saturation-cursor {
+ width: 12px;
+ height: 12px;
+ border: 2px solid white;
+ border-radius: 50%;
+ position: absolute;
+ transform: translate(-50%, -50%);
+ pointer-events: none;
+ box-shadow: 0 0 2px rgba(0,0,0,0.5);
+}
+
+.cp-hue-cursor {
+ width: 8px;
+ height: 100%;
+ border: 2px solid white;
+ border-radius: 2px;
+ position: absolute;
+ top: 0;
+ transform: translateX(-50%);
+ pointer-events: none;
+ box-shadow: 0 0 2px rgba(0,0,0,0.5);
+ background: transparent;
+}
+
+
+/* Color Picker Tabs */
+.cp-tabs {
+    display: flex;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 4px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    margin-bottom: 1rem;
+}
+
+.cp-tab {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    padding: 0.5rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.2s;
+    font-family: "Orbitron", sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-align: center;
+}
+
+.cp-tab:hover {
+    color: var(--text-main);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.cp-tab.active {
+    background: var(--primary);
+    color: white;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.cp-tab-content {
+    display: none;
+}
+
+.cp-tab-content.active {
+    display: block;
+}
+
+/* Palette Grid */
+.cp-palette-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 6px;
+    max-height: 200px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+.cp-palette-swatch {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 1px solid rgba(255,255,255,0.1);
+    transition: transform 0.1s;
+}
+
+.cp-palette-swatch:hover {
+    transform: scale(1.2);
+    z-index: 2;
+    border-color: white;
+    box-shadow: 0 0 5px rgba(0,0,0,0.5);
+}
+
+.cp-palette-swatch.active {
+    border-color: white;
+    transform: scale(1.1);
+    box-shadow: 0 0 0 2px var(--primary);
+    z-index: 1;
+}
+
+
+/* Spectrum Picker */
+.spectrum-picker-container {
+    display: flex;
+    justify-content: center;
+    padding: 5px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#game-spectrum-canvas {
+    width: 100%;
+    height: auto;
+    border-radius: 4px;
+    cursor: crosshair;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+}
+

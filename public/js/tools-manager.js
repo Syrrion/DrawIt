@@ -1,25 +1,51 @@
-import { 
-    toolPenBtn, toolEraserBtn, toolFillBtn, toolSmudgeBtn, toolAirbrushBtn, 
+import {
+    toolPenBtn, toolEraserBtn, toolFillBtn, toolSmudgeBtn, toolAirbrushBtn,
     toolPipetteBtn, toolSelectionBtn,
-    toolRectBtn, toolCircleBtn, toolTriangleBtn, toolLineBtn, 
+    toolRectBtn, toolCircleBtn, toolTriangleBtn, toolLineBtn,
     btnUndo, btnRedo, btnHelp, clearBtn,
     helpModal, btnCloseHelp,
-    canvas, socket, penColorInput, colorTrigger, currentColorPreview,
+    canvas, socket, penColorInput, currentColorPreview,
     localCursor, cursorBrushPreview, cursorIcon, penSizeInput
 } from './dom-elements.js';
 import { state } from './state.js';
-import { showToast, rgbToHex } from './utils.js';
+import { showToast, rgbToHex, getContrastColor } from './utils.js';
 import { deleteSelection } from './selection-manager.js';
 import { Modal } from './components/modal.js';
 
 export class ToolsManager {
     constructor() {
         this.previousTool = null;
+        this.toolSizes = {
+            pen: 10,
+            airbrush: 100,
+            eraser: 100,
+            fill: 5,
+            smudge: 5,
+            pipette: 5,
+            selection: 5,
+            rectangle: 5,
+            circle: 5,
+            triangle: 5,
+            line: 5
+        };
         this.init();
     }
 
     init() {
-        penSizeInput.addEventListener('input', () => this.updateBrushPreview());
+        penSizeInput.addEventListener('input', () => {
+            this.toolSizes[state.currentTool] = parseInt(penSizeInput.value, 10);
+            this.updateBrushPreview();
+        });
+
+        // Listen for color changes to update cursor contrast
+        if (penColorInput) {
+            penColorInput.addEventListener('input', () => {
+                this.updateCursorColor(penColorInput.value);
+            });
+            penColorInput.addEventListener('change', () => {
+                this.updateCursorColor(penColorInput.value);
+            });
+        }
 
         // Help Modal
         this.helpModalInstance = new Modal(helpModal, {
@@ -35,12 +61,12 @@ export class ToolsManager {
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
                 e.preventDefault();
                 if (e.shiftKey) {
-                     socket.emit('redo', state.currentRoom);
+                    socket.emit('redo', state.currentRoom);
                 } else {
-                     socket.emit('undo', state.currentRoom);
+                    socket.emit('undo', state.currentRoom);
                 }
             }
-            
+
             // Ctrl + Y for Redo
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
                 e.preventDefault();
@@ -128,14 +154,19 @@ export class ToolsManager {
             if (e.key === 'Shift' && !e.repeat && state.currentTool !== 'pipette') {
                 this.previousTool = state.currentTool;
                 state.currentTool = 'pipette';
-                
+
+                // Restore pipette size
+                if (this.toolSizes['pipette']) {
+                    penSizeInput.value = this.toolSizes['pipette'];
+                }
+
                 // Update cursor icon for pipette
                 const svg = toolPipetteBtn.querySelector('svg');
                 if (svg && cursorIcon) {
                     cursorIcon.innerHTML = svg.outerHTML;
                 }
                 this.updateBrushPreview();
-                
+
                 // Force crosshair cursor for pipette
                 canvas.style.cursor = 'crosshair';
             }
@@ -144,8 +175,14 @@ export class ToolsManager {
         window.addEventListener('keyup', (e) => {
             if (e.key === 'Shift' && this.previousTool) {
                 state.currentTool = this.previousTool;
-                this.previousTool = null;
                 
+                // Restore previous tool size
+                if (this.toolSizes[state.currentTool]) {
+                    penSizeInput.value = this.toolSizes[state.currentTool];
+                }
+
+                this.previousTool = null;
+
                 // Restore cursor icon
                 const activeBtn = document.querySelector('.tool-btn.active');
                 if (activeBtn) {
@@ -173,14 +210,33 @@ export class ToolsManager {
         });
 
         clearBtn.addEventListener('click', () => {
-            window.showConfirmModal(
-                'Confirmation', 
-                'Voulez-vous vraiment tout effacer ?', 
+            window.showClearOptionsModal(
+                // On Clear Layer
                 () => {
-                    const ctx = canvas.getContext('2d');
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    if (state.activeLayerId && state.layerCanvases[state.activeLayerId]) {
+                        const ctx = state.layerCanvases[state.activeLayerId].ctx;
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                        socket.emit('clearLayer', {
+                            roomCode: state.currentRoom,
+                            layerId: state.activeLayerId
+                        });
+
+                        canvas.dispatchEvent(new CustomEvent('request-render'));
+                        showToast('Calque effacé !', 'success');
+                    } else {
+                        showToast('Aucun calque actif', 'error');
+                    }
+                },
+                // On Clear All
+                () => {
+                    Object.values(state.layerCanvases).forEach(l => {
+                        l.ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    });
+
                     socket.emit('clearCanvas', state.currentRoom);
-                    showToast('Dessin effacé !', 'success');
+                    canvas.dispatchEvent(new CustomEvent('request-render'));
+                    showToast('Tout effacé !', 'success');
                 }
             );
         });
@@ -197,6 +253,12 @@ export class ToolsManager {
         const svg = activeBtn.querySelector('svg');
         if (svg && cursorIcon) {
             cursorIcon.innerHTML = svg.outerHTML;
+            this.updateCursorColor(penColorInput.value);
+        }
+
+        // Restore tool size
+        if (this.toolSizes[state.currentTool]) {
+            penSizeInput.value = this.toolSizes[state.currentTool];
         }
 
         // Update brush preview visibility
@@ -204,7 +266,7 @@ export class ToolsManager {
 
         // Cursor Style Logic
         const toolsWithBrush = ['pen', 'eraser', 'airbrush', 'smudge'];
-        
+
         if (toolsWithBrush.includes(state.currentTool)) {
             // Hide system cursor, show brush preview
             canvas.style.cursor = 'none';
@@ -216,18 +278,18 @@ export class ToolsManager {
 
     updateBrushPreview() {
         if (!cursorBrushPreview) return;
-        
+
         const size = parseInt(penSizeInput.value, 10);
         const toolsWithBrush = ['pen', 'eraser', 'airbrush', 'smudge'];
-        
+
         if (toolsWithBrush.includes(state.currentTool)) {
             cursorBrushPreview.style.display = 'block';
             cursorBrushPreview.style.width = `${size}px`;
             cursorBrushPreview.style.height = `${size}px`;
-            
+
             // Adjust for smudge which is larger
             if (state.currentTool === 'smudge') {
-                const effectiveSize = size * 3;
+                const effectiveSize = size;
                 cursorBrushPreview.style.width = `${effectiveSize}px`;
                 cursorBrushPreview.style.height = `${effectiveSize}px`;
             }
@@ -250,21 +312,37 @@ export class ToolsManager {
 
         state.color = hex;
         penColorInput.value = hex;
-        currentColorPreview.style.backgroundColor = hex;
-        
-        // If using custom color picker logic
-        if (colorTrigger) {
-            const preview = colorTrigger.querySelector('div');
-            if (preview) preview.style.backgroundColor = hex;
+        if (currentColorPreview) {
+            currentColorPreview.style.backgroundColor = hex;
         }
 
+        // Dispatch input event to update ColorPickerManager
+        penColorInput.dispatchEvent(new Event('input'));
+
         // Update cursor icon background
-        if (cursorIcon) {
-            cursorIcon.style.backgroundColor = hex;
-        }
-        
+        this.updateCursorColor(hex);
+
         // Optional: Switch back to previous tool or pen
         // state.currentTool = 'pen';
         // updateActiveTool(toolPenBtn);
+    }
+
+    updateCursorColor(hex) {
+        if (!cursorIcon) return;
+        
+        // Ensure hex is valid, default to black if empty
+        if (!hex) hex = '#000000';
+
+        cursorIcon.style.backgroundColor = hex;
+        
+        const contrastColor = getContrastColor(hex);
+        cursorIcon.style.color = contrastColor;
+        
+        // Force SVG stroke/fill update if needed
+        const svg = cursorIcon.querySelector('svg');
+        if (svg) {
+            svg.style.stroke = contrastColor;
+            svg.style.fill = 'none'; // Ensure fill doesn't interfere unless intended
+        }
     }
 }

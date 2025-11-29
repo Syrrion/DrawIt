@@ -100,6 +100,116 @@
 				"\n/* Select Inputs */\nselect {\n    background: rgba(0, 0, 0, 0.2);\n    border: 1px solid var(--border-color);\n    color: var(--text-main);\n    padding: 0.8rem;\n    border-radius: var(--radius-md);\n    outline: none;\n    transition: all 0.3s;\n    width: 100%;\n    cursor: pointer;\n    appearance: none;\n    -webkit-appearance: none;\n    -moz-appearance: none;\n    background-image: url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\");\n    background-repeat: no-repeat;\n    background-position: right 1rem center;\n    background-size: 1em;\n}\n\nselect:focus {\n    border-color: var(--primary);\n    box-shadow: 0 0 0 2px var(--primary-glow);\n    background-color: rgba(0, 0, 0, 0.4);\n}\n\noption {\n    background-color: var(--bg-dark);\n    color: var(--text-main);\n    padding: 10px;\n}\n"
 			],
 			"group": "build"
+		},
+		{
+			"label": "append_css_layout",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\layout.css",
+				"\n/* Color Sidebar */\n.color-sidebar {\n    width: 260px;\n    flex-shrink: 0;\n    height: 100%;\n    background: rgba(18, 18, 24, 0.6);\n    border-right: 1px solid rgba(255, 255, 255, 0.08);\n    display: flex;\n    flex-direction: column;\n    backdrop-filter: blur(20px);\n    -webkit-backdrop-filter: blur(20px);\n    z-index: 9;\n    box-shadow: 5px 0 30px rgba(0, 0, 0, 0.1);\n}\n"
+			],
+			"group": "build"
+		},
+		{
+			"label": "append_css_color_sidebar",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\game-ui.css",
+				"\n/* Color Sidebar Styles */\n.color-sidebar-header {\n    padding: 1rem;\n    border-bottom: 1px solid rgba(255, 255, 255, 0.05);\n}\n\n.color-sidebar-header h3 {\n    color: var(--text-dim);\n    font-size: 0.8rem;\n    text-transform: uppercase;\n    letter-spacing: 1px;\n    font-weight: 600;\n    margin: 0;\n}\n\n/* Override Color Popover for Sidebar */\n.color-sidebar .color-popover {\n    position: static;\n    width: 100%;\n    background: transparent;\n    border: none;\n    box-shadow: none;\n    padding: 1rem;\n    display: flex !important; /* Force display */\n    flex-direction: column;\n    gap: 1.5rem;\n    opacity: 1;\n    transform: none;\n    pointer-events: auto;\n}\n\n.color-sidebar .color-grid {\n    display: grid;\n    grid-template-columns: repeat(5, 1fr);\n    gap: 8px;\n}\n\n.color-sidebar .color-swatch {\n    width: 100%;\n    aspect-ratio: 1;\n    border-radius: 6px;\n    cursor: pointer;\n    border: 2px solid rgba(255,255,255,0.1);\n    transition: transform 0.2s, border-color 0.2s;\n}\n\n.color-sidebar .color-swatch:hover {\n    transform: scale(1.1);\n    border-color: white;\n    z-index: 2;\n}\n\n.color-sidebar .color-swatch.active {\n    border-color: white;\n    box-shadow: 0 0 10px rgba(255,255,255,0.5);\n    transform: scale(1.1);\n    z-index: 2;\n}\n\n.color-sidebar .custom-color-picker {\n    display: flex;\n    flex-direction: column;\n    gap: 1rem;\n}\n\n.color-sidebar .cp-saturation-area {\n    width: 100%;\n    height: 150px;\n    background: linear-gradient(to bottom, transparent, #000), linear-gradient(to right, #fff, rgba(255,255,255,0));\n    position: relative;\n    border-radius: 6px;\n    cursor: crosshair;\n    border: 1px solid rgba(255,255,255,0.2);\n}\n\n.color-sidebar .cp-hue-area {\n    width: 100%;\n    height: 20px;\n    background: linear-gradient(to right, #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%);\n    position: relative;\n    border-radius: 6px;\n    cursor: crosshair;\n    border: 1px solid rgba(255,255,255,0.2);\n}\n\n.color-sidebar .cp-controls {\n    display: flex;\n    gap: 10px;\n    align-items: center;\n}\n\n.color-sidebar .cp-preview-color {\n    width: 40px;\n    height: 40px;\n    border-radius: 6px;\n    border: 2px solid rgba(255,255,255,0.2);\n    box-shadow: 0 2px 5px rgba(0,0,0,0.2);\n}\n\n.color-sidebar .cp-rgb-inputs {\n    display: flex;\n    gap: 5px;\n    flex: 1;\n}\n\n.color-sidebar .cp-input-group {\n    display: flex;\n    flex-direction: column;\n    align-items: center;\n    flex: 1;\n}\n\n.color-sidebar .cp-input-group label {\n    font-size: 0.7rem;\n    color: var(--text-dim);\n    margin-bottom: 2px;\n}\n\n.color-sidebar .cp-input-group input {\n    width: 100%;\n    background: rgba(0,0,0,0.3);\n    border: 1px solid rgba(255,255,255,0.1);\n    color: white;\n    padding: 4px;\n    border-radius: 4px;\n    text-align: center;\n    font-size: 0.8rem;\n}\n\n.color-sidebar .cp-saturation-cursor {\n    width: 12px;\n    height: 12px;\n    border: 2px solid white;\n    border-radius: 50%;\n    position: absolute;\n    transform: translate(-50%, -50%);\n    pointer-events: none;\n    box-shadow: 0 0 2px rgba(0,0,0,0.5);\n}\n\n.color-sidebar .cp-hue-cursor {\n    width: 8px;\n    height: 100%;\n    border: 2px solid white;\n    border-radius: 2px;\n    position: absolute;\n    top: 0;\n    transform: translateX(-50%);\n    pointer-events: none;\n    box-shadow: 0 0 2px rgba(0,0,0,0.5);\n    background: transparent;\n}\n"
+			],
+			"group": "build"
+		},
+		{
+			"label": "append_layout_css",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\layout.css",
+				"\n/* Sidebar Group (Double Sidebar) */\n.sidebar-group {\n    display: flex;\n    height: 100%;\n    z-index: 10;\n    box-shadow: 5px 0 30px rgba(0, 0, 0, 0.2);\n}\n\n.sidebar-col-1 {\n    width: 220px;\n    flex-shrink: 0;\n    height: 100%;\n    background: rgba(18, 18, 24, 0.8);\n    border-right: 1px solid rgba(255, 255, 255, 0.08);\n    display: flex;\n    flex-direction: column;\n    backdrop-filter: blur(20px);\n    -webkit-backdrop-filter: blur(20px);\n}\n\n.sidebar-col-2 {\n    width: 220px;\n    flex-shrink: 0;\n    height: 100%;\n    background: rgba(18, 18, 24, 0.6);\n    border-right: 1px solid rgba(255, 255, 255, 0.08);\n    display: flex;\n    flex-direction: column;\n    backdrop-filter: blur(20px);\n    -webkit-backdrop-filter: blur(20px);\n}\n\n/* Hide old sidebars if they exist in CSS but not HTML */\n.sidebar, .color-sidebar {\n    display: none;\n}\n"
+			],
+			"group": "build"
+		},
+		{
+			"label": "append_game_ui_css",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\game-ui.css",
+				"\n/* Adjustments for Double Sidebar Layout */\n\n/* Column 1 Specifics */\n.sidebar-col-1 .room-info {\n    padding: 1rem;\n}\n\n.sidebar-col-1 .players-list {\n    flex: 1;\n    overflow-y: auto;\n}\n\n.sidebar-col-1 .sidebar-footer {\n    margin-top: auto;\n    padding: 1rem;\n    background: rgba(0, 0, 0, 0.2);\n}\n\n/* Column 2 Specifics */\n.sidebar-col-2 .color-panel {\n    padding: 0;\n    border-bottom: 1px solid rgba(255, 255, 255, 0.05);\n}\n\n.sidebar-col-2 .layers-panel {\n    flex: 1;\n    display: flex;\n    flex-direction: column;\n    overflow: hidden;\n}\n\n.sidebar-col-2 .layers-list {\n    flex: 1;\n    overflow-y: auto;\n    padding: 0.5rem;\n}\n\n/* Adjust Game Top Bar Position */\n.game-top-bar {\n    left: 440px; /* 220px + 220px */\n}\n"
+			],
+			"group": "build"
+		},
+		{
+			"label": "append_css_components",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\components.css",
+				"\n/* Color Popover & Generic Color Picker Styles */\n.color-popover {\n    position: fixed;\n    background: var(--bg-glass-strong);\n    border: 1px solid var(--border-color);\n    border-radius: var(--radius-md);\n    padding: 1rem;\n    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);\n    backdrop-filter: blur(10px);\n    z-index: 2000;\n    width: 280px;\n    display: flex;\n    flex-direction: column;\n    gap: 1rem;\n}\n\n.color-popover.hidden {\n    display: none;\n}\n\n.color-grid {\n    display: grid;\n    grid-template-columns: repeat(5, 1fr);\n    gap: 8px;\n}\n\n.color-swatch {\n    width: 100%;\n    aspect-ratio: 1;\n    border-radius: 6px;\n    cursor: pointer;\n    border: 2px solid rgba(255,255,255,0.1);\n    transition: transform 0.2s, border-color 0.2s;\n}\n\n.color-swatch:hover {\n    transform: scale(1.1);\n    border-color: white;\n    z-index: 2;\n}\n\n.color-swatch.active {\n    border-color: white;\n    box-shadow: 0 0 10px rgba(255,255,255,0.5);\n    transform: scale(1.1);\n    z-index: 2;\n}\n\n.custom-color-picker {\n    display: flex;\n    flex-direction: column;\n    gap: 1rem;\n}\n\n.cp-saturation-area {\n    width: 100%;\n    height: 150px;\n    background: linear-gradient(to bottom, transparent, #000), linear-gradient(to right, #fff, rgba(255,255,255,0));\n    position: relative;\n    border-radius: 6px;\n    cursor: crosshair;\n    border: 1px solid rgba(255,255,255,0.2);\n}\n\n.cp-hue-area {\n    width: 100%;\n    height: 20px;\n    background: linear-gradient(to right, #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%);\n    position: relative;\n    border-radius: 6px;\n    cursor: crosshair;\n    border: 1px solid rgba(255,255,255,0.2);\n}\n\n.cp-controls {\n    display: flex;\n    gap: 10px;\n    align-items: center;\n}\n\n.cp-preview-color {\n    width: 40px;\n    height: 40px;\n    border-radius: 6px;\n    border: 2px solid rgba(255,255,255,0.2);\n    box-shadow: 0 2px 5px rgba(0,0,0,0.2);\n}\n\n.cp-rgb-inputs {\n    display: flex;\n    gap: 5px;\n    flex: 1;\n}\n\n.cp-input-group {\n    display: flex;\n    flex-direction: column;\n    align-items: center;\n    flex: 1;\n}\n\n.cp-input-group label {\n    font-size: 0.7rem;\n    color: var(--text-dim);\n    margin-bottom: 2px;\n}\n\n.cp-input-group input {\n    width: 100%;\n    background: rgba(0,0,0,0.3);\n    border: 1px solid rgba(255,255,255,0.1);\n    color: white;\n    padding: 4px;\n    border-radius: 4px;\n    text-align: center;\n    font-size: 0.8rem;\n}\n\n.cp-saturation-cursor {\n    width: 12px;\n    height: 12px;\n    border: 2px solid white;\n    border-radius: 50%;\n    position: absolute;\n    transform: translate(-50%, -50%);\n    pointer-events: none;\n    box-shadow: 0 0 2px rgba(0,0,0,0.5);\n}\n\n.cp-hue-cursor {\n    width: 8px;\n    height: 100%;\n    border: 2px solid white;\n    border-radius: 2px;\n    position: absolute;\n    top: 0;\n    transform: translateX(-50%);\n    pointer-events: none;\n    box-shadow: 0 0 2px rgba(0,0,0,0.5);\n    background: transparent;\n}\n"
+			],
+			"group": "build"
+		},
+		{
+			"label": "append_css_tools_gradients",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\tools.css",
+				"\n/* SVG Gradients Application */\n#tool-pen svg { stroke: url(#grad-pen); }\n#tool-airbrush svg { stroke: url(#grad-airbrush); }\n#tool-fill svg { stroke: url(#grad-fill); }\n#tool-smudge svg { stroke: url(#grad-smudge); }\n#tool-eraser svg { stroke: url(#grad-eraser); }\n#tool-pipette svg { stroke: url(#grad-pipette); }\n#tool-selection svg { stroke: url(#grad-selection); }\n\n#tool-rect svg { stroke: url(#grad-rect); }\n#tool-circle svg { stroke: url(#grad-circle); }\n#tool-triangle svg { stroke: url(#grad-triangle); }\n#tool-line svg { stroke: url(#grad-line); }\n\n#btn-undo svg { stroke: url(#grad-undo); }\n#btn-redo svg { stroke: url(#grad-redo); }\n#btn-help svg { stroke: url(#grad-help); }\n"
+			],
+			"group": "build"
+		},
+		{
+			"label": "append_css_me_highlight",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\game-ui.css",
+				"\n/* Self Player Highlight */\n.player-card.is-me .name-text {\n    color: var(--primary);\n    text-shadow: 0 0 12px var(--primary-glow);\n}\n\n.player-card.is-me {\n    background: rgba(255, 255, 255, 0.03);\n    border: 1px solid rgba(255, 255, 255, 0.05);\n}\n"
+			],
+			"group": "build"
+		},
+		{
+			"label": "append_css_chat_names",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\chat.css",
+				"\n/* Enhanced Chat Names */\n.message-name {\n    font-family: 'Orbitron', sans-serif;\n    letter-spacing: 0.5px;\n    color: var(--primary);\n    text-shadow: 0 0 5px rgba(99, 102, 241, 0.3);\n}\n"
+			],
+			"group": "build"
+		},
+		{
+			"label": "append_css_modal_deco",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\modals.css",
+				"\n/* Art Deco Theme for Modals */\n.modal-content {\n    border: 1px solid var(--deco-gold) !important;\n    box-shadow: 0 0 30px rgba(0, 0, 0, 0.8), \n                inset 0 0 20px rgba(0, 0, 0, 0.5),\n                0 0 15px var(--deco-gold-glow) !important;\n    position: relative;\n    outline: 1px solid rgba(212, 175, 55, 0.2);\n    outline-offset: -8px;\n    \n    /* Corner Accents */\n    background: \n        /* Top Left - Vertical & Horizontal */\n        linear-gradient(to right, var(--deco-gold) 3px, transparent 3px) 0 0 / 25px 25px no-repeat,\n        linear-gradient(to bottom, var(--deco-gold) 3px, transparent 3px) 0 0 / 25px 25px no-repeat,\n        \n        /* Top Right - Vertical & Horizontal */\n        linear-gradient(to left, var(--deco-gold) 3px, transparent 3px) 100% 0 / 25px 25px no-repeat,\n        linear-gradient(to bottom, var(--deco-gold) 3px, transparent 3px) 100% 0 / 25px 25px no-repeat,\n        \n        /* Bottom Left - Vertical & Horizontal */\n        linear-gradient(to right, var(--deco-gold) 3px, transparent 3px) 0 100% / 25px 25px no-repeat,\n        linear-gradient(to top, var(--deco-gold) 3px, transparent 3px) 0 100% / 25px 25px no-repeat,\n        \n        /* Bottom Right - Vertical & Horizontal */\n        linear-gradient(to left, var(--deco-gold) 3px, transparent 3px) 100% 100% / 25px 25px no-repeat,\n        linear-gradient(to top, var(--deco-gold) 3px, transparent 3px) 100% 100% / 25px 25px no-repeat,\n        \n        /* Base Background */\n        var(--bg-glass-strong);\n}\n\n/* Center Diamond Decorations */\n.modal-content::before {\n    content: '';\n    position: absolute;\n    top: -7px;\n    left: 50%;\n    transform: translateX(-50%) rotate(45deg);\n    width: 14px;\n    height: 14px;\n    background: var(--bg-dark);\n    border: 2px solid var(--deco-gold);\n    box-shadow: 0 0 8px var(--deco-gold-glow);\n    z-index: 10;\n}\n\n.modal-content::after {\n    content: '';\n    position: absolute;\n    bottom: -7px;\n    left: 50%;\n    transform: translateX(-50%) rotate(45deg);\n    width: 14px;\n    height: 14px;\n    background: var(--bg-dark);\n    border: 2px solid var(--deco-gold);\n    box-shadow: 0 0 8px var(--deco-gold-glow);\n    z-index: 10;\n}\n\n/* Adjust Modal Header to match theme */\n.modal-header {\n    border-bottom: 1px solid rgba(212, 175, 55, 0.2);\n}\n\n.modal-header h3 {\n    color: var(--deco-gold);\n    text-shadow: 0 0 5px var(--deco-gold-glow);\n    font-family: 'Orbitron', sans-serif;\n    letter-spacing: 1px;\n}\n\n/* Close button hover effect */\n.close-btn:hover {\n    color: var(--deco-gold);\n    text-shadow: 0 0 8px var(--deco-gold-glow);\n}\n"
+			],
+			"group": "build"
+		},
+		{
+			"label": "overwrite_modal_deco",
+			"type": "shell",
+			"command": "Set-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\modal-deco.css",
+				"/* Art Deco Theme for Modals - Simplified */\n.modal-content {\n    /* Single thin elegant border */\n    border: 1px solid var(--deco-gold) !important;\n    \n    /* Softer shadow, less aggressive */\n    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6), \n                0 0 10px rgba(212, 175, 55, 0.15) !important;\n    \n    position: relative;\n    \n    /* Clean background without corner gradients */\n    background: var(--bg-glass-strong);\n    \n    /* Ensure rounded corners are respected */\n    border-radius: var(--radius-lg);\n}\n\n/* Center Diamond Decorations - Refined */\n.modal-content::before {\n    content: '';\n    position: absolute;\n    top: -6px; /* Half of height (12px) to center on line */\n    left: 50%;\n    transform: translateX(-50%) rotate(45deg);\n    width: 12px;\n    height: 12px;\n    background: var(--bg-dark);\n    border: 1px solid var(--deco-gold);\n    box-shadow: 0 0 5px var(--deco-gold-glow);\n    z-index: 10;\n}\n\n.modal-content::after {\n    content: '';\n    position: absolute;\n    bottom: -6px;\n    left: 50%;\n    transform: translateX(-50%) rotate(45deg);\n    width: 12px;\n    height: 12px;\n    background: var(--bg-dark);\n    border: 1px solid var(--deco-gold);\n    box-shadow: 0 0 5px var(--deco-gold-glow);\n    z-index: 10;\n}\n\n/* Adjust Modal Header */\n.modal-header {\n    border-bottom: 1px solid rgba(212, 175, 55, 0.15); /* More subtle */\n}\n\n.modal-header h3 {\n    color: var(--deco-gold);\n    text-shadow: 0 0 10px rgba(212, 175, 55, 0.3); /* Softer glow */\n    font-family: 'Orbitron', sans-serif;\n    letter-spacing: 1px;\n}\n\n/* Close button */\n.close-btn:hover {\n    color: var(--deco-gold);\n    text-shadow: 0 0 5px var(--deco-gold-glow);\n}\n"
+			],
+			"group": "build"
+		},
+		{
+			"label": "append_css_result_modal",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\modals.css",
+				"\n/* Result Modal - Larger */\n.result-content {\n    max-width: 800px !important;\n    width: 90%;\n    max-height: 90vh;\n    display: flex;\n    flex-direction: column;\n}\n\n.result-scores {\n    max-height: 60vh;\n    overflow-y: auto;\n    flex: 1;\n}\n"
+			],
+			"group": "build"
 		}
 	]
 }

@@ -614,3 +614,19 @@
  width: 90%;
 }
 
+
+/* Result Modal - Larger */
+.result-content {
+ max-width: 800px !important;
+ width: 90%;
+ max-height: 90vh;
+ display: flex;
+ flex-direction: column;
+}
+
+.result-scores {
+ max-height: 60vh;
+ overflow-y: auto;
+ flex: 1;
+}
+

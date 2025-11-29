@@ -78,6 +78,9 @@ export class PlayerListManager {
         sortedUsers.forEach(u => {
             const div = document.createElement('div');
             div.className = 'player-card';
+            if (u.id === this.socket.id) {
+                div.classList.add('is-me');
+            }
             if (u.isSpectator) {
                 div.classList.add('is-spectator');
                 div.style.opacity = '0.7';
@@ -160,9 +163,11 @@ export class PlayerListManager {
             div.innerHTML = `
                 ${turnOrderBadge}
                 ${avatarHtml}
-                <div class="player-info" style="flex:1;">
+                <div class="player-info" style="flex:1; min-width: 0;">
                     <div class="player-name">
-                        ${leaderIcon}${u.username} ${drawerIcon} ${spectatorIcon}
+                        ${leaderIcon}
+                        <span class="name-text" title="${u.username}">${u.username}</span>
+                        ${drawerIcon} ${spectatorIcon}
                         ${switchRoleBtn}
                     </div>
                     ${score}

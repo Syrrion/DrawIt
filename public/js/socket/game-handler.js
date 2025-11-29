@@ -55,6 +55,34 @@ export class GameHandler {
         }
     }
 
+    formatHint(hint) {
+        if (!hint) return '';
+        return hint.replace(/   /g, '%%%SPACE%%%')
+                   .replace(/ /g, '')
+                   .replace(/%%%SPACE%%%/g, ' ');
+    }
+
+    startSmartTimer(duration, onTick, onEnd) {
+        const endTime = Date.now() + duration * 1000;
+        onTick(duration);
+
+        const interval = setInterval(() => {
+            const now = Date.now();
+            const remaining = Math.ceil((endTime - now) / 1000);
+            
+            if (remaining >= 0) {
+                onTick(remaining);
+            }
+            
+            if (remaining <= 0) {
+                clearInterval(interval);
+                if (onEnd) onEnd();
+            }
+        }, 500);
+        
+        return interval;
+    }
+
     handleGameStateChanged(stateVal) {
         state.currentGameState = stateVal;
         this.layerManager.updateLayersUI();
@@ -73,7 +101,7 @@ export class GameHandler {
             // Update Word Display and Timer if joining mid-game
             if (data.game.currentHint) {
                 gameTopBar.classList.remove('hidden');
-                wordDisplay.textContent = data.game.currentHint;
+                wordDisplay.textContent = this.formatHint(data.game.currentHint);
 
                 // Update Hint Button Visibility for mid-game join
                 const progressiveHintsEnabled = state.settings && state.settings.hintsEnabled;
@@ -98,11 +126,9 @@ export class GameHandler {
                 // Start local timer
                 if (this.currentTimerInterval) clearInterval(this.currentTimerInterval);
                 let timeLeft = data.game.timeLeft;
-                this.currentTimerInterval = setInterval(() => {
-                    timeLeft--;
-                    if (timeLeft >= 0) timerValue.textContent = timeLeft;
-                    else clearInterval(this.currentTimerInterval);
-                }, 1000);
+                this.currentTimerInterval = this.startSmartTimer(timeLeft, (remaining) => {
+                    if (remaining >= 0) timerValue.textContent = remaining;
+                });
             }
         }
     }
@@ -131,15 +157,13 @@ export class GameHandler {
             timerVal.style.color = '';
 
             if (this.wordChoiceTimerInterval) clearInterval(this.wordChoiceTimerInterval);
-            this.wordChoiceTimerInterval = setInterval(() => {
-                timeLeft--;
-                timerVal.textContent = timeLeft;
-                if (timeLeft <= 5) {
+            this.wordChoiceTimerInterval = this.startSmartTimer(timeLeft, (remaining) => {
+                timerVal.textContent = remaining;
+                if (remaining <= 5) {
                     timerVal.style.color = 'red';
-                    if (timeLeft > 0) playTickSound();
+                    if (remaining > 0) playTickSound();
                 }
-                if (timeLeft <= 0) clearInterval(this.wordChoiceTimerInterval);
-            }, 1000);
+            });
         }
 
         wordChoiceModal.classList.remove('hidden');
@@ -150,7 +174,7 @@ export class GameHandler {
         wordChoiceModal.classList.add('hidden');
         if (this.wordChoiceTimerInterval) clearInterval(this.wordChoiceTimerInterval);
         timerValue.textContent = data.duration;
-        wordDisplay.textContent = data.hint;
+        wordDisplay.textContent = this.formatHint(data.hint);
 
         // Show/Hide Hint Button
         const progressiveHintsEnabled = state.settings && state.settings.hintsEnabled;
@@ -177,22 +201,17 @@ export class GameHandler {
         let timeLeft = data.duration;
         if (this.currentTimerInterval) clearInterval(this.currentTimerInterval);
 
-        this.currentTimerInterval = setInterval(() => {
-            timeLeft--;
-            if (timeLeft >= 0) timerValue.textContent = timeLeft;
+        this.currentTimerInterval = this.startSmartTimer(timeLeft, (remaining) => {
+            if (remaining >= 0) timerValue.textContent = remaining;
 
-            if (timeLeft <= 10 && timeLeft > 0) {
+            if (remaining <= 10 && remaining > 0) {
                 playTickSound();
             }
-
-            if (timeLeft <= 0) {
-                clearInterval(this.currentTimerInterval);
-            }
-        }, 1000);
+        });
     }
 
     handleUpdateHint(data) {
-        wordDisplay.textContent = data.hint;
+        wordDisplay.textContent = this.formatHint(data.hint);
     }
 
     handleYourWord(word) {
@@ -494,12 +513,10 @@ export class GameHandler {
 
         let timeLeft = data.timeout;
         if (this.readyTimerInterval) clearInterval(this.readyTimerInterval);
-        this.readyTimerInterval = setInterval(() => {
-            timeLeft--;
-            if (newReadyTimerVal) newReadyTimerVal.textContent = timeLeft;
-            if (timeLeft <= 10 && timeLeft > 0) playTickSound();
-            if (timeLeft <= 0) clearInterval(this.readyTimerInterval);
-        }, 1000);
+        this.readyTimerInterval = this.startSmartTimer(timeLeft, (remaining) => {
+            if (newReadyTimerVal) newReadyTimerVal.textContent = remaining;
+            if (remaining <= 10 && remaining > 0) playTickSound();
+        });
     }
 
     handleGameStarting(count) {
@@ -569,7 +586,7 @@ export class GameHandler {
     }
 
     handleHintRevealed(data) {
-        wordDisplay.textContent = data.hint;
+        wordDisplay.textContent = this.formatHint(data.hint);
         if (hintsCount) hintsCount.textContent = data.remainingHints;
 
         if (data.remainingHints <= 0) {
@@ -611,18 +628,13 @@ export class GameHandler {
         // Force initial update
         if (timerValue) timerValue.textContent = timeLeft;
 
-        this.currentTimerInterval = setInterval(() => {
-            timeLeft--;
-            if (timerValue) timerValue.textContent = timeLeft;
+        this.currentTimerInterval = this.startSmartTimer(timeLeft, (remaining) => {
+            if (timerValue) timerValue.textContent = remaining;
             
-            if (timeLeft <= 10 && timeLeft > 0) {
+            if (remaining <= 10 && remaining > 0) {
                 try { playTickSound(); } catch(e) {}
             }
-            
-            if (timeLeft <= 0) {
-                clearInterval(this.currentTimerInterval);
-            }
-        }, 1000);
+        });
     }
 
     handleCreativeIntermission(data) {
@@ -634,14 +646,11 @@ export class GameHandler {
             let timeLeft = data.duration;
             if (timer) timer.textContent = timeLeft;
             
-            const interval = setInterval(() => {
-                timeLeft--;
-                if (timer) timer.textContent = timeLeft;
-                if (timeLeft <= 0) {
-                    clearInterval(interval);
-                    modal.classList.add('hidden');
-                }
-            }, 1000);
+            this.startSmartTimer(timeLeft, (remaining) => {
+                if (timer) timer.textContent = remaining;
+            }, () => {
+                modal.classList.add('hidden');
+            });
         }
     }
 
@@ -666,11 +675,9 @@ export class GameHandler {
         let timeLeft = data.duration;
         timer.textContent = timeLeft;
         
-        const interval = setInterval(() => {
-            timeLeft--;
-            timer.textContent = timeLeft;
-            if (timeLeft <= 0) clearInterval(interval);
-        }, 1000);
+        this.startSmartTimer(timeLeft, (remaining) => {
+            timer.textContent = remaining;
+        });
     }
 
     replayDrawing(ctx, actions) {
@@ -778,11 +785,9 @@ export class GameHandler {
         timer.textContent = timeLeft;
         
         if (this.votingTimerInterval) clearInterval(this.votingTimerInterval);
-        this.votingTimerInterval = setInterval(() => {
-            timeLeft--;
-            timer.textContent = timeLeft;
-            if (timeLeft <= 0) clearInterval(this.votingTimerInterval);
-        }, 1000);
+        this.votingTimerInterval = this.startSmartTimer(timeLeft, (remaining) => {
+            timer.textContent = remaining;
+        });
     }
 
     handleVotingAllDone() {
@@ -794,11 +799,9 @@ export class GameHandler {
         let timeLeft = 5;
         if (timer) timer.textContent = timeLeft;
         
-        this.votingTimerInterval = setInterval(() => {
-            timeLeft--;
-            if (timer) timer.textContent = timeLeft;
-            if (timeLeft <= 0) clearInterval(this.votingTimerInterval);
-        }, 1000);
+        this.votingTimerInterval = this.startSmartTimer(timeLeft, (remaining) => {
+            if (timer) timer.textContent = remaining;
+        });
     }
 
     handleCreativeRoundEnd(data) {

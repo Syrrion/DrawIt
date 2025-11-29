@@ -324,7 +324,8 @@ export class LayerManager {
             'Voulez-vous vraiment supprimer ce calque ?',
             () => {
                 this.socket.emit('deleteLayer', { roomCode: this.currentRoomProvider(), layerId });
-            }
+            },
+            'Supprimer'
         );
     }
 
