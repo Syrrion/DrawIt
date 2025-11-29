@@ -499,6 +499,10 @@ export class UIManager {
             // Check if user can draw
             const canDraw = () => {
                 if (state.isSpectator) return false;
+                
+                // Allow in Lobby/Configuring
+                if (state.currentGameState === 'LOBBY' || state.currentGameState === 'CONFIGURING' || state.currentGameState === 'WAITING') return true;
+
                 if (state.currentGameState !== 'PLAYING') return false;
                 
                 // Check global setting
