@@ -150,8 +150,8 @@
 }
 
 .player-avatar, .player-avatar-img {
-    width: 36px;
-    height: 36px;
+    width: 48px;
+    height: 48px;
     border-radius: 8px;
     border: 2px solid rgba(255, 255, 255, 0.2);
     box-shadow: 0 2px 8px rgba(0,0,0,0.2);
@@ -159,7 +159,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 1.2rem;
+    font-size: 1.5rem;
     background: white;
 }
 
@@ -192,6 +192,8 @@
     align-items: center;
     gap: 4px;
     margin-bottom: 2px;
+    overflow: hidden; /* Handle overflow at container level */
+    text-overflow: ellipsis;
 }
 
 .name-text {
@@ -202,9 +204,8 @@
     color: var(--text-main);
     text-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 140px;
+    /* Removed overflow hidden to prevent glow clipping */
+    margin-right: 5px;
 }
 
 .drawing-icon {
@@ -944,5 +945,212 @@ canvas {
 .player-card.is-me {
  background: rgba(255, 255, 255, 0.03);
  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+
+/* Movable Toolbar Styles */
+.drag-handle {
+ display: flex;
+ align-items: center;
+ justify-content: center;
+ padding: 0 10px;
+ color: var(--text-dim);
+ cursor: grab;
+ border-right: 1px solid rgba(255, 255, 255, 0.1);
+ margin-right: 10px;
+ transition: color 0.2s;
+}
+
+.drag-handle:hover {
+ color: var(--primary);
+}
+
+.drag-handle:active {
+ cursor: grabbing;
+}
+
+.toolbar.dragging {
+ cursor: grabbing;
+ transition: none; /* Disable transition during drag for smoothness */
+ box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8);
+ border-color: var(--primary);
+}
+
+/* Ensure toolbar can be positioned freely */
+.toolbar.custom-pos {
+ transform: none; /* Remove centering transform */
+ bottom: auto; /* Reset bottom if top is set */
+}
+
+
+/* Icon Button */
+.icon-btn {
+ background: transparent;
+ border: none;
+ color: var(--text-dim);
+ cursor: pointer;
+ padding: 4px 8px;
+ border-radius: 4px;
+ transition: all 0.2s;
+}
+
+.icon-btn:hover {
+ color: var(--primary);
+ background: rgba(255, 255, 255, 0.1);
+}
+
+
+/* Updated Drag Handle Style */
+.drag-handle {
+ border-right: none;
+ margin-right: 0;
+ padding: 0 15px;
+ border-left: 1px solid rgba(255, 255, 255, 0.1);
+ border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+
+/* Floating Window */
+.floating-window {
+ position: absolute;
+ top: 100px;
+ left: 100px;
+ width: 400px;
+ height: 500px;
+ background: rgba(18, 18, 24, 0.95);
+ border: 1px solid rgba(255, 255, 255, 0.1);
+ border-radius: 8px;
+ box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+ display: flex;
+ flex-direction: column;
+ z-index: 1000;
+ backdrop-filter: blur(10px);
+ overflow: hidden;
+ resize: both;
+}
+
+.floating-window.hidden {
+ display: none;
+}
+
+.window-header {
+ padding: 10px;
+ background: rgba(255, 255, 255, 0.05);
+ border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+ display: flex;
+ justify-content: space-between;
+ align-items: center;
+ cursor: grab;
+ user-select: none;
+}
+
+.window-header:active {
+ cursor: grabbing;
+}
+
+.window-title {
+ font-weight: bold;
+ color: var(--text-main);
+ display: flex;
+ align-items: center;
+ gap: 8px;
+}
+
+.window-controls {
+ display: flex;
+ gap: 5px;
+}
+
+.window-btn {
+ background: transparent;
+ border: none;
+ color: var(--text-dim);
+ cursor: pointer;
+ padding: 4px;
+ border-radius: 4px;
+ transition: all 0.2s;
+}
+
+.window-btn:hover {
+ color: white;
+ background: rgba(255, 255, 255, 0.1);
+}
+
+.browser-toolbar {
+ padding: 8px;
+ display: flex;
+ gap: 8px;
+ border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+#browser-url {
+ flex: 1;
+ background: rgba(0, 0, 0, 0.3);
+ border: 1px solid rgba(255, 255, 255, 0.1);
+ color: white;
+ padding: 6px 10px;
+ border-radius: 4px;
+ font-size: 0.9rem;
+}
+
+#btn-browser-go {
+ background: var(--primary);
+ border: none;
+ color: white;
+ padding: 0 12px;
+ border-radius: 4px;
+ cursor: pointer;
+}
+
+.browser-content {
+ flex: 1;
+ background: white;
+ position: relative;
+}
+
+#browser-frame {
+ width: 100%;
+ height: 100%;
+ border: none;
+ display: block;
+}
+
+.browser-status {
+ padding: 4px 8px;
+ font-size: 0.75rem;
+ color: var(--text-dim);
+ background: rgba(0, 0, 0, 0.2);
+ text-align: center;
+}
+
+
+/* Mobile-like Floating Window */
+.floating-window {
+ width: 375px; /* iPhone width */
+ height: 600px;
+ border-radius: 20px; /* More rounded corners */
+ border: 4px solid #333; /* Bezel look */
+}
+
+.browser-content {
+ border-bottom-left-radius: 16px;
+ border-bottom-right-radius: 16px;
+ overflow: hidden;
+}
+
+
+.browser-nav-btn {
+ background: transparent;
+ border: none;
+ color: var(--text-dim);
+ cursor: pointer;
+ padding: 0 8px;
+ border-radius: 4px;
+ transition: all 0.2s;
+}
+
+.browser-nav-btn:hover {
+ color: white;
+ background: rgba(255, 255, 255, 0.1);
 }
 

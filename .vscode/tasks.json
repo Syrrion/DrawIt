@@ -210,6 +210,116 @@
 				"\n/* Result Modal - Larger */\n.result-content {\n    max-width: 800px !important;\n    width: 90%;\n    max-height: 90vh;\n    display: flex;\n    flex-direction: column;\n}\n\n.result-scores {\n    max-height: 60vh;\n    overflow-y: auto;\n    flex: 1;\n}\n"
 			],
 			"group": "build"
+		},
+		{
+			"label": "append_css_movable_ui",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\game-ui.css",
+				"\n/* Movable Toolbar Styles */\n.drag-handle {\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    padding: 0 10px;\n    color: var(--text-dim);\n    cursor: grab;\n    border-right: 1px solid rgba(255, 255, 255, 0.1);\n    margin-right: 10px;\n    transition: color 0.2s;\n}\n\n.drag-handle:hover {\n    color: var(--primary);\n}\n\n.drag-handle:active {\n    cursor: grabbing;\n}\n\n.toolbar.dragging {\n    cursor: grabbing;\n    transition: none; /* Disable transition during drag for smoothness */\n    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8);\n    border-color: var(--primary);\n}\n\n/* Ensure toolbar can be positioned freely */\n.toolbar.custom-pos {\n    transform: none; /* Remove centering transform */\n    bottom: auto; /* Reset bottom if top is set */\n}\n"
+			],
+			"group": "build"
+		},
+		{
+			"label": "append_css_right_sidebar",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\layout.css",
+				"\n/* Right Side Sidebar Style */\n.sidebar-col-2.right-side {\n    border-right: none;\n    border-left: 1px solid rgba(255, 255, 255, 0.08);\n    box-shadow: -5px 0 30px rgba(0, 0, 0, 0.2);\n}\n"
+			],
+			"group": "build"
+		},
+		{
+			"label": "append_css_icon_btn",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\game-ui.css",
+				"\n/* Icon Button */\n.icon-btn {\n    background: transparent;\n    border: none;\n    color: var(--text-dim);\n    cursor: pointer;\n    padding: 4px 8px;\n    border-radius: 4px;\n    transition: all 0.2s;\n}\n\n.icon-btn:hover {\n    color: var(--primary);\n    background: rgba(255, 255, 255, 0.1);\n}\n"
+			],
+			"group": "build"
+		},
+		{
+			"label": "append_css_drag_handle_update",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\game-ui.css",
+				"\n/* Updated Drag Handle Style */\n.drag-handle {\n    border-right: none;\n    margin-right: 0;\n    padding: 0 15px;\n    border-left: 1px solid rgba(255, 255, 255, 0.1);\n    border-right: 1px solid rgba(255, 255, 255, 0.1);\n}\n"
+			],
+			"group": "build"
+		},
+		{
+			"label": "append_css_sliders_update",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\tools.css",
+				"\n/* Updated Sliders Row Layout */\n.sliders-row {\n    margin-bottom: 15px;\n    padding-bottom: 10px;\n    border-bottom: 1px solid rgba(255, 255, 255, 0.1);\n}\n\n.sliders-row .slider-row {\n    flex: 1;\n    min-width: 150px;\n}\n"
+			],
+			"group": "build"
+		},
+		{
+			"label": "append_css_slider_labels",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\tools.css",
+				"\n/* Slider Labels */\n.slider-row {\n    flex-direction: column;\n    align-items: stretch;\n    gap: 5px;\n}\n\n.slider-header {\n    display: flex;\n    align-items: center;\n    gap: 8px;\n    padding-left: 2px;\n}\n\n.slider-label {\n    font-size: 0.65rem;\n    color: var(--text-dim);\n    text-transform: uppercase;\n    font-weight: 600;\n    letter-spacing: 0.5px;\n}\n"
+			],
+			"group": "build"
+		},
+		{
+			"label": "append_css_dragging",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\tools.css",
+				"\n/* Disable transition when dragging */\n.toolbar.dragging {\n    transition: none !important;\n}\n"
+			],
+			"group": "build"
+		},
+		{
+			"label": "append_css_browser",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\game-ui.css",
+				"\n/* Floating Window */\n.floating-window {\n    position: absolute;\n    top: 100px;\n    left: 100px;\n    width: 400px;\n    height: 500px;\n    background: rgba(18, 18, 24, 0.95);\n    border: 1px solid rgba(255, 255, 255, 0.1);\n    border-radius: 8px;\n    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);\n    display: flex;\n    flex-direction: column;\n    z-index: 1000;\n    backdrop-filter: blur(10px);\n    overflow: hidden;\n    resize: both;\n}\n\n.floating-window.hidden {\n    display: none;\n}\n\n.window-header {\n    padding: 10px;\n    background: rgba(255, 255, 255, 0.05);\n    border-bottom: 1px solid rgba(255, 255, 255, 0.1);\n    display: flex;\n    justify-content: space-between;\n    align-items: center;\n    cursor: grab;\n    user-select: none;\n}\n\n.window-header:active {\n    cursor: grabbing;\n}\n\n.window-title {\n    font-weight: bold;\n    color: var(--text-main);\n    display: flex;\n    align-items: center;\n    gap: 8px;\n}\n\n.window-controls {\n    display: flex;\n    gap: 5px;\n}\n\n.window-btn {\n    background: transparent;\n    border: none;\n    color: var(--text-dim);\n    cursor: pointer;\n    padding: 4px;\n    border-radius: 4px;\n    transition: all 0.2s;\n}\n\n.window-btn:hover {\n    color: white;\n    background: rgba(255, 255, 255, 0.1);\n}\n\n.browser-toolbar {\n    padding: 8px;\n    display: flex;\n    gap: 8px;\n    border-bottom: 1px solid rgba(255, 255, 255, 0.05);\n}\n\n#browser-url {\n    flex: 1;\n    background: rgba(0, 0, 0, 0.3);\n    border: 1px solid rgba(255, 255, 255, 0.1);\n    color: white;\n    padding: 6px 10px;\n    border-radius: 4px;\n    font-size: 0.9rem;\n}\n\n#btn-browser-go {\n    background: var(--primary);\n    border: none;\n    color: white;\n    padding: 0 12px;\n    border-radius: 4px;\n    cursor: pointer;\n}\n\n.browser-content {\n    flex: 1;\n    background: white;\n    position: relative;\n}\n\n#browser-frame {\n    width: 100%;\n    height: 100%;\n    border: none;\n    display: block;\n}\n\n.browser-status {\n    padding: 4px 8px;\n    font-size: 0.75rem;\n    color: var(--text-dim);\n    background: rgba(0, 0, 0, 0.2);\n    text-align: center;\n}\n"
+			],
+			"group": "build"
+		},
+		{
+			"label": "append_css_model_tool",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\tools.css",
+				"\n#tool-model { color: #0984e3; }\n#tool-model svg { stroke: url(#grad-model); }\n"
+			],
+			"group": "build"
+		},
+		{
+			"label": "append_css_mobile_window",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\game-ui.css",
+				"\n/* Mobile-like Floating Window */\n.floating-window {\n    width: 375px; /* iPhone width */\n    height: 600px;\n    border-radius: 20px; /* More rounded corners */\n    border: 4px solid #333; /* Bezel look */\n}\n\n.browser-content {\n    border-bottom-left-radius: 16px;\n    border-bottom-right-radius: 16px;\n    overflow: hidden;\n}\n"
+			],
+			"group": "build"
+		},
+		{
+			"label": "append_css_browser_nav",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\game-ui.css",
+				"\n.browser-nav-btn {\n    background: transparent;\n    border: none;\n    color: var(--text-dim);\n    cursor: pointer;\n    padding: 0 8px;\n    border-radius: 4px;\n    transition: all 0.2s;\n}\n\n.browser-nav-btn:hover {\n    color: white;\n    background: rgba(255, 255, 255, 0.1);\n}\n"
+			],
+			"group": "build"
 		}
 	]
 }

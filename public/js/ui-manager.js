@@ -9,7 +9,10 @@ import {
     socket, spectatorCheckbox, btnJoinRandom, activeGamesCount, privateRoomCheckbox, allowSpectatorsCheckbox,
     btnUserSettings, userSettingsModal, btnCloseUserSettings, settingShowCursors, settingShowLayerAvatars,
     maxPlayersInput, btnSubmitCustomWord, customWordInput, customWordModal, waitingMessage,
-    clearOptionsModal, btnClearLayer, btnClearAll, btnCancelClear
+    clearOptionsModal, btnClearLayer, btnClearAll, btnCancelClear,
+    toolbarDragHandle, gameToolbar, sidebarCol2, sidebarGroup, chatSidebar, btnToggleSidebarPos,
+    toolModelBtn, referenceBrowser, btnBrowserClose, browserUrlInput, btnBrowserGo, browserFrame, browserHeader,
+    btnBrowserBack, btnBrowserRefresh, browserStatus
 } from './dom-elements.js';
 import { state } from './state.js';
 import { showToast, generateRandomUsername, copyToClipboard, escapeHtml } from './utils.js';
@@ -40,7 +43,11 @@ export class UIManager {
 
         // Pre-fill random username or load from storage
         const savedUsername = localStorage.getItem('drawit_username');
-        if (savedUsername) {
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+        if (isLocalhost) {
+            if (usernameInput) usernameInput.value = generateRandomUsername();
+        } else if (savedUsername) {
             if (usernameInput) usernameInput.value = savedUsername;
         } else if (usernameInput && !usernameInput.value) {
             usernameInput.value = generateRandomUsername();
@@ -419,6 +426,314 @@ export class UIManager {
 
             this.clearOptionsModalInstance.open();
         };
+
+        this.initLayout();
+        this.initBrowser();
+    }
+
+    initBrowser() {
+        if (!toolModelBtn || !referenceBrowser) return;
+
+        // Navigation
+        const navigate = (query = null) => {
+            let url = query || browserUrlInput.value.trim();
+            if (!url) return;
+
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                // Assume search if no protocol
+                if (url.includes('.') && !url.includes(' ')) {
+                    url = 'https://' + url;
+                } else {
+                    // Search Google Images (via Proxy)
+                    url = 'https://www.google.com/search?tbm=isch&q=' + encodeURIComponent(url);
+                }
+            }
+            
+            // Use local proxy to unblock and simulate mobile
+            const proxyUrl = `/proxy?url=${encodeURIComponent(url)}`;
+            browserFrame.src = proxyUrl;
+            
+            // Update input with the real URL
+            browserUrlInput.value = url;
+
+            // Set loading status
+            if (browserStatus) {
+                browserStatus.textContent = 'Chargement...';
+                browserStatus.style.color = '#fbbf24'; // Loading color
+            }
+        };
+
+        // Iframe Load Event
+        if (browserFrame) {
+            browserFrame.onload = () => {
+                if (browserStatus) {
+                    browserStatus.textContent = 'Prêt';
+                    browserStatus.style.color = 'var(--text-dim)';
+                }
+            };
+        }
+
+        // Listen for URL updates from iframe
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'browser-update') {
+                if (browserUrlInput) {
+                    browserUrlInput.value = event.data.url;
+                }
+                // Also set status to ready here as script runs before onload
+                if (browserStatus) {
+                    browserStatus.textContent = 'Prêt';
+                    browserStatus.style.color = 'var(--text-dim)';
+                }
+            }
+        });
+
+        // Toggle Visibility
+        toolModelBtn.addEventListener('click', () => {
+            const isHidden = referenceBrowser.classList.contains('hidden');
+            referenceBrowser.classList.toggle('hidden');
+            toolModelBtn.classList.toggle('active');
+
+            if (isHidden) {
+                // Auto-search if word is defined and browser is empty (or we want to force it)
+                // Check if we have a word displayed that is NOT hidden (no underscores)
+                const wordText = document.getElementById('word-display').textContent.trim();
+                
+                // Simple check: if it doesn't contain underscores and is not empty
+                if (wordText && !wordText.includes('_')) {
+                    // Only auto-search if the frame is on about:blank or if user wants it (let's do it if blank for now)
+                    if (browserFrame.src === 'about:blank' || browserFrame.src === '' || browserFrame.src.endsWith('about:blank')) {
+                        navigate(wordText);
+                    }
+                }
+            }
+        });
+
+        if (btnBrowserClose) {
+            btnBrowserClose.addEventListener('click', () => {
+                referenceBrowser.classList.add('hidden');
+                toolModelBtn.classList.remove('active');
+            });
+        }
+
+        if (btnBrowserBack) {
+            btnBrowserBack.addEventListener('click', () => {
+                try {
+                    // Try standard history back
+                    if (browserFrame.contentWindow.history.length > 1) {
+                        browserFrame.contentWindow.history.back();
+                    }
+                } catch (e) {
+                    console.log('History back failed', e);
+                }
+            });
+        }
+
+        if (btnBrowserRefresh) {
+            btnBrowserRefresh.addEventListener('click', () => {
+                try {
+                    // Reload current frame src
+                    browserFrame.src = browserFrame.src;
+                } catch (e) {
+                    console.log('Refresh failed', e);
+                }
+            });
+        }
+
+        if (btnBrowserGo) {
+            btnBrowserGo.addEventListener('click', () => { navigate(); });
+        }
+
+        if (browserUrlInput) {
+            browserUrlInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') navigate();
+            });
+        }
+
+        // Dragging
+        if (browserHeader) {
+            let isDragging = false;
+            let startX, startY, initialLeft, initialTop;
+
+            browserHeader.addEventListener('mousedown', (e) => {
+                if (e.target.closest('button')) return; // Don't drag if clicking buttons
+                
+                isDragging = true;
+                
+                startX = e.clientX;
+                startY = e.clientY;
+                initialLeft = referenceBrowser.offsetLeft;
+                initialTop = referenceBrowser.offsetTop;
+                
+                e.preventDefault();
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+
+                referenceBrowser.style.left = (initialLeft + dx) + 'px';
+                referenceBrowser.style.top = (initialTop + dy) + 'px';
+            });
+
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+        }
+    }
+
+    initLayout() {
+        // Sidebar Swap Logic
+        const savedSwapSidebars = localStorage.getItem('drawit_swap_sidebars');
+        let isSwapped = false;
+        if (savedSwapSidebars !== null) {
+            isSwapped = savedSwapSidebars === 'true';
+            this.toggleSidebarLayout(isSwapped);
+        }
+
+        if (btnToggleSidebarPos) {
+            btnToggleSidebarPos.addEventListener('click', () => {
+                isSwapped = !isSwapped;
+                localStorage.setItem('drawit_swap_sidebars', isSwapped);
+                this.toggleSidebarLayout(isSwapped);
+            });
+        }
+
+        // Movable Toolbar Logic
+        if (toolbarDragHandle && gameToolbar) {
+            let isDragging = false;
+            let startX, startY, initialLeft, initialTop;
+
+            toolbarDragHandle.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                
+                // Get current position relative to viewport BEFORE adding classes
+                const rect = gameToolbar.getBoundingClientRect();
+                
+                gameToolbar.classList.add('dragging');
+                gameToolbar.classList.add('custom-pos');
+                
+                // Get parent position to calculate relative coordinates
+                const parentRect = gameToolbar.parentElement.getBoundingClientRect();
+                
+                gameToolbar.style.transformOrigin = 'top left';
+                gameToolbar.style.transform = 'scale(var(--scale-factor))';
+                
+                // Calculate relative position
+                // We want the visual position (rect.left) to match parentRect.left + style.left
+                const relativeLeft = rect.left - parentRect.left;
+                const relativeTop = rect.top - parentRect.top;
+                
+                gameToolbar.style.left = relativeLeft + 'px';
+                gameToolbar.style.top = relativeTop + 'px';
+                gameToolbar.style.bottom = 'auto';
+
+                startX = e.clientX;
+                startY = e.clientY;
+                initialLeft = relativeLeft;
+                initialTop = relativeTop;
+
+                e.preventDefault(); // Prevent text selection
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+
+                let newLeft = initialLeft + dx;
+                let newTop = initialTop + dy;
+
+                // Clamp to viewport
+                // We need to convert viewport bounds to parent-relative bounds
+                const rect = gameToolbar.getBoundingClientRect();
+                const parentRect = gameToolbar.parentElement.getBoundingClientRect();
+                const width = rect.width;
+                const height = rect.height;
+                const viewportWidth = window.innerWidth;
+                const viewportHeight = window.innerHeight;
+
+                // Calculate min/max relative positions
+                // Min Left: 0 (viewport left) -> 0 - parentRect.left
+                const minLeft = -parentRect.left;
+                // Max Left: viewportWidth - width -> viewportWidth - width - parentRect.left
+                const maxLeft = viewportWidth - width - parentRect.left;
+                
+                const minTop = -parentRect.top;
+                const maxTop = viewportHeight - height - parentRect.top;
+
+                // Clamp
+                if (newLeft < minLeft) newLeft = minLeft;
+                if (newLeft > maxLeft) newLeft = maxLeft;
+                if (newTop < minTop) newTop = minTop;
+                if (newTop > maxTop) newTop = maxTop;
+
+                gameToolbar.style.left = newLeft + 'px';
+                gameToolbar.style.top = newTop + 'px';
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (!isDragging) return;
+                isDragging = false;
+                gameToolbar.classList.remove('dragging');
+            });
+
+            // Handle Resize to keep toolbar in view
+            window.addEventListener('resize', () => {
+                if (gameToolbar.classList.contains('custom-pos')) {
+                    const rect = gameToolbar.getBoundingClientRect();
+                    const parentRect = gameToolbar.parentElement.getBoundingClientRect();
+                    const viewportWidth = window.innerWidth;
+                    const viewportHeight = window.innerHeight;
+                    
+                    let newLeft = parseFloat(gameToolbar.style.left);
+                    let newTop = parseFloat(gameToolbar.style.top);
+                    let changed = false;
+
+                    // Calculate bounds relative to parent
+                    const minLeft = -parentRect.left;
+                    const maxLeft = viewportWidth - rect.width - parentRect.left;
+                    const minTop = -parentRect.top;
+                    const maxTop = viewportHeight - rect.height - parentRect.top;
+
+                    if (newLeft < minLeft) { newLeft = minLeft; changed = true; }
+                    if (newLeft > maxLeft) { newLeft = maxLeft; changed = true; }
+                    if (newTop < minTop) { newTop = minTop; changed = true; }
+                    if (newTop > maxTop) { newTop = maxTop; changed = true; }
+
+                    if (changed) {
+                        gameToolbar.style.left = newLeft + 'px';
+                        gameToolbar.style.top = newTop + 'px';
+                    }
+                }
+            });
+        }
+    }
+
+    toggleSidebarLayout(isSwapped) {
+        if (!sidebarCol2 || !sidebarGroup || !gameScreen || !chatSidebar) return;
+
+        const icon = btnToggleSidebarPos ? btnToggleSidebarPos.querySelector('i') : null;
+
+        if (isSwapped) {
+            // Move Col2 to right (before chat sidebar)
+            gameScreen.insertBefore(sidebarCol2, chatSidebar);
+            sidebarCol2.classList.add('right-side');
+            if (icon) {
+                icon.classList.remove('fa-chevron-right');
+                icon.classList.add('fa-chevron-left');
+            }
+        } else {
+            // Move Col2 back to group
+            sidebarGroup.appendChild(sidebarCol2);
+            sidebarCol2.classList.remove('right-side');
+            if (icon) {
+                icon.classList.remove('fa-chevron-left');
+                icon.classList.add('fa-chevron-right');
+            }
+        }
     }
 
     updateGameCountDisplay() {

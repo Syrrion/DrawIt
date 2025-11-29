@@ -112,3 +112,11 @@
  display: none;
 }
 
+
+/* Right Side Sidebar Style */
+.sidebar-col-2.right-side {
+ border-right: none;
+ border-left: 1px solid rgba(255, 255, 255, 0.08);
+ box-shadow: -5px 0 30px rgba(0, 0, 0, 0.2);
+}
+

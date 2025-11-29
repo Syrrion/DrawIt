@@ -76,6 +76,14 @@ export class CanvasManager {
         canvas.addEventListener('request-render', () => {
             this.render();
         });
+
+        // Track global mouse position for entry interpolation
+        window.addEventListener('mousemove', this.handleGlobalMouseMove.bind(this));
+    }
+
+    handleGlobalMouseMove(e) {
+        this.lastGlobalX = e.clientX;
+        this.lastGlobalY = e.clientY;
     }
 
     showForbiddenIcon(canvasX, canvasY) {
@@ -152,14 +160,27 @@ export class CanvasManager {
         const opacity = penOpacityInput.value;
         
         this.previewCtx.beginPath();
-        this.previewCtx.moveTo(this.currentPath[0].x, this.currentPath[0].y);
         
-        if (this.currentPath.length === 1) {
-            // Draw a dot if only one point
-            this.previewCtx.lineTo(this.currentPath[0].x, this.currentPath[0].y);
-        } else {
-            for (let i = 1; i < this.currentPath.length; i++) {
-                this.previewCtx.lineTo(this.currentPath[i].x, this.currentPath[i].y);
+        // Find first valid point
+        let startIndex = 0;
+        while(startIndex < this.currentPath.length && this.currentPath[startIndex] === null) {
+            startIndex++;
+        }
+        
+        if (startIndex < this.currentPath.length) {
+            this.previewCtx.moveTo(this.currentPath[startIndex].x, this.currentPath[startIndex].y);
+            
+            for (let i = startIndex + 1; i < this.currentPath.length; i++) {
+                const point = this.currentPath[i];
+                if (point === null) {
+                    continue;
+                }
+                
+                if (this.currentPath[i-1] === null) {
+                    this.previewCtx.moveTo(point.x, point.y);
+                } else {
+                    this.previewCtx.lineTo(point.x, point.y);
+                }
             }
         }
         
@@ -401,8 +422,77 @@ export class CanvasManager {
         if (localCursor) localCursor.classList.add('hidden');
     }
 
-    handleMouseEnter() {
+    handleMouseEnter(e) {
         if (localCursor) localCursor.classList.remove('hidden');
+
+        if (state.isDrawing && ['pen', 'eraser', 'airbrush', 'smudge'].includes(state.currentTool)) {
+            const { x, y } = this.getMousePos(e);
+            let startX = x;
+            let startY = y;
+
+            // Interpolate entry point if moving fast
+            if (this.lastGlobalX !== undefined && this.lastGlobalY !== undefined) {
+                const prevPos = this.getMousePos({ clientX: this.lastGlobalX, clientY: this.lastGlobalY });
+                
+                // Only interpolate if previous point was outside
+                if (prevPos.x < 0 || prevPos.x > canvas.width || prevPos.y < 0 || prevPos.y > canvas.height) {
+                    const intersection = this.getIntersection(prevPos.x, prevPos.y, x, y);
+                    if (intersection) {
+                        startX = intersection.x;
+                        startY = intersection.y;
+                    }
+                }
+            }
+
+            state.lastX = startX;
+            state.lastY = startY;
+
+            if (this.isBuffering) {
+                this.currentPath.push(null);
+                this.currentPath.push({x: startX, y: startY});
+            }
+        }
+    }
+
+    getLineIntersection(x1, y1, x2, y2, x3, y3, x4, y4) {
+        const denom = (y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1);
+        if (denom === 0) return null;
+        
+        const ua = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / denom;
+        const ub = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / denom;
+        
+        if (ua >= 0 && ua <= 1 && ub >= 0 && ub <= 1) {
+            return {
+                x: x1 + ua * (x2 - x1),
+                y: y1 + ua * (y2 - y1)
+            };
+        }
+        return null;
+    }
+
+    getIntersection(x1, y1, x2, y2) {
+        const minX = 0, minY = 0, maxX = canvas.width, maxY = canvas.height;
+        const borders = [
+            { x1: minX, y1: minY, x2: maxX, y2: minY }, // Top
+            { x1: maxX, y1: minY, x2: maxX, y2: maxY }, // Right
+            { x1: maxX, y1: maxY, x2: minX, y2: maxY }, // Bottom
+            { x1: minX, y1: maxY, x2: minX, y2: minY }  // Left
+        ];
+
+        let closest = null;
+        let minDist = Infinity;
+
+        for (const b of borders) {
+            const pt = this.getLineIntersection(x1, y1, x2, y2, b.x1, b.y1, b.x2, b.y2);
+            if (pt) {
+                const dist = (pt.x - x1) ** 2 + (pt.y - y1) ** 2;
+                if (dist < minDist) {
+                    minDist = dist;
+                    closest = pt;
+                }
+            }
+        }
+        return closest;
     }
 
     handleTouch(e) {

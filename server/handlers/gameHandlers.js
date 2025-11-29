@@ -1,4 +1,5 @@
 const { rooms } = require('../state');
+const { getRandomWord } = require('../utils/dictionary');
 
 module.exports = (io, socket) => {
     socket.on('startGame', (roomCode) => {
@@ -75,6 +76,11 @@ module.exports = (io, socket) => {
         if (result.error) {
             socket.emit('error', result.error);
         }
+    });
+
+    socket.on('requestRandomWord', () => {
+        const word = getRandomWord();
+        socket.emit('randomWordProvided', word);
     });
 
     socket.on('wordChosen', ({ roomCode, word }) => {

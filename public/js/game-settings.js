@@ -235,6 +235,11 @@ export class GameSettingsManager {
             if (mode === 'custom-word') {
                 if (this.wordChoicesInput) this.wordChoicesInput.closest('.setting-group').classList.add('hidden');
                 if (this.maxWordLengthInput) this.maxWordLengthInput.closest('.setting-group').classList.remove('hidden');
+                // Set default word choice time to 45s if it's the default 20s
+                if (this.wordChoiceTimeInput && this.wordChoiceTimeInput.value == 20) {
+                    this.wordChoiceTimeInput.value = 45;
+                    this.emitSettingsUpdate();
+                }
             } else {
                 if (this.wordChoicesInput) this.wordChoicesInput.closest('.setting-group').classList.remove('hidden');
                 if (this.maxWordLengthInput) this.maxWordLengthInput.closest('.setting-group').classList.add('hidden');

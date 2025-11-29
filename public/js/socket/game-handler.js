@@ -1,4 +1,4 @@
-import { socket, gameTopBar, wordChoiceModal, wordChoicesContainer, timerValue, wordDisplay, roundCurrent, roundTotal, roundResultOverlay, roundResultTitle, roundResultWord, roundResultWordLabel, roundResultScores, gameEndModal, gameEndScores, readyCheckModal, btnIamReady, btnRefuseGame, readyCountVal, readyTotalVal, readyTimerVal, readyPlayersList, helpModal, lobbySettingsModal, confirmationModal, kickModal, alertModal, btnUseHint, hintsCount } from '../dom-elements.js';
+import { socket, gameTopBar, wordChoiceModal, wordChoicesContainer, timerValue, wordDisplay, roundCurrent, roundTotal, roundResultOverlay, roundResultTitle, roundResultWord, roundResultWordLabel, roundResultScores, gameEndModal, gameEndScores, readyCheckModal, btnIamReady, btnRefuseGame, readyCountVal, readyTotalVal, readyTimerVal, readyPlayersList, helpModal, lobbySettingsModal, confirmationModal, kickModal, alertModal, btnUseHint, hintsCount, customWordModal, customWordInput, btnSubmitCustomWord, customWordTimerVal, btnRandomCustomWord } from '../dom-elements.js';
 import { state } from '../state.js';
 import { showToast, playTickSound } from '../utils.js';
 import { performDraw, performFloodFill } from '../draw.js';
@@ -24,6 +24,8 @@ export class GameHandler {
         socket.on('gameStateChanged', this.handleGameStateChanged.bind(this));
         socket.on('roomJoined', this.handleRoomJoined.bind(this));
         socket.on('chooseWord', this.handleChooseWord.bind(this));
+        socket.on('typeWord', this.handleTypeWord.bind(this));
+        socket.on('randomWordProvided', this.handleRandomWordProvided.bind(this));
         socket.on('roundStart', this.handleRoundStart.bind(this));
         socket.on('updateHint', this.handleUpdateHint.bind(this));
         socket.on('yourWord', this.handleYourWord.bind(this));
@@ -51,6 +53,25 @@ export class GameHandler {
                 if (state.currentGameState === 'PLAYING' && !btnUseHint.disabled) {
                     socket.emit('requestHint', state.currentRoom);
                 }
+            });
+        }
+
+        if (btnSubmitCustomWord) {
+            btnSubmitCustomWord.addEventListener('click', () => {
+                const word = customWordInput.value.trim();
+                if (word) {
+                    socket.emit('customWordChosen', { roomCode: state.currentRoom, word });
+                    customWordModal.classList.add('hidden');
+                    if (this.wordChoiceTimerInterval) clearInterval(this.wordChoiceTimerInterval);
+                } else {
+                    showToast('Veuillez entrer un mot !', 'error');
+                }
+            });
+        }
+
+        if (btnRandomCustomWord) {
+            btnRandomCustomWord.addEventListener('click', () => {
+                socket.emit('requestRandomWord');
             });
         }
     }
@@ -169,9 +190,50 @@ export class GameHandler {
         wordChoiceModal.classList.remove('hidden');
     }
 
+    handleTypeWord(data) {
+        const timeout = data.timeout || 20;
+        const maxLen = data.maxWordLength || 20;
+
+        if (customWordInput) {
+            customWordInput.value = '';
+            customWordInput.maxLength = maxLen;
+            customWordInput.focus();
+        }
+
+        if (customWordTimerVal) {
+            customWordTimerVal.textContent = timeout;
+            customWordTimerVal.style.color = '';
+
+            if (this.wordChoiceTimerInterval) clearInterval(this.wordChoiceTimerInterval);
+            this.wordChoiceTimerInterval = this.startSmartTimer(timeout, (remaining) => {
+                customWordTimerVal.textContent = remaining;
+                if (remaining <= 5) {
+                    customWordTimerVal.style.color = 'red';
+                    if (remaining > 0) playTickSound();
+                }
+            }, () => {
+                // On timeout, if user typed something, submit it
+                if (customWordInput && customWordInput.value.trim().length > 0) {
+                    const word = customWordInput.value.trim();
+                    socket.emit('customWordChosen', { roomCode: state.currentRoom, word });
+                    customWordModal.classList.add('hidden');
+                }
+            });
+        }
+
+        customWordModal.classList.remove('hidden');
+    }
+
+    handleRandomWordProvided(word) {
+        if (customWordInput) {
+            customWordInput.value = word;
+        }
+    }
+
     handleRoundStart(data) {
         gameTopBar.classList.remove('hidden');
         wordChoiceModal.classList.add('hidden');
+        customWordModal.classList.add('hidden');
         if (this.wordChoiceTimerInterval) clearInterval(this.wordChoiceTimerInterval);
         timerValue.textContent = data.duration;
         wordDisplay.textContent = this.formatHint(data.hint);
@@ -318,6 +380,7 @@ export class GameHandler {
 
         // Hide game UI elements
         wordChoiceModal.classList.add('hidden');
+        customWordModal.classList.add('hidden');
         roundResultOverlay.classList.add('hidden');
         gameTopBar.classList.add('hidden');
 

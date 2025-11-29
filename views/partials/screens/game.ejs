@@ -59,6 +59,10 @@
                 <stop offset="0%" stop-color="#576574" />
                 <stop offset="100%" stop-color="#8395a7" />
             </linearGradient>
+            <linearGradient id="grad-model" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="24" y2="24">
+                <stop offset="0%" stop-color="#0984e3" />
+                <stop offset="100%" stop-color="#74b9ff" />
+            </linearGradient>
         </defs>
     </svg>
     <!-- Top Bar -->
@@ -148,8 +152,11 @@
 
                                     <!-- Column 2: Colors, Layers -->
                                     <div class="sidebar-col-2">
-                                        <div class="color-sidebar-header">
+                                        <div class="color-sidebar-header" style="display: flex; justify-content: space-between; align-items: center;">
                                             <h3>Couleurs</h3>
+                                            <button id="btn-toggle-sidebar-pos" class="icon-btn" title="Changer de côté">
+                                                <i class="fas fa-chevron-right"></i>
+                                            </button>
                                         </div>
                                         <div class="color-panel">
                                             <%- include('../components/game-color-picker') %>
@@ -183,17 +190,33 @@
                                         <div id="zoom-overlay" class="zoom-overlay hidden">100%</div>
                                     </div>
 
-                                    <div class="toolbar">
+                                    <div class="toolbar" id="game-toolbar">
                                         <!-- Sliders Row (Top) -->
                                         <div class="tool-group sliders-row">
                                             <div class="slider-row" data-tooltip="Taille">
-                                                <div class="slider-icon"><i class="fas fa-circle"
-                                                        style="font-size: 0.6rem;"></i></div>
+                                                <div class="slider-header">
+                                                    <div class="slider-icon"><i class="fas fa-circle" style="font-size: 0.6rem;"></i></div>
+                                                    <span class="slider-label">Taille du crayon</span>
+                                                </div>
                                                 <input type="range" id="pen-size" min="1" max="200" value="5">
                                             </div>
+
+                                            <div class="drag-handle" id="toolbar-drag-handle" title="Déplacer">
+                                                <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                                    <circle cx="9" cy="5" r="1"></circle>
+                                                    <circle cx="9" cy="12" r="1"></circle>
+                                                    <circle cx="9" cy="19" r="1"></circle>
+                                                    <circle cx="15" cy="5" r="1"></circle>
+                                                    <circle cx="15" cy="12" r="1"></circle>
+                                                    <circle cx="15" cy="19" r="1"></circle>
+                                                </svg>
+                                            </div>
+
                                             <div class="slider-row" data-tooltip="Opacité">
-                                                <div class="slider-icon"><i class="fas fa-adjust"
-                                                        style="font-size: 0.8rem;"></i></div>
+                                                <div class="slider-header">
+                                                    <div class="slider-icon"><i class="fas fa-adjust" style="font-size: 0.8rem;"></i></div>
+                                                    <span class="slider-label">Opacité</span>
+                                                </div>
                                                 <input type="range" id="pen-opacity" min="0.1" max="1" step="0.1"
                                                     value="1">
                                             </div>
@@ -277,6 +300,16 @@
                                                 </svg>
                                                 <span class="tool-label">Sélect.</span>
                                             </button>
+
+                                            <div class="tool-separator"></div>
+
+                                            <button id="tool-model" class="tool-btn" data-tooltip="Recherche">
+                                                <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                                    <circle cx="11" cy="11" r="8"></circle>
+                                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                                </svg>
+                                                <span class="tool-label">Recherche</span>
+                                            </button>
                                         </div>
 
                                         <!-- Shapes + Actions Group -->
@@ -353,6 +386,8 @@
                                             
                                             <div class="tool-separator"></div>
 
+
+
                                             <button id="btn-help" class="tool-btn" data-tooltip="Aide">
                                                 <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor"
                                                     stroke-width="2" fill="none" stroke-linecap="round"
@@ -427,6 +462,30 @@
                                             style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; max-height: 70vh; overflow-y: auto; padding: 10px;">
                                             <!-- Grid items injected here -->
                                         </div>
+                                    </div>
+                                </div>
+
+                                <!-- Reference Browser Window -->
+                                <div id="reference-browser" class="floating-window hidden">
+                                    <div class="window-header" id="browser-header">
+                                        <div class="window-title">
+                                            <i class="fas fa-globe"></i> Navigateur
+                                        </div>
+                                        <div class="window-controls">
+                                            <button id="btn-browser-close" class="window-btn"><i class="fas fa-times"></i></button>
+                                        </div>
+                                    </div>
+                                    <div class="browser-toolbar">
+                                        <button id="btn-browser-back" title="Retour" class="browser-nav-btn"><i class="fas fa-arrow-left"></i></button>
+                                        <button id="btn-browser-refresh" title="Actualiser" class="browser-nav-btn"><i class="fas fa-sync-alt"></i></button>
+                                        <input type="text" id="browser-url" placeholder="Recherche ou URL..." autocomplete="off">
+                                        <button id="btn-browser-go" title="Aller"><i class="fas fa-arrow-right"></i></button>
+                                    </div>
+                                    <div class="browser-content">
+                                        <iframe id="browser-frame" src="about:blank"></iframe>
+                                    </div>
+                                    <div class="browser-status" id="browser-status">
+                                        Astuce: Certains sites bloquent l'affichage ici.
                                     </div>
                                 </div>
 </div>

@@ -51,6 +51,7 @@ export const toolRectBtn = document.getElementById('tool-rect');
 export const toolCircleBtn = document.getElementById('tool-circle');
 export const toolTriangleBtn = document.getElementById('tool-triangle');
 export const toolLineBtn = document.getElementById('tool-line');
+export const toolModelBtn = document.getElementById('tool-model');
 export const clearBtn = document.getElementById('clear-btn');
 export const btnUndo = document.getElementById('btn-undo');
 export const btnRedo = document.getElementById('btn-redo');
@@ -80,6 +81,7 @@ export const wordChoiceTimerVal = document.getElementById('word-choice-timer-val
 export const customWordModal = document.getElementById('custom-word-modal');
 export const customWordInput = document.getElementById('custom-word-input');
 export const btnSubmitCustomWord = document.getElementById('btn-submit-custom-word');
+export const btnRandomCustomWord = document.getElementById('btn-random-custom-word');
 export const customWordTimerVal = document.getElementById('custom-word-timer-val');
 
 export const roundResultOverlay = document.getElementById('round-result-overlay');
@@ -111,6 +113,26 @@ export const userSettingsModal = document.getElementById('user-settings-modal');
 export const btnCloseUserSettings = document.getElementById('btn-close-user-settings');
 export const settingShowCursors = document.getElementById('setting-show-cursors');
 export const settingShowLayerAvatars = document.getElementById('setting-show-layer-avatars');
+// export const settingSwapSidebars = document.getElementById('setting-swap-sidebars'); // Removed
+
+// Layout Elements
+export const toolbarDragHandle = document.getElementById('toolbar-drag-handle');
+export const gameToolbar = document.getElementById('game-toolbar');
+export const sidebarCol2 = document.querySelector('.sidebar-col-2');
+export const sidebarGroup = document.querySelector('.sidebar-group');
+export const chatSidebar = document.querySelector('.chat-sidebar');
+export const btnToggleSidebarPos = document.getElementById('btn-toggle-sidebar-pos');
+
+// Reference Browser
+export const referenceBrowser = document.getElementById('reference-browser');
+export const btnBrowserClose = document.getElementById('btn-browser-close');
+export const btnBrowserBack = document.getElementById('btn-browser-back');
+export const btnBrowserRefresh = document.getElementById('btn-browser-refresh');
+export const browserUrlInput = document.getElementById('browser-url');
+export const btnBrowserGo = document.getElementById('btn-browser-go');
+export const browserFrame = document.getElementById('browser-frame');
+export const browserHeader = document.getElementById('browser-header');
+export const browserStatus = document.getElementById('browser-status');
 
 // Game Top Bar
 export const gameTopBar = document.getElementById('game-top-bar');

@@ -31,6 +31,11 @@ class Room {
             ...settings
         };
 
+        // Adjust default wordChoiceTime for custom-word mode if not explicitly set
+        if (this.settings.mode === 'custom-word' && !settings.wordChoiceTime) {
+            this.settings.wordChoiceTime = 45;
+        }
+
         this.readyPlayers = [];
         this.readyCheckTimer = null;
         this.startCountdownTimer = null;
