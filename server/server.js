@@ -101,13 +101,14 @@ app.get('/proxy', (req, res) => {
                             } catch(e) { console.error('PostMessage failed', e); }
 
                             document.addEventListener('DOMContentLoaded', () => {
+                                const proxyOrigin = window.location.origin;
                                 // Intercept Links
                                 document.body.addEventListener('click', e => {
                                     const a = e.target.closest('a');
                                     if (a && a.href) {
                                         e.preventDefault();
-                                        // Force return to proxy
-                                        window.location.href = '/proxy?url=' + encodeURIComponent(a.href);
+                                        // Force return to proxy using absolute path
+                                        window.location.href = proxyOrigin + '/proxy?url=' + encodeURIComponent(a.href);
                                     }
                                 });
                                 // Intercept Forms (Basic GET)
@@ -119,7 +120,7 @@ app.get('/proxy', (req, res) => {
                                         const params = new URLSearchParams(new FormData(form));
                                         // Merge existing params with form data
                                         Array.from(params.entries()).forEach(([k, v]) => url.searchParams.set(k, v));
-                                        window.location.href = '/proxy?url=' + encodeURIComponent(url.toString());
+                                        window.location.href = proxyOrigin + '/proxy?url=' + encodeURIComponent(url.toString());
                                     }
                                 });
                             });
