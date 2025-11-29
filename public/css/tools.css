@@ -89,11 +89,13 @@
     text-transform: uppercase;
     opacity: 0.8;
     text-align: center;
+    width: 100%;
     max-width: 100%;
     line-height: 1.1;
     white-space: nowrap;
     font-stretch: condensed;
     transform: scaleX(0.85);
+    transform-origin: center;
 }
 
 .tool-btn:hover {

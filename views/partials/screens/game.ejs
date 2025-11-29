@@ -271,6 +271,9 @@
                                                 </svg>
                                                 <span class="tool-label">Etaler</span>
                                             </button>
+
+                                            <div class="tool-separator"></div>
+
                                             <button id="tool-eraser" class="tool-btn" data-tooltip="Gomme (5)">
                                                 <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor"
                                                     stroke-width="2" fill="none" stroke-linecap="round"
@@ -469,23 +472,25 @@
                                 <div id="reference-browser" class="floating-window hidden">
                                     <div class="window-header" id="browser-header">
                                         <div class="window-title">
-                                            <i class="fas fa-globe"></i> Navigateur
+                                            <i class="fas fa-images"></i> Images
                                         </div>
                                         <div class="window-controls">
                                             <button id="btn-browser-close" class="window-btn"><i class="fas fa-times"></i></button>
                                         </div>
                                     </div>
                                     <div class="browser-toolbar">
-                                        <button id="btn-browser-back" title="Retour" class="browser-nav-btn"><i class="fas fa-arrow-left"></i></button>
-                                        <button id="btn-browser-refresh" title="Actualiser" class="browser-nav-btn"><i class="fas fa-sync-alt"></i></button>
-                                        <input type="text" id="browser-url" placeholder="Recherche ou URL..." autocomplete="off">
-                                        <button id="btn-browser-go" title="Aller"><i class="fas fa-arrow-right"></i></button>
+                                        <input type="text" id="browser-url" placeholder="Rechercher une image..." autocomplete="off">
+                                        <button id="btn-browser-go" title="Rechercher"><i class="fas fa-search"></i></button>
                                     </div>
-                                    <div class="browser-content">
-                                        <iframe id="browser-frame" src="about:blank"></iframe>
+                                    <div class="browser-content" id="browser-content">
+                                        <div id="image-results-grid" class="image-grid">
+                                            <div class="empty-state">Recherchez quelque chose...</div>
+                                        </div>
                                     </div>
                                     <div class="browser-status" id="browser-status">
-                                        Astuce: Certains sites bloquent l'affichage ici.
+                                        <a href="https://pixabay.com/" target="_blank" style="color: inherit; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 5px;">
+                                            Powered by <img src="https://pixabay.com/static/img/logo_square.png" style="height: 16px; vertical-align: middle;"> Pixabay
+                                        </a>
                                     </div>
                                 </div>
 </div>

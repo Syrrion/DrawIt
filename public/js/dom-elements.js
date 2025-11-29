@@ -126,13 +126,10 @@ export const btnToggleSidebarPos = document.getElementById('btn-toggle-sidebar-p
 // Reference Browser
 export const referenceBrowser = document.getElementById('reference-browser');
 export const btnBrowserClose = document.getElementById('btn-browser-close');
-export const btnBrowserBack = document.getElementById('btn-browser-back');
-export const btnBrowserRefresh = document.getElementById('btn-browser-refresh');
 export const browserUrlInput = document.getElementById('browser-url');
 export const btnBrowserGo = document.getElementById('btn-browser-go');
-export const browserFrame = document.getElementById('browser-frame');
 export const browserHeader = document.getElementById('browser-header');
-export const browserStatus = document.getElementById('browser-status');
+export const imageResultsGrid = document.getElementById('image-results-grid');
 
 // Game Top Bar
 export const gameTopBar = document.getElementById('game-top-bar');

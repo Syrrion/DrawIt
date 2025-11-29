@@ -11,8 +11,7 @@ import {
     maxPlayersInput, btnSubmitCustomWord, customWordInput, customWordModal, waitingMessage,
     clearOptionsModal, btnClearLayer, btnClearAll, btnCancelClear,
     toolbarDragHandle, gameToolbar, sidebarCol2, sidebarGroup, chatSidebar, btnToggleSidebarPos,
-    toolModelBtn, referenceBrowser, btnBrowserClose, browserUrlInput, btnBrowserGo, browserFrame, browserHeader,
-    btnBrowserBack, btnBrowserRefresh, browserStatus
+    toolModelBtn, referenceBrowser, btnBrowserClose, browserUrlInput, btnBrowserGo, browserHeader, imageResultsGrid
 } from './dom-elements.js';
 import { state } from './state.js';
 import { showToast, generateRandomUsername, copyToClipboard, escapeHtml } from './utils.js';
@@ -434,58 +433,95 @@ export class UIManager {
     initBrowser() {
         if (!toolModelBtn || !referenceBrowser) return;
 
-        // Navigation
-        const navigate = (query = null) => {
-            let url = query || browserUrlInput.value.trim();
-            if (!url) return;
+        let currentHits = []; // Store current search results
 
-            if (!url.startsWith('http://') && !url.startsWith('https://')) {
-                // Assume search if no protocol
-                if (url.includes('.') && !url.includes(' ')) {
-                    url = 'https://' + url;
-                } else {
-                    // Search Google Images (via Proxy)
-                    url = 'https://www.google.com/search?tbm=isch&q=' + encodeURIComponent(url);
-                }
-            }
+        const renderGrid = () => {
+            if (!imageResultsGrid) return;
             
-            // Use local proxy to unblock and simulate mobile
-            const proxyUrl = `/proxy?url=${encodeURIComponent(url)}`;
-            browserFrame.src = proxyUrl;
+            imageResultsGrid.innerHTML = '';
+            imageResultsGrid.classList.remove('single-view');
             
-            // Update input with the real URL
-            browserUrlInput.value = url;
-
-            // Set loading status
-            if (browserStatus) {
-                browserStatus.textContent = 'Chargement...';
-                browserStatus.style.color = '#fbbf24'; // Loading color
+            if (currentHits.length > 0) {
+                currentHits.forEach(hit => {
+                    const imgContainer = document.createElement('div');
+                    imgContainer.className = 'image-result-item';
+                    
+                    const img = document.createElement('img');
+                    img.src = hit.previewURL;
+                    img.alt = hit.tags;
+                    img.title = hit.tags;
+                    
+                    // Click to open in single view
+                    imgContainer.onclick = () => {
+                        showSingleImage(hit.webformatURL);
+                    };
+                    
+                    imgContainer.appendChild(img);
+                    imageResultsGrid.appendChild(imgContainer);
+                });
+            } else {
+                imageResultsGrid.innerHTML = '<div class="empty-state">Aucune image trouvée.</div>';
             }
         };
 
-        // Iframe Load Event
-        if (browserFrame) {
-            browserFrame.onload = () => {
-                if (browserStatus) {
-                    browserStatus.textContent = 'Prêt';
-                    browserStatus.style.color = 'var(--text-dim)';
-                }
+        const showSingleImage = (url) => {
+            if (!imageResultsGrid) return;
+            
+            imageResultsGrid.innerHTML = '';
+            imageResultsGrid.classList.add('single-view');
+            
+            const container = document.createElement('div');
+            container.className = 'single-image-view';
+            
+            const backBtn = document.createElement('button');
+            backBtn.className = 'back-to-grid-btn';
+            backBtn.innerHTML = '<i class="fas fa-arrow-left"></i> Retour';
+            backBtn.onclick = () => {
+                renderGrid();
             };
-        }
+            
+            const imgContainer = document.createElement('div');
+            imgContainer.className = 'single-image-container';
+            
+            const img = document.createElement('img');
+            img.src = url;
+            
+            imgContainer.appendChild(img);
+            container.appendChild(backBtn);
+            container.appendChild(imgContainer);
+            
+            imageResultsGrid.appendChild(container);
+        };
 
-        // Listen for URL updates from iframe
-        window.addEventListener('message', (event) => {
-            if (event.data && event.data.type === 'browser-update') {
-                if (browserUrlInput) {
-                    browserUrlInput.value = event.data.url;
+        const searchImages = async (query = null) => {
+            let searchTerm = query || browserUrlInput.value.trim();
+            if (!searchTerm) return;
+
+            // Update input if direct call
+            if (query) browserUrlInput.value = query;
+
+            // Show loading state
+            if (imageResultsGrid) {
+                imageResultsGrid.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> Chargement...</div>';
+            }
+
+            try {
+                const response = await fetch(`/api/pixabay?q=${encodeURIComponent(searchTerm)}`);
+                const data = await response.json();
+
+                if (data.hits) {
+                    currentHits = data.hits;
+                    renderGrid();
+                } else {
+                     if (imageResultsGrid) imageResultsGrid.innerHTML = '<div class="empty-state">Aucune image trouvée.</div>';
                 }
-                // Also set status to ready here as script runs before onload
-                if (browserStatus) {
-                    browserStatus.textContent = 'Prêt';
-                    browserStatus.style.color = 'var(--text-dim)';
+            } catch (error) {
+                console.error('Search error:', error);
+                if (imageResultsGrid) {
+                    imageResultsGrid.innerHTML = '<div class="empty-state">Erreur lors de la recherche.</div>';
                 }
             }
-        });
+        };
 
         // Toggle Visibility
         toolModelBtn.addEventListener('click', () => {
@@ -494,16 +530,13 @@ export class UIManager {
             toolModelBtn.classList.toggle('active');
 
             if (isHidden) {
-                // Auto-search if word is defined and browser is empty (or we want to force it)
-                // Check if we have a word displayed that is NOT hidden (no underscores)
+                // Auto-search if word is defined
                 const wordText = document.getElementById('word-display').textContent.trim();
-                
-                // Simple check: if it doesn't contain underscores and is not empty
                 if (wordText && !wordText.includes('_')) {
-                    // Only auto-search if the frame is on about:blank or if user wants it (let's do it if blank for now)
-                    if (browserFrame.src === 'about:blank' || browserFrame.src === '' || browserFrame.src.endsWith('about:blank')) {
-                        navigate(wordText);
-                    }
+                    searchImages(wordText);
+                } else if (imageResultsGrid && imageResultsGrid.children.length <= 1) { // Empty or just empty-state
+                     // Focus input
+                     if (browserUrlInput) browserUrlInput.focus();
                 }
             }
         });
@@ -515,37 +548,13 @@ export class UIManager {
             });
         }
 
-        if (btnBrowserBack) {
-            btnBrowserBack.addEventListener('click', () => {
-                try {
-                    // Try standard history back
-                    if (browserFrame.contentWindow.history.length > 1) {
-                        browserFrame.contentWindow.history.back();
-                    }
-                } catch (e) {
-                    console.log('History back failed', e);
-                }
-            });
-        }
-
-        if (btnBrowserRefresh) {
-            btnBrowserRefresh.addEventListener('click', () => {
-                try {
-                    // Reload current frame src
-                    browserFrame.src = browserFrame.src;
-                } catch (e) {
-                    console.log('Refresh failed', e);
-                }
-            });
-        }
-
         if (btnBrowserGo) {
-            btnBrowserGo.addEventListener('click', () => { navigate(); });
+            btnBrowserGo.addEventListener('click', () => { searchImages(); });
         }
 
         if (browserUrlInput) {
             browserUrlInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') navigate();
+                if (e.key === 'Enter') searchImages();
             });
         }
 
