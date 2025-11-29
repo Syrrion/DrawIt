@@ -20,6 +20,7 @@ export class GameSettingsManager {
         
         // Settings Inputs
         this.cards = document.querySelectorAll('.gamemode-card');
+        this.allowTracingInput = document.getElementById('setting-allow-tracing');
         this.timeInput = document.getElementById('setting-drawtime');
         this.wordChoiceTimeInput = document.getElementById('setting-wordchoicetime');
         this.wordChoicesInput = document.getElementById('setting-wordchoices');
@@ -74,6 +75,7 @@ export class GameSettingsManager {
         });
 
         // Inputs
+        if (this.allowTracingInput) this.allowTracingInput.addEventListener('change', () => this.emitSettingsUpdate());
         this.timeInput.addEventListener('change', () => this.emitSettingsUpdate());
         this.wordChoiceTimeInput.addEventListener('change', () => this.emitSettingsUpdate());
         this.wordChoicesInput.addEventListener('change', () => this.emitSettingsUpdate());
@@ -136,6 +138,7 @@ export class GameSettingsManager {
                     if (this.roundsInput) this.roundsInput.value = s.rounds;
                 }
 
+                if (this.allowTracingInput) this.allowTracingInput.checked = s.allowTracing !== undefined ? s.allowTracing : true;
                 if (this.wordChoiceTimeInput) this.wordChoiceTimeInput.value = s.wordChoiceTime;
                 if (this.wordChoicesInput) this.wordChoicesInput.value = s.wordChoices;
                 if (this.fuzzyInput) this.fuzzyInput.checked = s.allowFuzzy;
@@ -172,6 +175,7 @@ export class GameSettingsManager {
                 if (this.roundsInput.value != settings.rounds) this.roundsInput.value = settings.rounds;
             }
 
+            if (this.allowTracingInput && settings.allowTracing !== undefined && this.allowTracingInput.checked !== settings.allowTracing) this.allowTracingInput.checked = settings.allowTracing;
             if (this.wordChoiceTimeInput.value != settings.wordChoiceTime) this.wordChoiceTimeInput.value = settings.wordChoiceTime;
             if (this.wordChoicesInput.value != settings.wordChoices) this.wordChoicesInput.value = settings.wordChoices;
             if (this.fuzzyInput && this.fuzzyInput.checked !== settings.allowFuzzy) this.fuzzyInput.checked = settings.allowFuzzy;
@@ -221,6 +225,14 @@ export class GameSettingsManager {
         const allSettings = document.querySelectorAll('[id^="settings-"]');
         allSettings.forEach(el => el.classList.add('hidden'));
 
+        // Update switches visibility
+        document.querySelectorAll('.mode-specific').forEach(el => el.classList.add('hidden'));
+        if (mode === 'guess-word' || mode === 'custom-word') {
+            document.querySelectorAll('.guess-word-only').forEach(el => el.classList.remove('hidden'));
+        } else if (mode === 'creative') {
+            document.querySelectorAll('.creative-only').forEach(el => el.classList.remove('hidden'));
+        }
+
         // Show the selected mode settings
         // For custom-word, we reuse guess-word settings but hide word choices count
         
@@ -252,6 +264,7 @@ export class GameSettingsManager {
         const disabled = !isLeader;
 
         // Inputs
+        if (this.allowTracingInput) this.allowTracingInput.disabled = disabled;
         this.timeInput.disabled = disabled;
         this.wordChoiceTimeInput.disabled = disabled;
         this.wordChoicesInput.disabled = disabled;
@@ -298,6 +311,7 @@ export class GameSettingsManager {
 
         const settings = {
             mode: this.currentMode,
+            allowTracing: this.allowTracingInput ? this.allowTracingInput.checked : true,
             drawTime: drawTime,
             wordChoiceTime: parseInt(this.wordChoiceTimeInput.value),
             wordChoices: parseInt(this.wordChoicesInput.value),

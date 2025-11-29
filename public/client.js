@@ -10,6 +10,7 @@ import { PlayerListManager } from './js/players.js';
 import { CameraManager } from './js/camera.js';
 import { GameSettingsManager } from './js/game-settings.js';
 import { AnimationSystem } from './js/animations.js';
+import { TooltipManager } from './js/components/tooltip.js';
 
 import { ToolsManager } from './js/tools-manager.js';
 import { CanvasManager } from './js/canvas-manager.js';
@@ -17,6 +18,7 @@ import { UIManager } from './js/ui-manager.js';
 import { SocketManager } from './js/socket-manager.js';
 
 const animationSystem = new AnimationSystem();
+const tooltipManager = new TooltipManager();
 
 // Avatar Manager
 const avatarManager = new AvatarManager();

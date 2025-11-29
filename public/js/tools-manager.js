@@ -5,7 +5,7 @@ import {
     btnUndo, btnRedo, btnHelp, clearBtn,
     helpModal, btnCloseHelp,
     canvas, socket, penColorInput, currentColorPreview,
-    localCursor, cursorBrushPreview, cursorIcon, penSizeInput
+    localCursor, cursorBrushPreview, cursorIcon, penSizeInput, penOpacityInput
 } from './dom-elements.js';
 import { state } from './state.js';
 import { showToast, rgbToHex, getContrastColor } from './utils.js';
@@ -31,11 +31,53 @@ export class ToolsManager {
         this.init();
     }
 
+    updateSliderBackground(slider) {
+        if (!slider) return;
+        const min = parseFloat(slider.min) || 0;
+        const max = parseFloat(slider.max) || 100;
+        const val = parseFloat(slider.value) || 0;
+        
+        // Thumb width from CSS (16px)
+        const thumbWidth = 16; 
+        const width = slider.offsetWidth;
+        
+        let percentage;
+        
+        if (width && width > thumbWidth) {
+            const ratio = (val - min) / (max - min);
+            // Calculate the center position of the thumb
+            const centerPosition = (thumbWidth / 2) + (ratio * (width - thumbWidth));
+            percentage = (centerPosition / width) * 100;
+        } else {
+            // Fallback
+            percentage = ((val - min) / (max - min)) * 100;
+        }
+        
+        slider.style.background = `linear-gradient(to right, var(--primary) 0%, var(--primary) ${percentage}%, rgba(255, 255, 255, 0.1) ${percentage}%, rgba(255, 255, 255, 0.1) 100%)`;
+    }
+
     init() {
+        // Initialize sliders with ResizeObserver for robust sizing
+        const resizeObserver = new ResizeObserver(entries => {
+            for (let entry of entries) {
+                this.updateSliderBackground(entry.target);
+            }
+        });
+
+        resizeObserver.observe(penSizeInput);
+        if (penOpacityInput) resizeObserver.observe(penOpacityInput);
+
         penSizeInput.addEventListener('input', () => {
             this.toolSizes[state.currentTool] = parseInt(penSizeInput.value, 10);
             this.updateBrushPreview();
+            this.updateSliderBackground(penSizeInput);
         });
+
+        if (penOpacityInput) {
+            penOpacityInput.addEventListener('input', () => {
+                this.updateSliderBackground(penOpacityInput);
+            });
+        }
 
         // Listen for color changes to update cursor contrast
         if (penColorInput) {
@@ -158,6 +200,7 @@ export class ToolsManager {
                 // Restore pipette size
                 if (this.toolSizes['pipette']) {
                     penSizeInput.value = this.toolSizes['pipette'];
+                    this.updateSliderBackground(penSizeInput);
                 }
 
                 // Update cursor icon for pipette
@@ -179,6 +222,7 @@ export class ToolsManager {
                 // Restore previous tool size
                 if (this.toolSizes[state.currentTool]) {
                     penSizeInput.value = this.toolSizes[state.currentTool];
+                    this.updateSliderBackground(penSizeInput);
                 }
 
                 this.previousTool = null;
@@ -259,6 +303,7 @@ export class ToolsManager {
         // Restore tool size
         if (this.toolSizes[state.currentTool]) {
             penSizeInput.value = this.toolSizes[state.currentTool];
+            this.updateSliderBackground(penSizeInput);
         }
 
         // Update brush preview visibility

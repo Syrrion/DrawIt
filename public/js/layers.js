@@ -221,6 +221,55 @@ export class LayerManager {
                 });
             }
         });
+
+        // Re-inject Dummy Layer if Tracing Image exists
+        if (document.getElementById('tracing-image')) {
+            const browserOpacity = document.getElementById('browser-opacity');
+            const dummyLayer = document.createElement('div');
+            dummyLayer.className = 'layer-item dummy';
+            dummyLayer.id = 'dummy-model-layer';
+            dummyLayer.style.flexDirection = 'column';
+            dummyLayer.style.alignItems = 'stretch';
+            dummyLayer.style.gap = '5px';
+            dummyLayer.style.padding = '8px';
+            
+            dummyLayer.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 8px; width: 100%;">
+                    <div class="layer-visibility visible"><i class="fas fa-image"></i></div>
+                    <div class="layer-name-container">
+                        <span class="layer-name-display">Modèle</span>
+                    </div>
+                    <button class="layer-btn delete" id="btn-detach-model" title="Détacher">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div style="padding-left: 24px; padding-right: 5px; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-adjust" style="font-size: 0.8rem; color: var(--text-dim);"></i>
+                    <input type="range" class="layer-opacity-slider" id="model-opacity-slider" min="0" max="1" step="0.05" value="${browserOpacity ? browserOpacity.value : 0.5}" title="Opacité" style="flex: 1;">
+                </div>
+            `;
+            this.layersList.appendChild(dummyLayer);
+
+            // Attach listeners to dummy layer controls
+            const detachBtn = document.getElementById('btn-detach-model');
+            if (detachBtn) {
+                detachBtn.addEventListener('click', () => {
+                    const event = new CustomEvent('request-toggle-pin-mode', { detail: { active: false } });
+                    document.dispatchEvent(event);
+                });
+            }
+
+            const opacitySlider = document.getElementById('model-opacity-slider');
+            if (opacitySlider) {
+                opacitySlider.addEventListener('input', (e) => {
+                    const tracingImage = document.getElementById('tracing-image');
+                    if (tracingImage) {
+                        tracingImage.style.opacity = e.target.value;
+                    }
+                    if (browserOpacity) browserOpacity.value = e.target.value;
+                });
+            }
+        }
     }
 
     enableRenaming(layerId) {

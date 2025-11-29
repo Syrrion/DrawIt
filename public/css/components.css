@@ -92,6 +92,12 @@ input[type="text"]:focus, input[type="number"]:focus {
     gap: 10px;
     align-items: center;
     pointer-events: none;
+    transition: left 0.3s ease;
+}
+
+/* Adjust toast position when game is active (sidebars visible) */
+body.game-active #toast-container {
+    left: calc(50% + (280px * var(--scale-factor)));
 }
 
 .toast {
@@ -575,5 +581,189 @@ option {
     border-radius: 4px;
     cursor: crosshair;
     box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+}
+
+
+/* Color Popover & Generic Color Picker Styles */
+.color-popover {
+ position: fixed;
+ background: var(--bg-glass-strong);
+ border: 1px solid var(--border-color);
+ border-radius: var(--radius-md);
+ padding: 1rem;
+ box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+ backdrop-filter: blur(10px);
+ z-index: 2000;
+ width: 280px;
+ display: flex;
+ flex-direction: column;
+ gap: 1rem;
+}
+
+.color-popover.hidden {
+ display: none;
+}
+
+.color-grid {
+ display: grid;
+ grid-template-columns: repeat(5, 1fr);
+ gap: 8px;
+}
+
+.color-swatch {
+ width: 100%;
+ aspect-ratio: 1;
+ border-radius: 6px;
+ cursor: pointer;
+ border: 2px solid rgba(255,255,255,0.1);
+ transition: transform 0.2s, border-color 0.2s;
+}
+
+.color-swatch:hover {
+ transform: scale(1.1);
+ border-color: white;
+ z-index: 2;
+}
+
+.color-swatch.active {
+ border-color: white;
+ box-shadow: 0 0 10px rgba(255,255,255,0.5);
+ transform: scale(1.1);
+ z-index: 2;
+}
+
+.custom-color-picker {
+ display: flex;
+ flex-direction: column;
+ gap: 1rem;
+}
+
+.cp-saturation-area {
+ width: 100%;
+ height: 150px;
+ background: linear-gradient(to bottom, transparent, #000), linear-gradient(to right, #fff, rgba(255,255,255,0));
+ position: relative;
+ border-radius: 6px;
+ cursor: crosshair;
+ border: 1px solid rgba(255,255,255,0.2);
+}
+
+.cp-hue-area {
+ width: 100%;
+ height: 20px;
+ background: linear-gradient(to right, #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%);
+ position: relative;
+ border-radius: 6px;
+ cursor: crosshair;
+ border: 1px solid rgba(255,255,255,0.2);
+}
+
+.cp-controls {
+ display: flex;
+ gap: 10px;
+ align-items: center;
+}
+
+.cp-preview-color {
+ width: 40px;
+ height: 40px;
+ border-radius: 6px;
+ border: 2px solid rgba(255,255,255,0.2);
+ box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.cp-rgb-inputs {
+ display: flex;
+ gap: 5px;
+ flex: 1;
+}
+
+.cp-input-group {
+ display: flex;
+ flex-direction: column;
+ align-items: center;
+ flex: 1;
+}
+
+.cp-input-group label {
+ font-size: 0.7rem;
+ color: var(--text-dim);
+ margin-bottom: 2px;
+}
+
+.cp-input-group input {
+ width: 100%;
+ background: rgba(0,0,0,0.3);
+ border: 1px solid rgba(255,255,255,0.1);
+ color: white;
+ padding: 4px;
+ border-radius: 4px;
+ text-align: center;
+ font-size: 0.8rem;
+}
+
+.cp-saturation-cursor {
+ width: 12px;
+ height: 12px;
+ border: 2px solid white;
+ border-radius: 50%;
+ position: absolute;
+ transform: translate(-50%, -50%);
+ pointer-events: none;
+ box-shadow: 0 0 2px rgba(0,0,0,0.5);
+}
+
+.cp-hue-cursor {
+ width: 8px;
+ height: 100%;
+ border: 2px solid white;
+ border-radius: 2px;
+ position: absolute;
+ top: 0;
+ transform: translateX(-50%);
+ pointer-events: none;
+ box-shadow: 0 0 2px rgba(0,0,0,0.5);
+ background: transparent;
+}
+
+
+/* Tooltips */
+.custom-tooltip {
+    position: fixed;
+    background: rgba(15, 23, 42, 0.95);
+    color: var(--text-main);
+    padding: 0.5rem 0.8rem;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    font-size: 0.8rem;
+    z-index: 9999;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    pointer-events: none;
+    text-transform: none;
+    font-weight: normal;
+    letter-spacing: normal;
+    max-width: 250px;
+    text-align: center;
+    white-space: normal;
+    line-height: 1.4;
+    transition: opacity 0.1s;
+}
+
+.custom-tooltip.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.setting-info {
+    color: var(--primary);
+    margin-left: 5px;
+    font-size: 0.9rem;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+    cursor: help;
+}
+
+.setting-info:hover {
+    opacity: 1;
 }
 

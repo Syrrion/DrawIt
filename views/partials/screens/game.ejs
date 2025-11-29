@@ -191,6 +191,18 @@
                                     </div>
 
                                     <div class="toolbar" id="game-toolbar">
+                                        <!-- Global Pin Controls (Tracing Mode) -->
+                                        <div id="global-pin-controls" class="pin-controls-global hidden">
+                                            <div class="pin-label"><i class="fas fa-thumbtack"></i> Mode Calque</div>
+                                            <div class="pin-slider-group">
+                                                <i class="fas fa-adjust"></i>
+                                                <input type="range" id="browser-opacity" min="0" max="1" step="0.1" value="0.5" title="Opacité du modèle">
+                                            </div>
+                                            <button id="btn-browser-unpin" class="pin-action-btn" title="Détacher le modèle">
+                                                <i class="fas fa-times"></i> Détacher
+                                            </button>
+                                        </div>
+
                                         <!-- Sliders Row (Top) -->
                                         <div class="tool-group sliders-row">
                                             <div class="slider-row" data-tooltip="Taille">
@@ -272,8 +284,6 @@
                                                 <span class="tool-label">Etaler</span>
                                             </button>
 
-                                            <div class="tool-separator"></div>
-
                                             <button id="tool-eraser" class="tool-btn" data-tooltip="Gomme (5)">
                                                 <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor"
                                                     stroke-width="2" fill="none" stroke-linecap="round"
@@ -306,12 +316,12 @@
 
                                             <div class="tool-separator"></div>
 
-                                            <button id="tool-model" class="tool-btn" data-tooltip="Recherche">
+                                            <button id="tool-model" class="tool-btn" data-tooltip="Modèle">
                                                 <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
                                                     <circle cx="11" cy="11" r="8"></circle>
                                                     <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                                                 </svg>
-                                                <span class="tool-label">Recherche</span>
+                                                <span class="tool-label">Modèle</span>
                                             </button>
                                         </div>
 
@@ -353,9 +363,6 @@
                                                 <span class="tool-label">Trait</span>
                                             </button>
 
-                                            <!-- Separator -->
-                                            <div class="tool-separator"></div>
-
                                             <!-- Actions -->
                                             <button id="btn-undo" class="tool-btn" data-tooltip="Annuler (Ctrl+Z)">
                                                 <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor"
@@ -395,7 +402,7 @@
                                                 <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor"
                                                     stroke-width="2" fill="none" stroke-linecap="round"
                                                     stroke-linejoin="round">
-                                                    <circle cx="12" cy="12" r="7"></circle>
+                                                    <circle cx="12" cy="12" r="9"></circle>
                                                     <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
                                                     <line x1="12" y1="17" x2="12.01" y2="17"></line>
                                                 </svg>

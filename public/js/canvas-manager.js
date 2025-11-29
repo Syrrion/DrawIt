@@ -238,6 +238,8 @@ export class CanvasManager {
             return;
         }
 
+        if (document.body.classList.contains('tracing-mode')) return;
+
         // Restriction: Spectators cannot draw
         if (state.isSpectator) return;
 

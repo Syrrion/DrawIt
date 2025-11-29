@@ -11,7 +11,8 @@ import {
     maxPlayersInput, btnSubmitCustomWord, customWordInput, customWordModal, waitingMessage,
     clearOptionsModal, btnClearLayer, btnClearAll, btnCancelClear,
     toolbarDragHandle, gameToolbar, sidebarCol2, sidebarGroup, chatSidebar, btnToggleSidebarPos,
-    toolModelBtn, referenceBrowser, btnBrowserClose, browserUrlInput, btnBrowserGo, browserHeader, imageResultsGrid
+    toolModelBtn, referenceBrowser, btnBrowserClose, browserUrlInput, btnBrowserGo, browserHeader, imageResultsGrid,
+    btnBrowserPin, globalPinControls, browserOpacity, btnBrowserUnpin, layersList, canvasWrapper
 } from './dom-elements.js';
 import { state } from './state.js';
 import { showToast, generateRandomUsername, copyToClipboard, escapeHtml } from './utils.js';
@@ -122,6 +123,7 @@ export class UIManager {
             loginScreen.classList.add('hidden');
             gameScreen.classList.remove('hidden');
             displayRoomCode.textContent = state.currentRoom;
+            document.body.classList.add('game-active');
         });
 
         socket.on('updateLobbyStatus', ({ status }) => {
@@ -434,8 +436,10 @@ export class UIManager {
         if (!toolModelBtn || !referenceBrowser) return;
 
         let currentHits = []; // Store current search results
+        let currentSingleImageUrl = null; // Store current single image URL
 
         const renderGrid = () => {
+            currentSingleImageUrl = null;
             if (!imageResultsGrid) return;
             
             imageResultsGrid.innerHTML = '';
@@ -465,6 +469,7 @@ export class UIManager {
         };
 
         const showSingleImage = (url) => {
+            currentSingleImageUrl = url;
             if (!imageResultsGrid) return;
             
             imageResultsGrid.innerHTML = '';
@@ -473,13 +478,55 @@ export class UIManager {
             const container = document.createElement('div');
             container.className = 'single-image-view';
             
+            // Header with Back and Use buttons
+            const header = document.createElement('div');
+            header.style.display = 'flex';
+            header.style.justifyContent = 'space-between';
+            header.style.alignItems = 'center';
+            header.style.marginBottom = '10px';
+
             const backBtn = document.createElement('button');
             backBtn.className = 'back-to-grid-btn';
             backBtn.innerHTML = '<i class="fas fa-arrow-left"></i> Retour';
             backBtn.onclick = () => {
                 renderGrid();
             };
+
+            const useBtn = document.createElement('button');
+            useBtn.className = 'use-as-layer-btn';
+            useBtn.innerHTML = 'Utiliser comme calque <i class="fas fa-check"></i>';
+
+            // Check if user can draw
+            const canDraw = () => {
+                if (state.isSpectator) return false;
+                if (state.currentGameState !== 'PLAYING') return false;
+                
+                // Check global setting
+                if (state.settings && state.settings.allowTracing === false) return false;
+
+                if (state.settings && state.settings.mode === 'creative') {
+                    return true;
+                } else {
+                    return state.currentDrawerId === socket.id;
+                }
+            };
+
+            if (!canDraw()) {
+                useBtn.disabled = true;
+                useBtn.title = "Vous ne pouvez pas dessiner pour le moment";
+                useBtn.style.opacity = '0.5';
+                useBtn.style.cursor = 'not-allowed';
+            } else {
+                useBtn.onclick = () => {
+                    // Trigger pin mode
+                    const event = new CustomEvent('request-toggle-pin-mode', { detail: { active: true } });
+                    document.dispatchEvent(event);
+                };
+            }
             
+            header.appendChild(backBtn);
+            header.appendChild(useBtn);
+
             const imgContainer = document.createElement('div');
             imgContainer.className = 'single-image-container';
             
@@ -487,7 +534,7 @@ export class UIManager {
             img.src = url;
             
             imgContainer.appendChild(img);
-            container.appendChild(backBtn);
+            container.appendChild(header);
             container.appendChild(imgContainer);
             
             imageResultsGrid.appendChild(container);
@@ -582,14 +629,410 @@ export class UIManager {
                 const dx = e.clientX - startX;
                 const dy = e.clientY - startY;
 
-                referenceBrowser.style.left = (initialLeft + dx) + 'px';
-                referenceBrowser.style.top = (initialTop + dy) + 'px';
+                let newLeft = initialLeft + dx;
+                let newTop = initialTop + dy;
+
+                // Clamp to viewport
+                const rect = referenceBrowser.getBoundingClientRect();
+                const width = rect.width;
+                const height = rect.height;
+                const viewportWidth = window.innerWidth;
+                const viewportHeight = window.innerHeight;
+
+                if (newLeft < 0) newLeft = 0;
+                if (newLeft + width > viewportWidth) newLeft = viewportWidth - width;
+                if (newTop < 0) newTop = 0;
+                if (newTop + height > viewportHeight) newTop = viewportHeight - height;
+
+                referenceBrowser.style.left = newLeft + 'px';
+                referenceBrowser.style.top = newTop + 'px';
             });
 
             document.addEventListener('mouseup', () => {
                 isDragging = false;
             });
         }
+
+        // Pin Mode Logic
+        // Define togglePinMode in a scope accessible to the event listener
+        const togglePinMode = (active) => {
+            if (active) {
+                // Cleanup existing tracing elements first
+                const existingImage = document.getElementById('tracing-image');
+                if (existingImage) existingImage.remove();
+
+                const existingControls = document.getElementById('tracing-controls');
+                if (existingControls) {
+                    if (existingControls.cleanup) existingControls.cleanup();
+                    existingControls.remove();
+                }
+
+                const existingDummy = document.getElementById('dummy-model-layer');
+                if (existingDummy) existingDummy.remove();
+
+                const existingCartridge = document.getElementById('tracing-actions-cartridge');
+                if (existingCartridge) existingCartridge.remove();
+                
+                // Reset clipping
+                if (canvasWrapper) canvasWrapper.classList.remove('clipped');
+
+                if (!currentSingleImageUrl) {
+                    showToast("Veuillez sélectionner une image d'abord", "warning");
+                    return;
+                }
+
+                // Create Tracing Image
+                if (canvasWrapper) {
+                    const img = new Image();
+                    img.src = currentSingleImageUrl;
+                    img.onload = () => {
+                        // Calculate dimensions
+                        const canvasW = canvasWrapper.offsetWidth;
+                        const canvasH = canvasWrapper.offsetHeight;
+
+                        const imgRatio = img.width / img.height;
+                        const canvasRatio = canvasW / canvasH;
+
+                        let finalW, finalH, finalTop, finalLeft;
+
+                        if (imgRatio > canvasRatio) {
+                            // Width constrained
+                            finalW = canvasW;
+                            finalH = canvasW / imgRatio;
+                            finalLeft = 0;
+                            finalTop = (canvasH - finalH) / 2;
+                        } else {
+                            // Height constrained
+                            finalH = canvasH;
+                            finalW = canvasH * imgRatio;
+                            finalTop = 0;
+                            finalLeft = (canvasW - finalW) / 2;
+                        }
+
+                        let tracingImage = document.createElement('img');
+                        tracingImage.id = 'tracing-image';
+                        tracingImage.className = 'tracing-image';
+                        canvasWrapper.appendChild(tracingImage);
+                        
+                        tracingImage.src = currentSingleImageUrl;
+                        tracingImage.style.width = finalW + 'px';
+                        tracingImage.style.height = finalH + 'px';
+                        tracingImage.style.left = finalLeft + 'px';
+                        tracingImage.style.top = finalTop + 'px';
+                        tracingImage.style.objectFit = 'fill'; // Since we control size
+                        
+                        if (browserOpacity) {
+                            tracingImage.style.opacity = browserOpacity.value;
+                        }
+
+                        // Create Controls Element
+                        let tracingControls = document.createElement('div');
+                        tracingControls.id = 'tracing-controls';
+                        tracingControls.className = 'tracing-controls';
+                        tracingControls.innerHTML = `
+                            <div class="resize-handle nw" data-dir="nw"></div>
+                            <div class="resize-handle ne" data-dir="ne"></div>
+                            <div class="resize-handle sw" data-dir="sw"></div>
+                            <div class="resize-handle se" data-dir="se"></div>
+                        `;
+                        canvasWrapper.appendChild(tracingControls);
+                        
+                        tracingControls.style.width = finalW + 'px';
+                        tracingControls.style.height = finalH + 'px';
+                        tracingControls.style.left = finalLeft + 'px';
+                        tracingControls.style.top = finalTop + 'px';
+
+                        // Setup Resize Handlers
+                        this.setupResizeHandlers(tracingControls, tracingImage, imgRatio);
+                    };
+                }
+
+                document.body.classList.add('tracing-mode');
+                
+                // Add Dummy Layer
+                if (layersList) {
+                    const dummyLayer = document.createElement('div');
+                    dummyLayer.className = 'layer-item dummy';
+                    dummyLayer.id = 'dummy-model-layer';
+                    dummyLayer.style.flexDirection = 'column';
+                    dummyLayer.style.alignItems = 'stretch';
+                    dummyLayer.style.gap = '5px';
+                    dummyLayer.style.padding = '8px';
+                    
+                    dummyLayer.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 8px; width: 100%;">
+                            <div class="layer-visibility visible"><i class="fas fa-image"></i></div>
+                            <div class="layer-name-container">
+                                <span class="layer-name-display">Modèle</span>
+                            </div>
+                            <button class="layer-btn delete" id="btn-detach-model" title="Détacher">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div style="padding-left: 24px; padding-right: 5px; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-adjust" style="font-size: 0.8rem; color: var(--text-dim);"></i>
+                            <input type="range" class="layer-opacity-slider" id="model-opacity-slider" min="0" max="1" step="0.05" value="${browserOpacity ? browserOpacity.value : 0.5}" title="Opacité" style="flex: 1;">
+                        </div>
+                    `;
+                    layersList.appendChild(dummyLayer);
+
+                    // Attach listeners to dummy layer controls
+                    const detachBtn = document.getElementById('btn-detach-model');
+                    if (detachBtn) {
+                        detachBtn.addEventListener('click', () => togglePinMode(false));
+                    }
+
+                    const opacitySlider = document.getElementById('model-opacity-slider');
+                    if (opacitySlider) {
+                        opacitySlider.addEventListener('input', (e) => {
+                            const tracingImage = document.getElementById('tracing-image');
+                            if (tracingImage) {
+                                tracingImage.style.opacity = e.target.value;
+                            }
+                            if (browserOpacity) browserOpacity.value = e.target.value;
+                        });
+                    }
+                }
+
+                // Add Tracing Cartridge to Toolbar
+                let tracingCartridge = document.getElementById('tracing-actions-cartridge');
+                if (!tracingCartridge && gameToolbar) {
+                    tracingCartridge = document.createElement('div');
+                    tracingCartridge.id = 'tracing-actions-cartridge';
+                    tracingCartridge.className = 'tracing-actions-cartridge';
+                    
+                    // Validate Button
+                    const validateBtn = document.createElement('button');
+                    validateBtn.className = 'tracing-btn-validate';
+                    validateBtn.innerHTML = '<i class="fas fa-check"></i> Valider';
+                    validateBtn.title = "Valider la pose";
+                    
+                    validateBtn.addEventListener('click', () => {
+                        // Remove controls but keep image
+                        const tracingControls = document.getElementById('tracing-controls');
+                        if (tracingControls) {
+                            if (tracingControls.cleanup) tracingControls.cleanup();
+                            tracingControls.remove();
+                        }
+                        // Exit mode but keep image
+                        document.body.classList.remove('tracing-mode');
+                        tracingCartridge.remove();
+                        
+                        // Clip overflow
+                        if (canvasWrapper) canvasWrapper.classList.add('clipped');
+                        
+                        showToast('Pose validée. Vous pouvez dessiner par dessus.', 'success');
+                    });
+
+                    // Cancel Button
+                    const cancelBtn = document.createElement('button');
+                    cancelBtn.className = 'tracing-btn-cancel';
+                    cancelBtn.innerHTML = '<i class="fas fa-times"></i> Annuler';
+                    cancelBtn.title = "Annuler";
+
+                    cancelBtn.addEventListener('click', () => {
+                        togglePinMode(false); // Full cleanup
+                    });
+
+                    tracingCartridge.appendChild(validateBtn);
+                    tracingCartridge.appendChild(cancelBtn);
+                    gameToolbar.appendChild(tracingCartridge);
+                }
+
+                showToast('Mode Calque activé', 'info');
+            } else {
+                document.body.classList.remove('tracing-mode');
+                
+                // Remove Tracing Image
+                const tracingImage = document.getElementById('tracing-image');
+                if (tracingImage) tracingImage.remove();
+
+                // Remove Controls
+                const tracingControls = document.getElementById('tracing-controls');
+                if (tracingControls) {
+                    if (tracingControls.cleanup) tracingControls.cleanup();
+                    tracingControls.remove();
+                }
+
+                // Remove Dummy Layer
+                const dummyLayer = document.getElementById('dummy-model-layer');
+                if (dummyLayer) dummyLayer.remove();
+
+                // Remove Tracing Cartridge
+                const tracingCartridge = document.getElementById('tracing-actions-cartridge');
+                if (tracingCartridge) tracingCartridge.remove();
+                
+                // Reset clipping
+                if (canvasWrapper) canvasWrapper.classList.remove('clipped');
+            }
+        };
+
+        // Listen for custom event from Layers or Button
+        document.addEventListener('request-toggle-pin-mode', (e) => {
+            togglePinMode(e.detail.active);
+        });
+
+        if (btnBrowserPin) btnBrowserPin.addEventListener('click', () => togglePinMode(true));
+        if (btnBrowserUnpin) btnBrowserUnpin.addEventListener('click', () => togglePinMode(false));
+
+        if (browserOpacity) {
+            browserOpacity.addEventListener('input', (e) => {
+                const tracingImage = document.getElementById('tracing-image');
+                if (tracingImage) {
+                    tracingImage.style.opacity = e.target.value;
+                }
+            });
+        }
+
+        // Auto-cleanup on turn end
+        const cleanupTracing = () => {
+             togglePinMode(false);
+             if (referenceBrowser) referenceBrowser.classList.add('hidden');
+             if (toolModelBtn) toolModelBtn.classList.remove('active');
+             if (imageResultsGrid) imageResultsGrid.innerHTML = '';
+             if (browserUrlInput) browserUrlInput.value = '';
+        };
+
+        socket.on('turnStart', cleanupTracing);
+        socket.on('roundEnd', cleanupTracing);
+        socket.on('gameEnded', cleanupTracing);
+    }
+
+    setupResizeHandlers(controls, image, aspectRatio) {
+        const handles = controls.querySelectorAll('.resize-handle');
+        let isResizing = false;
+        let isMoving = false;
+        let startX, startY, startW, startH, startTop, startLeft;
+        let currentHandle = null;
+
+        // Resize Logic
+        handles.forEach(handle => {
+            handle.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+                isResizing = true;
+                currentHandle = handle.dataset.dir;
+                
+                startX = e.clientX;
+                startY = e.clientY;
+                
+                startW = controls.offsetWidth;
+                startH = controls.offsetHeight;
+                startTop = controls.offsetTop;
+                startLeft = controls.offsetLeft;
+
+                document.body.style.cursor = window.getComputedStyle(handle).cursor;
+                document.body.style.userSelect = 'none'; // Prevent text selection
+            });
+        });
+
+        // Move Logic - Click anywhere on controls (which covers image)
+        controls.addEventListener('mousedown', (e) => {
+            // Ignore if clicking a resize handle (though stopPropagation handles this usually)
+            if (e.target.classList.contains('resize-handle')) return;
+
+            isMoving = true;
+            
+            startX = e.clientX;
+            startY = e.clientY;
+            
+            startTop = controls.offsetTop;
+            startLeft = controls.offsetLeft;
+            
+            document.body.style.cursor = 'move';
+            document.body.style.userSelect = 'none'; // Prevent text selection
+            e.preventDefault();
+        });
+
+        const onMouseMove = (e) => {
+            if (!isResizing && !isMoving) return;
+
+            // Get scale factor
+            let scale = 1;
+            if (canvasWrapper) {
+                const transform = canvasWrapper.style.transform;
+                const match = transform.match(/scale\(([\d.]+)\)/);
+                if (match) scale = parseFloat(match[1]);
+            }
+
+            const dx = (e.clientX - startX) / scale;
+            const dy = (e.clientY - startY) / scale;
+
+            if (isMoving) {
+                let newLeft = startLeft + dx;
+                let newTop = startTop + dy;
+                
+                controls.style.left = newLeft + 'px';
+                controls.style.top = newTop + 'px';
+                image.style.left = newLeft + 'px';
+                image.style.top = newTop + 'px';
+                return;
+            }
+
+            let newW = startW;
+            let newH = startH;
+            let newTop = startTop;
+            let newLeft = startLeft;
+
+            // Calculate new dimensions based on handle
+            if (currentHandle.includes('e')) {
+                newW = startW + dx;
+            }
+            if (currentHandle.includes('w')) {
+                newW = startW - dx;
+                newLeft = startLeft + dx;
+            }
+            if (currentHandle.includes('s')) {
+                newH = startH + dy;
+            }
+            if (currentHandle.includes('n')) {
+                newH = startH - dy;
+                newTop = startTop + dy;
+            }
+
+            // Enforce Aspect Ratio
+            if (currentHandle === 'se') {
+                newH = newW / aspectRatio;
+            } else if (currentHandle === 'sw') {
+                newH = newW / aspectRatio;
+            } else if (currentHandle === 'ne') {
+                newH = newW / aspectRatio;
+                newTop = startTop + (startH - newH);
+            } else if (currentHandle === 'nw') {
+                newH = newW / aspectRatio;
+                newTop = startTop + (startH - newH);
+            }
+
+            // Min size check
+            if (newW < 20 || newH < 20) return;
+
+            // Apply
+            controls.style.width = newW + 'px';
+            controls.style.height = newH + 'px';
+            controls.style.top = newTop + 'px';
+            controls.style.left = newLeft + 'px';
+
+            image.style.width = newW + 'px';
+            image.style.height = newH + 'px';
+            image.style.top = newTop + 'px';
+            image.style.left = newLeft + 'px';
+        };
+
+        const onMouseUp = () => {
+            if (isResizing || isMoving) {
+                isResizing = false;
+                isMoving = false;
+                document.body.style.cursor = '';
+                document.body.style.userSelect = ''; // Restore text selection
+            }
+        };
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+        
+        controls.cleanup = () => {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        };
     }
 
     initLayout() {

@@ -168,3 +168,9 @@ export const clearOptionsModal = document.getElementById('clear-options-modal');
 export const btnClearLayer = document.getElementById('btn-clear-layer');
 export const btnClearAll = document.getElementById('btn-clear-all');
 export const btnCancelClear = document.getElementById('btn-cancel-clear');
+
+export const btnBrowserPin = document.getElementById('btn-browser-pin');
+export const globalPinControls = document.getElementById('global-pin-controls');
+export const browserOpacity = document.getElementById('browser-opacity');
+export const btnBrowserUnpin = document.getElementById('btn-browser-unpin');
+

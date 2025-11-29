@@ -320,6 +320,56 @@
 				"\n.browser-nav-btn {\n    background: transparent;\n    border: none;\n    color: var(--text-dim);\n    cursor: pointer;\n    padding: 0 8px;\n    border-radius: 4px;\n    transition: all 0.2s;\n}\n\n.browser-nav-btn:hover {\n    color: white;\n    background: rgba(255, 255, 255, 0.1);\n}\n"
 			],
 			"group": "build"
+		},
+		{
+			"label": "append_tracing_image_css",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\game-ui.css",
+				"\n/* Tracing Image */\n.tracing-image {\n    position: absolute;\n    top: 0;\n    left: 0;\n    width: 100%;\n    height: 100%;\n    object-fit: contain;\n    z-index: 1;\n    pointer-events: none;\n}\n"
+			],
+			"group": "build"
+		},
+		{
+			"label": "append_tracing_controls_css",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\game-ui.css",
+				"\n/* Tracing Controls */\n.tracing-controls {\n    position: absolute;\n    z-index: 15; /* Above canvas (10) */\n    pointer-events: none; /* Let clicks pass through body */\n    border: 1px dashed rgba(99, 102, 241, 0.5);\n    box-sizing: border-box;\n}\n\n.resize-handle {\n    position: absolute;\n    width: 12px;\n    height: 12px;\n    background: white;\n    border: 1px solid var(--primary);\n    border-radius: 50%;\n    pointer-events: auto; /* Catch clicks */\n    z-index: 16;\n    transition: transform 0.1s;\n}\n\n.resize-handle:hover {\n    transform: scale(1.2);\n    background: var(--primary);\n}\n\n.resize-handle.nw { top: -6px; left: -6px; cursor: nw-resize; }\n.resize-handle.ne { top: -6px; right: -6px; cursor: ne-resize; }\n.resize-handle.sw { bottom: -6px; left: -6px; cursor: sw-resize; }\n.resize-handle.se { bottom: -6px; right: -6px; cursor: se-resize; }\n\n/* Move handle (center) - Optional, maybe for later */\n/*\n.move-handle {\n    position: absolute;\n    top: 50%;\n    left: 50%;\n    transform: translate(-50%, -50%);\n    width: 20px;\n    height: 20px;\n    background: rgba(255, 255, 255, 0.5);\n    border-radius: 50%;\n    cursor: move;\n    pointer-events: auto;\n}\n*/\n"
+			],
+			"group": "build"
+		},
+		{
+			"label": "append_move_handle_css",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\game-ui.css",
+				"\n/* Move Handle */\n.move-handle {\n    position: absolute;\n    top: 50%;\n    left: 50%;\n    transform: translate(-50%, -50%);\n    width: 32px;\n    height: 32px;\n    background: rgba(255, 255, 255, 0.2);\n    border: 1px solid var(--primary);\n    border-radius: 50%;\n    cursor: move;\n    pointer-events: auto;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    color: white;\n    backdrop-filter: blur(4px);\n    transition: all 0.2s;\n    z-index: 20;\n}\n\n.move-handle:hover {\n    background: var(--primary);\n    transform: translate(-50%, -50%) scale(1.1);\n    box-shadow: 0 0 10px var(--primary-glow);\n}\n\n/* Layer Opacity Slider */\n.layer-opacity-slider {\n    width: 100%;\n    height: 4px;\n    -webkit-appearance: none;\n    background: rgba(255, 255, 255, 0.1);\n    border-radius: 2px;\n    outline: none;\n    margin-top: 4px;\n}\n\n.layer-opacity-slider::-webkit-slider-thumb {\n    -webkit-appearance: none;\n    width: 10px;\n    height: 10px;\n    border-radius: 50%;\n    background: var(--primary);\n    cursor: pointer;\n    transition: transform 0.1s;\n}\n\n.layer-opacity-slider::-webkit-slider-thumb:hover {\n    transform: scale(1.2);\n}\n"
+			],
+			"group": "build"
+		},
+		{
+			"label": "append_finalize_btn_css",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\game-ui.css",
+				"\n/* Finalize Tracing Button */\n.tracing-finalize-btn {\n    position: fixed;\n    bottom: 100px; /* Above toolbar */\n    left: 50%;\n    transform: translateX(-50%);\n    background: var(--success);\n    color: white;\n    border: none;\n    padding: 10px 20px;\n    border-radius: 30px;\n    font-weight: bold;\n    font-size: 1rem;\n    cursor: pointer;\n    box-shadow: 0 4px 15px rgba(0,0,0,0.3);\n    z-index: 1000;\n    display: flex;\n    align-items: center;\n    gap: 8px;\n    transition: all 0.2s;\n    animation: slideUp 0.3s ease-out;\n    text-transform: uppercase;\n    letter-spacing: 1px;\n    font-family: 'Orbitron', sans-serif;\n}\n\n.tracing-finalize-btn:hover {\n    background: #22c55e; /* Success hover */\n    transform: translateX(-50%) scale(1.05);\n    box-shadow: 0 6px 20px rgba(0,0,0,0.4);\n}\n\n@keyframes slideUp {\n    from { transform: translate(-50%, 20px); opacity: 0; }\n    to { transform: translate(-50%, 0); opacity: 1; }\n}\n"
+			],
+			"group": "build"
+		},
+		{
+			"label": "append_css_overflow_and_btn",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\game-ui.css",
+				"\n/* Ensure canvas wrapper clips content */\n.canvas-wrapper {\n    overflow: hidden;\n}\n\n/* Use as Layer Button Style */\n.use-as-layer-btn {\n    align-self: flex-start;\n    background: var(--success);\n    border: none;\n    color: white;\n    padding: 8px 16px;\n    border-radius: 4px;\n    cursor: pointer;\n    display: flex;\n    align-items: center;\n    gap: 8px;\n    font-size: 0.9rem;\n    font-weight: 600;\n    box-shadow: 0 2px 5px rgba(0,0,0,0.2);\n    transition: all 0.2s;\n}\n\n.use-as-layer-btn:hover {\n    background: #22c55e; /* Success hover */\n    transform: translateY(-1px);\n    box-shadow: 0 4px 8px rgba(0,0,0,0.3);\n}\n"
+			],
+			"group": "build"
 		}
 	]
 }

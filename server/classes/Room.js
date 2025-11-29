@@ -28,6 +28,7 @@ class Room {
             hintsEnabled: true,
             maxWordLength: 20,
             personalHints: 3,
+            allowTracing: true,
             ...settings
         };
 

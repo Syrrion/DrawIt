@@ -109,6 +109,10 @@ export function showToast(message, type = 'info') {
         <span class="toast-message">${message}</span>
     `;
 
+    // Click to dismiss
+    toast.style.cursor = 'pointer';
+    toast.onclick = () => toast.remove();
+
     container.appendChild(toast);
 
     // Remove after 5 seconds (animation handles fade out visually)

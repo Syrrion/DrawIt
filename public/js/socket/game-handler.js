@@ -728,10 +728,33 @@ export class GameHandler {
         const timer = document.getElementById('presentation-timer-val');
 
         modal.classList.remove('hidden');
-        artistName.textContent = `Artiste : ${data.artist}`;
+        
+        // Get Avatar
+        const player = this.playerListManager.getPlayer(data.artistId); // Assuming artistId is sent, or we find by name
+        // Actually data.artist is the name. We might need to find player by name if ID not sent.
+        // But usually ID is better. Let's check if data has artistId. 
+        // If not, we can try to find by name or just show name.
+        // Looking at server code would confirm, but let's assume we can try to find it.
+        
+        let avatarHtml = '';
+        // Try to find player by name if ID not available (though ID is preferred)
+        const playerObj = this.playerListManager.getPlayerList().find(p => p.username === data.artist);
+        
+        if (playerObj) {
+             if (playerObj.avatar && playerObj.avatar.type === 'image') {
+                avatarHtml = `<img src="${playerObj.avatar.value}" class="player-avatar-small" style="width: 32px; height: 32px; margin-right: 10px; border-radius: 50%; vertical-align: middle;">`;
+            } else {
+                const color = (playerObj.avatar && playerObj.avatar.color) || '#3498db';
+                const emoji = (playerObj.avatar && playerObj.avatar.emoji) || '🎨';
+                avatarHtml = `<div class="player-avatar-small" style="background-color: ${color}; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; margin-right: 10px; font-size: 18px; vertical-align: middle;">${emoji}</div>`;
+            }
+        }
+
+        artistName.innerHTML = `Artiste : ${avatarHtml}${data.artist}`;
         
         const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
         
         this.replayDrawing(ctx, data.drawing);
 
@@ -777,8 +800,13 @@ export class GameHandler {
         modal.classList.remove('hidden');
         grid.innerHTML = '';
         
-        // Adjust grid for smaller items
-        grid.style.gridTemplateColumns = 'repeat(auto-fit, minmax(220px, 1fr))';
+        // Calculate columns for balanced layout
+        const count = data.drawings.length;
+        let cols = 2;
+        if (count >= 5) cols = 3;
+        if (count >= 7) cols = 4;
+        
+        grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
 
         data.drawings.forEach(item => {
             const card = document.createElement('div');
@@ -799,6 +827,10 @@ export class GameHandler {
             cvs.style.borderRadius = '4px';
             
             const ctx = cvs.getContext('2d');
+            // Fill white background explicitly
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, cvs.width, cvs.height);
+            
             // No scaling needed as we use full resolution
             this.replayDrawing(ctx, item.drawing);
 
@@ -807,35 +839,74 @@ export class GameHandler {
             info.style.justifyContent = 'space-between';
             info.style.alignItems = 'center';
             
-            info.innerHTML = `<span style="font-weight:bold; font-size:0.9rem;">${item.username}</span>`;
+            // Get Avatar
+            let avatarHtml = '';
+            const player = this.playerListManager.getPlayer(item.userId);
+            if (player) {
+                if (player.avatar && player.avatar.type === 'image') {
+                    avatarHtml = `<img src="${player.avatar.value}" class="player-avatar-small" style="width: 24px; height: 24px; margin-right: 8px; border-radius: 50%; object-fit: cover;">`;
+                } else {
+                    const color = (player.avatar && player.avatar.color) || '#3498db';
+                    const emoji = (player.avatar && player.avatar.emoji) || '🎨';
+                    avatarHtml = `<div class="player-avatar-small" style="background-color: ${color}; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; margin-right: 8px; font-size: 14px;">${emoji}</div>`;
+                }
+            }
+            
+            info.innerHTML = `<div style="display:flex; align-items:center;">${avatarHtml}<span style="font-weight:bold; font-size:0.9rem;">${item.username}</span></div>`;
 
             const starsContainer = document.createElement('div');
             starsContainer.className = 'stars-input';
             starsContainer.style.display = 'flex';
-            starsContainer.style.gap = '2px';
+            starsContainer.style.gap = '4px';
             starsContainer.style.justifyContent = 'center';
+            starsContainer.style.padding = '5px 0';
+
+            let currentVote = 0;
 
             if (item.userId === socket.id) {
                 starsContainer.innerHTML = '<span style="color: var(--text-dim); font-size: 0.8rem; font-style: italic;">Votre dessin</span>';
             } else {
+                const updateStars = (count, isHover) => {
+                    Array.from(starsContainer.children).forEach((child, idx) => {
+                        const starIndex = idx + 1;
+                        if (starIndex <= count) {
+                            child.className = 'fas fa-star';
+                            if (isHover) child.style.transform = 'scale(1.2)';
+                            else child.style.transform = 'scale(1)';
+                        } else {
+                            child.className = 'far fa-star';
+                            child.style.transform = 'scale(1)';
+                        }
+                    });
+                };
+
                 for(let i=1; i<=10; i++) {
                     const s = document.createElement('i');
                     s.className = 'far fa-star';
                     s.style.cursor = 'pointer';
-                    s.style.color = 'gold';
-                    s.style.fontSize = '0.8rem';
+                    s.style.color = '#ffd700';
+                    s.style.fontSize = '1.2rem';
+                    s.style.transition = 'transform 0.1s, color 0.1s';
+                    
+                    s.onmouseenter = () => {
+                        updateStars(i, true);
+                    };
+
                     s.onclick = () => {
-                        Array.from(starsContainer.children).forEach((child, idx) => {
-                            if (idx < i) {
-                                child.className = 'fas fa-star';
-                            } else {
-                                child.className = 'far fa-star';
-                            }
-                        });
+                        currentVote = i;
+                        updateStars(i, false);
+                        // Pulse animation
+                        s.style.transform = 'scale(1.4)';
+                        setTimeout(() => s.style.transform = 'scale(1)', 200);
+                        
                         socket.emit('creativeVote', { roomCode: state.currentRoom, targetId: item.userId, stars: i });
                     };
                     starsContainer.appendChild(s);
                 }
+
+                starsContainer.onmouseleave = () => {
+                    updateStars(currentVote, false);
+                };
             }
 
             card.appendChild(cvs);
@@ -894,72 +965,102 @@ export class GameHandler {
         // Top 3 Logic
         const top3 = data.results.slice(0, 3);
         
-        // Reorder for podium: 2nd, 1st, 3rd
-        const podiumOrder = [];
-        if (top3[1]) podiumOrder.push({ ...top3[1], rank: 2 });
-        if (top3[0]) podiumOrder.push({ ...top3[0], rank: 1 });
-        if (top3[2]) podiumOrder.push({ ...top3[2], rank: 3 });
+        // Define slots: 2nd, 1st, 3rd
+        const slots = [
+            { rank: 2, player: top3[1] },
+            { rank: 1, player: top3[0] },
+            { rank: 3, player: top3[2] }
+        ];
 
-        podiumOrder.forEach(res => {
-            const item = document.createElement('div');
-            item.className = `podium-item rank-${res.rank}`;
-            item.style.display = 'flex';
-            item.style.flexDirection = 'column';
-            item.style.alignItems = 'center';
-            item.style.gap = '10px';
-            item.style.position = 'relative';
-            
-            // Thumbnail
-            const thumbWrapper = document.createElement('div');
-            thumbWrapper.style.width = res.rank === 1 ? '160px' : '120px';
-            thumbWrapper.style.height = res.rank === 1 ? '120px' : '90px';
-            thumbWrapper.style.background = 'white';
-            thumbWrapper.style.borderRadius = '8px';
-            thumbWrapper.style.overflow = 'hidden';
-            thumbWrapper.style.border = `3px solid ${res.rank === 1 ? '#ffd700' : res.rank === 2 ? '#c0c0c0' : '#cd7f32'}`;
-            thumbWrapper.style.boxShadow = '0 4px 10px rgba(0,0,0,0.3)';
-            
-            const cvs = document.createElement('canvas');
-            cvs.width = 800;
-            cvs.height = 600;
-            cvs.style.width = '100%';
-            cvs.style.height = '100%';
-            
-            const ctx = cvs.getContext('2d');
-            this.replayDrawing(ctx, res.drawing);
-            
-            thumbWrapper.appendChild(cvs);
-            item.appendChild(thumbWrapper);
+        slots.forEach(slot => {
+            if (slot.player) {
+                const res = { ...slot.player, rank: slot.rank };
+                
+                const item = document.createElement('div');
+                item.className = `podium-item rank-${res.rank}`;
+                item.style.display = 'flex';
+                item.style.flexDirection = 'column';
+                item.style.alignItems = 'center';
+                item.style.gap = '10px';
+                item.style.position = 'relative';
+                
+                // Thumbnail
+                const thumbWrapper = document.createElement('div');
+                thumbWrapper.style.width = res.rank === 1 ? '160px' : '120px';
+                thumbWrapper.style.height = res.rank === 1 ? '120px' : '90px';
+                thumbWrapper.style.background = 'white';
+                thumbWrapper.style.borderRadius = '8px';
+                thumbWrapper.style.overflow = 'hidden';
+                thumbWrapper.style.border = `3px solid ${res.rank === 1 ? '#ffd700' : res.rank === 2 ? '#c0c0c0' : '#cd7f32'}`;
+                thumbWrapper.style.boxShadow = '0 4px 10px rgba(0,0,0,0.3)';
+                
+                const cvs = document.createElement('canvas');
+                cvs.width = 800;
+                cvs.height = 600;
+                cvs.style.width = '100%';
+                cvs.style.height = '100%';
+                
+                const ctx = cvs.getContext('2d');
+                // Fill white background explicitly
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, cvs.width, cvs.height);
+                this.replayDrawing(ctx, res.drawing);
+                
+                thumbWrapper.appendChild(cvs);
+                item.appendChild(thumbWrapper);
 
-            // Info
-            const info = document.createElement('div');
-            info.style.textAlign = 'center';
-            info.innerHTML = `
-                <div style="font-weight:bold; color:var(--text-main); font-size:${res.rank === 1 ? '1.2rem' : '1rem'}">${res.username}</div>
-                <div style="color:var(--primary); font-weight:bold;">+${res.score} <span style="font-size:0.8em">(${res.average}★)</span></div>
-            `;
-            item.appendChild(info);
+                // Info
+                const info = document.createElement('div');
+                info.style.textAlign = 'center';
+                info.innerHTML = `
+                    <div style="font-weight:bold; color:var(--text-main); font-size:${res.rank === 1 ? '1.2rem' : '1rem'}">${res.username}</div>
+                    <div style="color:var(--primary); font-weight:bold;">+${res.score} <span style="font-size:0.8em">(${res.average}★)</span></div>
+                `;
+                item.appendChild(info);
 
-            // Rank Badge
-            const badge = document.createElement('div');
-            badge.textContent = `#${res.rank}`;
-            badge.style.position = 'absolute';
-            badge.style.top = '-10px';
-            badge.style.left = '50%';
-            badge.style.transform = 'translateX(-50%)';
-            badge.style.background = res.rank === 1 ? '#ffd700' : res.rank === 2 ? '#c0c0c0' : '#cd7f32';
-            badge.style.color = 'black';
-            badge.style.fontWeight = 'bold';
-            badge.style.width = '30px';
-            badge.style.height = '30px';
-            badge.style.borderRadius = '50%';
-            badge.style.display = 'flex';
-            badge.style.alignItems = 'center';
-            badge.style.justifyContent = 'center';
-            badge.style.boxShadow = '0 2px 5px rgba(0,0,0,0.3)';
-            item.appendChild(badge);
+                // Rank Badge
+                const badge = document.createElement('div');
+                badge.textContent = `#${res.rank}`;
+                badge.style.position = 'absolute';
+                badge.style.top = '-10px';
+                badge.style.left = '50%';
+                badge.style.transform = 'translateX(-50%)';
+                badge.style.zIndex = '10';
+                badge.style.background = res.rank === 1 ? '#ffd700' : res.rank === 2 ? '#c0c0c0' : '#cd7f32';
+                badge.style.color = 'black';
+                badge.style.fontWeight = 'bold';
+                badge.style.width = '30px';
+                badge.style.height = '30px';
+                badge.style.borderRadius = '50%';
+                badge.style.display = 'flex';
+                badge.style.alignItems = 'center';
+                badge.style.justifyContent = 'center';
+                badge.style.boxShadow = '0 2px 5px rgba(0,0,0,0.3)';
+                item.appendChild(badge);
 
-            podiumContainer.appendChild(item);
+                podiumContainer.appendChild(item);
+            } else if (top3.length > 0) {
+                // Placeholder
+                const item = document.createElement('div');
+                item.className = `podium-item rank-${slot.rank} placeholder`;
+                item.style.display = 'flex';
+                item.style.flexDirection = 'column';
+                item.style.alignItems = 'center';
+                item.style.gap = '10px';
+                item.style.visibility = 'hidden'; // Invisible
+                
+                const thumbWrapper = document.createElement('div');
+                thumbWrapper.style.width = slot.rank === 1 ? '160px' : '120px';
+                thumbWrapper.style.height = slot.rank === 1 ? '120px' : '90px';
+                item.appendChild(thumbWrapper);
+                
+                // Info placeholder
+                const info = document.createElement('div');
+                info.innerHTML = `<div>&nbsp;</div><div>&nbsp;</div>`;
+                item.appendChild(info);
+                
+                podiumContainer.appendChild(item);
+            }
         });
 
         roundResultScores.appendChild(podiumContainer);
