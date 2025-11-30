@@ -26,7 +26,7 @@ class Room {
             wordChoiceTime: 20,
             wordChoices: 3,
             rounds: 3,
-            allowFuzzy: false,
+            allowFuzzy: true,
             hintsEnabled: true,
             maxWordLength: 20,
             personalHints: 3,

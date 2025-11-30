@@ -390,6 +390,66 @@
 				"\n/* Disabled State for Tool Buttons */\n.tool-btn:disabled,\n.tool-btn[disabled] {\n    opacity: 0.2 !important;\n    cursor: not-allowed;\n    pointer-events: none;\n    filter: grayscale(100%);\n    user-select: none;\n    -webkit-user-select: none;\n    -moz-user-select: none;\n    -ms-user-select: none;\n}\n\n.tool-btn:disabled .tool-label,\n.tool-btn[disabled] .tool-label {\n    user-select: none;\n}\n"
 			],
 			"group": "build"
+		},
+		{
+			"label": "append_css_player_drawer",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\game-ui.css",
+				"\n/* Player Actions Drawer */\n.player-card {\n    position: relative;\n    overflow: hidden;\n}\n\n.player-actions-drawer {\n    position: absolute;\n    top: 0;\n    right: 0;\n    bottom: 0;\n    display: flex;\n    align-items: center;\n    gap: 8px;\n    padding: 0 10px;\n    background: linear-gradient(to left, #1a1a1a 85%, transparent);\n    transform: translateX(100%);\n    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);\n    z-index: 10;\n}\n\n.player-card:hover .player-actions-drawer {\n    transform: translateX(0);\n}\n\n/* Reset button styles inside drawer */\n.player-actions-drawer button {\n    margin: 0 !important;\n    opacity: 1 !important;\n    transform: none !important;\n    position: relative !important;\n}\n\n/* Ensure kick button is visible and styled correctly in drawer */\n.kick-btn {\n    opacity: 1;\n    margin-left: 0;\n    background: rgba(239, 68, 68, 0.2);\n    width: 28px;\n    height: 28px;\n}\n\n.kick-btn:hover {\n    background: var(--danger);\n}\n"
+			],
+			"group": "build"
+		},
+		{
+			"label": "append_css_drawer_fix",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\game-ui.css",
+				"\n/* Fix for disabled buttons in drawer */\n.player-actions-drawer button[disabled] {\n    opacity: 0.5 !important;\n    cursor: not-allowed;\n}\n"
+			],
+			"group": "build"
+		},
+		{
+			"label": "append_css_word_display_fix",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\game-ui.css",
+				"\n.word-display {\n    min-height: 1.2em; /* Prevent collapse when empty */\n    display: flex;\n    align-items: center;\n    justify-content: center;\n}\n"
+			],
+			"group": "build"
+		},
+		{
+			"label": "append_css_choosing_word",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\game-ui.css",
+				"\n/* Choosing Word State */\n.word-display.choosing-word {\n    font-size: 1.2rem;\n    color: white;\n    text-shadow: none;\n    font-weight: 600;\n    letter-spacing: 1px;\n}\n"
+			],
+			"group": "build"
+		},
+		{
+			"label": "append_css_topbar_fix",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\game-ui.css",
+				"\n/* Fixed Height & Adaptive Width for Top Bar */\n.game-top-bar {\n    height: 80px;\n    display: flex;\n    justify-content: space-between;\n    align-items: center;\n    padding: 0 20px;\n    gap: 20px;\n    width: auto;\n    min-width: 600px;\n    max-width: 90vw; /* Prevent going off screen */\n}\n\n.timer-display {\n    position: static;\n    flex-shrink: 0;\n    margin: 0;\n    left: auto;\n}\n\n.round-info {\n    position: static;\n    flex-shrink: 0;\n    margin: 0;\n    right: auto;\n}\n\n.word-display {\n    flex: 1;\n    white-space: nowrap;\n    overflow: hidden;\n    text-overflow: ellipsis;\n    padding: 0 10px;\n    width: auto;\n}\n"
+			],
+			"group": "build"
+		},
+		{
+			"label": "append_css_topbar_scaling",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\game-ui.css",
+				"\n/* Scalable Top Bar */\n.game-top-bar {\n    height: calc(80px * var(--scale-factor));\n    display: flex;\n    justify-content: space-between;\n    align-items: center;\n    padding: 0 calc(20px * var(--scale-factor));\n    gap: calc(20px * var(--scale-factor));\n    width: auto;\n    min-width: calc(600px * var(--scale-factor));\n    max-width: 90vw;\n    \n    /* Ensure font sizes scale too */\n    font-size: calc(1rem * var(--scale-factor));\n}\n\n.timer-display {\n    font-size: calc(1.5rem * var(--scale-factor));\n    padding: calc(6px * var(--scale-factor)) calc(16px * var(--scale-factor));\n    border-radius: calc(12px * var(--scale-factor));\n    min-width: calc(100px * var(--scale-factor));\n    gap: calc(0.8rem * var(--scale-factor));\n}\n\n.round-info {\n    font-size: calc(1rem * var(--scale-factor));\n    padding: calc(6px * var(--scale-factor)) calc(16px * var(--scale-factor));\n    border-radius: calc(12px * var(--scale-factor));\n    min-width: calc(100px * var(--scale-factor));\n}\n\n.word-display {\n    font-size: calc(2rem * var(--scale-factor));\n    padding: 0 calc(10px * var(--scale-factor));\n}\n\n.word-display.choosing-word {\n    font-size: calc(1.2rem * var(--scale-factor));\n}\n\n/* Drawer Name Display in Top Bar */\n.drawer-name-display {\n    position: absolute;\n    top: calc(-25px * var(--scale-factor));\n    left: 50%;\n    transform: translateX(-50%);\n    background: rgba(0, 0, 0, 0.6);\n    color: var(--text-dim);\n    padding: calc(4px * var(--scale-factor)) calc(12px * var(--scale-factor));\n    border-radius: calc(12px * var(--scale-factor)) calc(12px * var(--scale-factor)) 0 0;\n    font-size: calc(0.8rem * var(--scale-factor));\n    font-weight: 600;\n    letter-spacing: 1px;\n    white-space: nowrap;\n    border: 1px solid rgba(255, 255, 255, 0.1);\n    border-bottom: none;\n    backdrop-filter: blur(4px);\n    z-index: -1; /* Behind the bar */\n}\n\n.drawer-name-display strong {\n    color: var(--primary);\n    margin-left: 5px;\n}\n"
+			],
+			"group": "build"
 		}
 	]
 }

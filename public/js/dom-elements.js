@@ -134,6 +134,7 @@ export const imageResultsGrid = document.getElementById('image-results-grid');
 
 // Game Top Bar
 export const gameTopBar = document.getElementById('game-top-bar');
+export const drawerNameDisplay = document.getElementById('drawer-name-display');
 export const timerValue = document.getElementById('timer-value');
 export const wordDisplay = document.getElementById('word-display');
 export const roundCurrent = document.getElementById('round-current');

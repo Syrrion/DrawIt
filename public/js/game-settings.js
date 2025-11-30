@@ -10,6 +10,10 @@ export class GameSettingsManager {
 
         this.currentMode = 'guess-word';
         this.previousHintsEnabled = true;
+        this.storedWordChoiceTimes = {
+            'guess-word': 20,
+            'custom-word': 45
+        };
 
         // Modal & Controls
         this.modalElement = document.getElementById('lobby-settings-modal');
@@ -211,6 +215,13 @@ export class GameSettingsManager {
     }
 
     selectCard(mode) {
+        // Save current time for previous mode
+        if (this.currentMode === 'guess-word' || this.currentMode === 'custom-word') {
+            if (this.wordChoiceTimeInput) {
+                this.storedWordChoiceTimes[this.currentMode] = parseInt(this.wordChoiceTimeInput.value) || 20;
+            }
+        }
+
         this.cards.forEach(card => {
             if (card.dataset.mode === mode) {
                 card.classList.add('selected');
@@ -220,6 +231,13 @@ export class GameSettingsManager {
         });
         
         this.currentMode = mode;
+
+        // Restore time for new mode
+        if (mode === 'guess-word' || mode === 'custom-word') {
+            if (this.wordChoiceTimeInput) {
+                this.wordChoiceTimeInput.value = this.storedWordChoiceTimes[mode] || 20;
+            }
+        }
         
         // Hide all settings sections first
         const allSettings = document.querySelectorAll('[id^="settings-"]');
@@ -247,11 +265,6 @@ export class GameSettingsManager {
             if (mode === 'custom-word') {
                 if (this.wordChoicesInput) this.wordChoicesInput.closest('.setting-group').classList.add('hidden');
                 if (this.maxWordLengthInput) this.maxWordLengthInput.closest('.setting-group').classList.remove('hidden');
-                // Set default word choice time to 45s if it's the default 20s
-                if (this.wordChoiceTimeInput && this.wordChoiceTimeInput.value == 20) {
-                    this.wordChoiceTimeInput.value = 45;
-                    this.emitSettingsUpdate();
-                }
             } else {
                 if (this.wordChoicesInput) this.wordChoicesInput.closest('.setting-group').classList.remove('hidden');
                 if (this.maxWordLengthInput) this.maxWordLengthInput.closest('.setting-group').classList.add('hidden');

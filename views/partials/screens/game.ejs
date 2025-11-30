@@ -67,6 +67,7 @@
     </svg>
     <!-- Top Bar  -->
     <div id="game-top-bar" class="game-top-bar hidden">
+        <div id="drawer-name-display" class="drawer-name-display"></div>
         <div class="timer-display">
             <i class="fas fa-clock"></i> <span id="timer-value">0</span>
         </div>
@@ -79,7 +80,7 @@
             </button>
         </div>
         <div class="round-info">
-            Round <span id="round-current">1</span>/<span id="round-total">3</span>
+            Round&nbsp;<span id="round-current">1</span>/<span id="round-total">3</span>
         </div>
     </div>
 
@@ -390,7 +391,7 @@
                                                 </svg>
                                                 <span class="tool-label">Rétablir</span>
                                             </button>
-                                            <button id="clear-btn" class="danger-btn" data-tooltip="Tout effacer">
+                                            <button id="clear-btn" class="tool-btn-danger" data-tooltip="Tout effacer">
                                                 <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor"
                                                     stroke-width="2" fill="none" stroke-linecap="round"
                                                     stroke-linejoin="round">

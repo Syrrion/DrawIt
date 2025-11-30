@@ -1,4 +1,4 @@
-import { socket, gameTopBar, wordChoiceModal, wordChoicesContainer, timerValue, wordDisplay, roundCurrent, roundTotal, roundResultOverlay, roundResultTitle, roundResultWord, roundResultWordLabel, roundResultScores, gameEndModal, gameEndScores, readyCheckModal, btnIamReady, btnRefuseGame, readyCountVal, readyTotalVal, readyTimerVal, readyPlayersList, helpModal, lobbySettingsModal, confirmationModal, kickModal, alertModal, btnUseHint, hintsCount, customWordModal, customWordInput, btnSubmitCustomWord, customWordTimerVal, btnRandomCustomWord } from '../dom-elements.js';
+import { socket, gameTopBar, wordChoiceModal, wordChoicesContainer, timerValue, wordDisplay, roundCurrent, roundTotal, roundResultOverlay, roundResultTitle, roundResultWord, roundResultWordLabel, roundResultScores, gameEndModal, gameEndScores, readyCheckModal, btnIamReady, btnRefuseGame, readyCountVal, readyTotalVal, readyTimerVal, readyPlayersList, helpModal, lobbySettingsModal, confirmationModal, kickModal, alertModal, btnUseHint, hintsCount, customWordModal, customWordInput, btnSubmitCustomWord, customWordTimerVal, btnRandomCustomWord, drawerNameDisplay } from '../dom-elements.js';
 import { state } from '../state.js';
 import { showToast, playTickSound } from '../utils.js';
 import { performDraw, performFloodFill } from '../draw.js';
@@ -38,6 +38,7 @@ export class GameHandler {
         socket.on('gameCancelled', this.handleGameCancelled.bind(this));
         socket.on('gameStarted', this.handleGameStarted.bind(this));
         socket.on('hintRevealed', this.handleHintRevealed.bind(this));
+        socket.on('wordSelectionStarted', this.handleWordSelectionStarted.bind(this));
 
         // Creative Mode Events
         socket.on('creativeRoundStart', this.handleCreativeRoundStart.bind(this));
@@ -154,6 +155,29 @@ export class GameHandler {
         }
     }
 
+    handleWordSelectionStarted(data) {
+        gameTopBar.classList.remove('hidden');
+        if (wordDisplay) {
+            wordDisplay.textContent = 'Choix du mot...';
+            wordDisplay.classList.add('choosing-word');
+        }
+
+        if (drawerNameDisplay) {
+            const drawer = this.playerListManager.getPlayer(data.drawerId);
+            const drawerName = drawer ? drawer.username : 'Un joueur';
+            drawerNameDisplay.innerHTML = `C'est au tour de <strong>${drawerName}</strong>`;
+        }
+
+        if (timerValue) timerValue.textContent = data.timeout;
+
+        if (this.currentTimerInterval) clearInterval(this.currentTimerInterval);
+        
+        let timeLeft = data.timeout;
+        this.currentTimerInterval = this.startSmartTimer(timeLeft, (remaining) => {
+            if (timerValue) timerValue.textContent = remaining;
+        });
+    }
+
     handleChooseWord(data) {
         const words = Array.isArray(data) ? data : data.words;
         const timeout = (Array.isArray(data) ? 20 : data.timeout) || 20;
@@ -170,6 +194,11 @@ export class GameHandler {
             };
             wordChoicesContainer.appendChild(btn);
         });
+
+        if (wordDisplay) {
+            wordDisplay.textContent = 'À vous de choisir !';
+            wordDisplay.classList.add('choosing-word');
+        }
 
         const timerVal = document.getElementById('word-choice-timer-val');
         let timeLeft = timeout;
@@ -198,6 +227,11 @@ export class GameHandler {
             customWordInput.value = '';
             customWordInput.maxLength = maxLen;
             customWordInput.focus();
+        }
+
+        if (wordDisplay) {
+            wordDisplay.textContent = 'À vous de choisir !';
+            wordDisplay.classList.add('choosing-word');
         }
 
         if (customWordTimerVal) {
@@ -237,6 +271,7 @@ export class GameHandler {
         if (this.wordChoiceTimerInterval) clearInterval(this.wordChoiceTimerInterval);
         timerValue.textContent = data.duration;
         wordDisplay.textContent = this.formatHint(data.hint);
+        wordDisplay.classList.remove('choosing-word');
 
         // Show/Hide Hint Button
         const progressiveHintsEnabled = state.settings && state.settings.hintsEnabled;
@@ -257,7 +292,9 @@ export class GameHandler {
         }
 
         if (state.currentDrawerName) {
-            showToast(`C'est au tour de ${state.currentDrawerName} de dessiner !`, 'info');
+            if (drawerNameDisplay) {
+                drawerNameDisplay.innerHTML = `C'est au tour de <strong>${state.currentDrawerName}</strong>`;
+            }
         }
 
         let timeLeft = data.duration;
@@ -287,6 +324,10 @@ export class GameHandler {
         roundCurrent.textContent = data.roundIndex;
         roundTotal.textContent = data.totalRounds;
 
+        if (drawerNameDisplay) {
+            drawerNameDisplay.innerHTML = `C'est au tour de <strong>${data.drawerName}</strong>`;
+        }
+
         this.chatManager.addSeparator(`Round ${data.roundIndex} - Tour ${data.turnIndex}/${data.totalTurns}`);
         this.cursorManager.clearCursors();
 
@@ -295,6 +336,7 @@ export class GameHandler {
         timerValue.textContent = '0';
         wordDisplay.textContent = '';
         wordDisplay.style.color = 'var(--primary)';
+        wordDisplay.classList.remove('choosing-word');
 
         this.layerManager.updateLayersUI();
     }
@@ -383,6 +425,17 @@ export class GameHandler {
         customWordModal.classList.add('hidden');
         roundResultOverlay.classList.add('hidden');
         gameTopBar.classList.add('hidden');
+
+        // Clear all layers
+        if (this.layerManager) {
+            const canvases = this.layerManager.getLayerCanvases();
+            Object.values(canvases).forEach(c => {
+                c.ctx.clearRect(0, 0, c.canvas.width, c.canvas.height);
+            });
+            if (this.layerManager.renderCallback) {
+                this.layerManager.renderCallback();
+            }
+        }
 
         this.chatManager.addSeparator('Partie terminée');
 

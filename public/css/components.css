@@ -29,10 +29,17 @@ button.secondary:hover {
     box-shadow: none;
 }
 
+button.danger-btn {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.5);
+    color: var(--danger);
+}
+
 button.danger-btn:hover {
     background: var(--danger);
     border-color: var(--danger);
     box-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
+    color: white;
 }
 
 input[type="text"], input[type="number"] {

@@ -464,6 +464,11 @@ export class CanvasManager {
     handleMouseEnter(e) {
         if (localCursor) localCursor.classList.remove('hidden');
 
+        // Allow drawing if entering with mouse down
+        if (e.buttons === 1 && !state.isDrawing) {
+            this.handleMouseDown(e);
+        }
+
         if (state.isDrawing && ['pen', 'eraser', 'airbrush', 'smudge'].includes(state.currentTool)) {
             const { x, y } = this.getMousePos(e);
             let startX = x;

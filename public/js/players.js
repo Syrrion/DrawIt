@@ -108,9 +108,23 @@ export class PlayerListManager {
 
             const isLeader = u.id === this.currentLeaderId;
             const leaderIcon = isLeader ? '<i class="fas fa-crown leader-crown"></i>' : '';
-            const drawerIcon = u.id === this.currentDrawerId ? '<i class="fas fa-pencil-alt drawing-icon" style="margin-left:5px; color:var(--accent);"></i>' : '';
-            const spectatorIcon = u.isSpectator ? '<i class="fas fa-eye" style="margin-left:5px; color:var(--text-dim);" title="Observateur"></i>' : '';
-            const score = this.currentScores[u.id] !== undefined && !u.isSpectator ? `<div class="player-score">${this.currentScores[u.id]} pts</div>` : '';
+            
+            // Status Icon (Pen, Check, or Spacer)
+            let statusIcon = '<div class="status-spacer" style="width: 20px; display: inline-block;"></div>';
+            if (u.id === this.currentDrawerId) {
+                statusIcon = '<i class="fas fa-pencil-alt drawing-icon" style="width: 20px; text-align: center; color:var(--accent);"></i>';
+            } else if (this.currentGuessedPlayers.includes(u.id)) {
+                statusIcon = '<i class="fas fa-check" style="width: 20px; text-align: center; color:var(--success);"></i>';
+            }
+
+            const spectatorIcon = u.isSpectator ? '<i class="fas fa-eye" style="margin-right:5px; color:var(--text-dim);" title="Observateur"></i>' : '';
+            
+            const score = this.currentScores[u.id] !== undefined && !u.isSpectator 
+                ? `<div class="player-score-container" style="display: flex; align-items: center; gap: 5px;">
+                     ${statusIcon}
+                     <div class="player-score">${this.currentScores[u.id]} pts</div>
+                   </div>` 
+                : '';
 
             // Turn Order Badge (only for non-spectators)
             let turnOrderBadge = '';
@@ -133,7 +147,7 @@ export class PlayerListManager {
                 const timeSinceLastClick = now - this.lastSwitchRoleTime;
                 const isCooldown = timeSinceLastClick < 5000;
                 const disabledAttr = isCooldown ? 'disabled' : '';
-                const style = isCooldown ? 'margin-left: 5px; padding: 2px 6px; font-size: 0.8rem; opacity: 0.5; cursor: not-allowed;' : 'margin-left: 5px; padding: 2px 6px; font-size: 0.8rem;';
+                const style = isCooldown ? 'padding: 2px 6px; font-size: 0.8rem; opacity: 0.5; cursor: not-allowed;' : 'padding: 2px 6px; font-size: 0.8rem;';
 
                 switchRoleBtn = `
                     <button class="switch-role-btn secondary small-btn" title="${title}" style="${style}" ${disabledAttr}>
@@ -156,11 +170,20 @@ export class PlayerListManager {
             let spectateBtn = '';
             if (state.isSpectator && state.currentGameState === 'PLAYING' && state.settings && state.settings.mode === 'creative' && !u.isSpectator) {
                 spectateBtn = `
-                    <button class="spectate-btn secondary small-btn" title="Observer" style="margin-left: 5px; padding: 4px 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; cursor: pointer; color: var(--text-main);">
+                    <button class="spectate-btn secondary small-btn" title="Observer" style="padding: 4px 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; cursor: pointer; color: var(--text-main);">
                         <i class="fas fa-eye"></i>
                     </button>
                 `;
             }
+
+            // Group actions
+            let actionsHtml = '';
+            if (switchRoleBtn) actionsHtml += switchRoleBtn;
+            if (spectateBtn) actionsHtml += spectateBtn;
+            if (kickBtn) actionsHtml += kickBtn;
+
+            const actionsDrawer = actionsHtml ? `<div class="player-actions-drawer">${actionsHtml}</div>` : '';
+            const interactionIndicator = actionsHtml ? `<div class="interaction-handle" title="Actions disponibles">||</div>` : '';
 
             div.innerHTML = `
                 ${turnOrderBadge}
@@ -168,14 +191,13 @@ export class PlayerListManager {
                 <div class="player-info" style="flex:1; min-width: 0;">
                     <div class="player-name">
                         ${leaderIcon}
+                        ${spectatorIcon}
                         <span class="name-text" title="${u.username}">${u.username}</span>
-                        ${drawerIcon} ${spectatorIcon}
-                        ${switchRoleBtn}
                     </div>
                     ${score}
                 </div>
-                ${spectateBtn}
-                ${kickBtn}
+                ${interactionIndicator}
+                ${actionsDrawer}
             `;
 
             // Add event listener for spectate button

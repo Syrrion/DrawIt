@@ -67,7 +67,7 @@
 }
 
 .message {
-    padding: 0.7rem 1.1rem;
+    padding: 0.5rem 0.8rem;
     border-radius: 18px;
     color: var(--text-main);
     font-family: 'Exo 2', sans-serif;
@@ -96,9 +96,9 @@
 .message-name {
     font-size: 0.75rem;
     color: var(--text-dim);
-    margin-bottom: 4px;
+    margin-bottom: 0;
     font-weight: bold;
-    margin-left: 4px;
+    margin-left: 0;
 }
 
 .system-message {
@@ -133,7 +133,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 1.2rem 0;
+    margin: 1.2rem 0 0.4rem 0;
     position: relative;
     color: var(--text-dim);
     font-size: 0.75rem;

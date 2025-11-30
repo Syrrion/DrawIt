@@ -378,6 +378,12 @@ class Game {
     handleWordSelection(drawerId) {
         const settings = this.room.settings;
 
+        // Notify everyone that word selection started
+        this.io.to(this.room.code).emit('wordSelectionStarted', {
+            drawerId: drawerId,
+            timeout: settings.wordChoiceTime
+        });
+
         if (settings.mode === 'custom-word') {
             this.io.to(drawerId).emit('typeWord', {
                 timeout: settings.wordChoiceTime,
@@ -403,6 +409,9 @@ class Game {
     }
 
     handleWordChosen(word, drawerId) {
+        // Prevent double execution (race condition between timeout and user selection)
+        if (this.currentWord) return;
+
         if (this.wordChoiceTimer) {
             clearTimeout(this.wordChoiceTimer);
             this.wordChoiceTimer = null;
@@ -425,6 +434,8 @@ class Game {
     }
 
     startRoundTimer(drawerId) {
+        if (this.timerInterval) clearInterval(this.timerInterval);
+
         const totalTime = this.timeLeft;
         const hintInterval = Math.floor(totalTime / 5);
         let nextHintTime = totalTime - hintInterval;
@@ -444,6 +455,8 @@ class Game {
     }
 
     revealRandomHint(drawerId) {
+        if (!this.currentWord) return;
+
         const unrevealed = [];
         for (let i = 0; i < this.currentWord.length; i++) {
             if (!this.revealedIndices.includes(i) && this.currentWord[i] !== ' ' && this.currentWord[i] !== '-') {
