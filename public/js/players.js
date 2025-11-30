@@ -16,6 +16,7 @@ export class PlayerListManager {
         this.currentMaxPlayers = 8; // Default
         this.currentGuessedPlayers = [];
         this.lastSwitchRoleTime = 0;
+        this.currentSpectatingId = null;
 
         // Sound Effect
         this.successAudio = new Audio();
@@ -80,6 +81,9 @@ export class PlayerListManager {
         sortedUsers.forEach(u => {
             const div = document.createElement('div');
             div.className = 'player-card';
+            if (state.isSpectator) {
+                div.classList.add('is-spectator-view');
+            }
             if (u.id === this.socket.id) {
                 div.classList.add('is-me');
             }
@@ -92,6 +96,9 @@ export class PlayerListManager {
             }
             if (this.currentGuessedPlayers.includes(u.id)) {
                 div.classList.add('has-guessed');
+            }
+            if (u.id === this.currentSpectatingId) {
+                div.classList.add('spectating');
             }
             
             let avatarHtml = '';
@@ -129,7 +136,8 @@ export class PlayerListManager {
 
             // Turn Order Badge (only for non-spectators)
             let turnOrderBadge = '';
-            if (!u.isSpectator && this.currentTurnOrder && this.currentTurnOrder.length > 0) {
+            const isCreative = state.settings && state.settings.mode === 'creative';
+            if (!u.isSpectator && this.currentTurnOrder && this.currentTurnOrder.length > 0 && !isCreative && !isTelephone) {
                 const index = this.currentTurnOrder.indexOf(u.id);
                 if (index !== -1) {
                     turnOrderBadge = `<span style="font-size: 0.7rem; background: rgba(255,255,255,0.1); padding: 2px 5px; border-radius: 4px; margin-right: 5px; color: var(--text-dim);">#${index + 1}</span>`;
@@ -169,7 +177,7 @@ export class PlayerListManager {
 
             // Spectator Button Logic
             let spectateBtn = '';
-            if (state.isSpectator && state.currentGameState === 'PLAYING' && state.settings && state.settings.mode === 'creative' && !u.isSpectator) {
+            if (state.isSpectator && state.currentGameState === 'PLAYING' && !u.isSpectator) {
                 spectateBtn = `
                     <button class="spectate-btn secondary small-btn" title="Observer" style="padding: 4px 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; cursor: pointer; color: var(--text-main);">
                         <i class="fas fa-eye"></i>
@@ -207,22 +215,7 @@ export class PlayerListManager {
                 if (btn) {
                     btn.addEventListener('click', (e) => {
                         e.stopPropagation();
-                        
-                        this.socket.emit('spectatePlayer', { roomCode: state.currentRoom, targetId: u.id });
-                        
-                        // Update UI to show selected
-                        document.querySelectorAll('.player-card').forEach(c => c.classList.remove('spectating'));
-                        div.classList.add('spectating');
-                        
-                        // Update button style to show active state
-                        document.querySelectorAll('.spectate-btn').forEach(b => {
-                            b.style.background = 'rgba(255,255,255,0.1)';
-                            b.style.borderColor = 'rgba(255,255,255,0.2)';
-                            b.style.color = 'var(--text-main)';
-                        });
-                        btn.style.background = 'var(--primary)';
-                        btn.style.borderColor = 'var(--primary)';
-                        btn.style.color = 'white';
+                        this.spectatePlayer(u.id);
                     });
                 }
             }
@@ -324,6 +317,7 @@ export class PlayerListManager {
             if (data.maxPlayers) this.currentMaxPlayers = data.maxPlayers;
         }
         this.render();
+        this.autoSpectate();
     }
 
     handleUserLeft(data) {
@@ -333,8 +327,15 @@ export class PlayerListManager {
             this.currentUsers = data.users;
             this.currentLeaderId = data.leaderId;
         }
+
+        // Check if spectated user is still there
+        if (this.currentSpectatingId && !this.currentUsers.find(u => u.id === this.currentSpectatingId)) {
+            this.currentSpectatingId = null;
+        }
+
         this.render();
         this.updatePlayerCount();
+        this.autoSpectate();
     }
 
     handleScoreUpdate(scores) {
@@ -361,6 +362,7 @@ export class PlayerListManager {
         this.currentTurnOrder = data.turnOrder;
         this.currentGuessedPlayers = [];
         this.render();
+        this.autoSpectate();
     }
     
     handleGameEnded() {
@@ -372,6 +374,9 @@ export class PlayerListManager {
     }
     
     handleRoomJoined(data) {
+        if (data.isSpectator !== undefined) {
+            state.isSpectator = data.isSpectator;
+        }
         this.currentUsers = data.users;
         this.currentLeaderId = data.leaderId;
         if (data.roomCode) this.currentRoomCode = data.roomCode;
@@ -387,11 +392,13 @@ export class PlayerListManager {
         }
         this.render();
         this.updatePlayerCount();
+        this.autoSpectate();
     }
 
     handleGameStateChanged(state) {
         this.currentGameState = state;
         this.render();
+        this.autoSpectate();
     }
 
     updatePlayerList(users, leaderId, gameState, roomCode) {
@@ -417,5 +424,20 @@ export class PlayerListManager {
 
     getPlayerCount() {
         return this.currentUsers.length;
+    }
+
+    autoSpectate() {
+        if (state.isSpectator && this.currentGameState === 'PLAYING' && !this.currentSpectatingId) {
+            const firstPlayer = this.currentUsers.find(u => !u.isSpectator);
+            if (firstPlayer) {
+                this.spectatePlayer(firstPlayer.id);
+            }
+        }
+    }
+
+    spectatePlayer(targetId) {
+        this.currentSpectatingId = targetId;
+        this.socket.emit('spectatePlayer', { roomCode: state.currentRoom, targetId: targetId });
+        this.render();
     }
 }

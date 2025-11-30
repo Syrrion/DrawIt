@@ -1864,7 +1864,7 @@ canvas {
     background: rgba(20, 20, 30, 0.65);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    border-left: 1px solid rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.15);
     /* Shadow removed from here to prevent leak when closed */
     box-shadow: none;
 
@@ -2226,4 +2226,9 @@ canvas {
     flex-shrink: 0;
     min-width: min-content;
     min-height: min-content;
+}
+
+/* Always show player actions for spectators */
+.player-card.is-spectator-view .player-actions-drawer {
+    transform: translateX(0);
 }

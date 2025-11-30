@@ -66,6 +66,27 @@ module.exports = (io, socket) => {
         }
     });
 
+    socket.on('endStroke', (data) => {
+        const room = rooms[data.roomCode];
+        if (room) {
+            // Check if user is spectator
+            const user = room.getUser(socket.id);
+            if (user && user.isSpectator) return;
+
+            if (room.gameState === 'PLAYING' && (room.settings.mode === 'creative' || room.settings.mode === 'telephone')) {
+                return;
+            }
+
+            // Restriction: Only drawer can draw during game
+            if (room.gameState === 'PLAYING' && (room.settings.mode === 'guess-word' || room.settings.mode === 'custom-word')) {
+                const drawerId = room.game.turnOrder[room.game.currentDrawerIndex];
+                if (socket.id !== drawerId) return;
+            }
+
+            socket.to(data.roomCode).emit('endStroke', data);
+        }
+    });
+
     socket.on('undo', (roomCode) => {
         const room = rooms[roomCode];
         if (room) {
@@ -88,6 +109,18 @@ module.exports = (io, socket) => {
     socket.on('redo', (roomCode) => {
         const room = rooms[roomCode];
         if (room) {
+            if (room.gameState === 'PLAYING' && room.settings.mode === 'creative') {
+                if (room.game && room.game.handleCreativeRedo) {
+                    room.game.handleCreativeRedo(socket.id);
+                }
+                return;
+            }
+            if (room.gameState === 'PLAYING' && room.settings.mode === 'telephone') {
+                if (room.game && room.game.handleTelephoneRedo) {
+                    room.game.handleTelephoneRedo(socket.id);
+                }
+                return;
+            }
             room.redo(socket.id);
         }
     });
@@ -134,6 +167,14 @@ module.exports = (io, socket) => {
                 user.activeLayerId = layerId;
                 io.to(roomCode).emit('playerLayerChanged', { userId: socket.id, layerId });
             }
+        }
+    });
+
+    socket.on('requestCanvasState', ({ roomCode }) => {
+        const room = rooms[roomCode];
+        if (room) {
+            socket.emit('canvasState', room.drawHistory);
+            room.emitUndoRedoState(socket.id);
         }
     });
 };

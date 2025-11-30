@@ -40,6 +40,8 @@ export class GameHandler {
         socket.on('gameStarted', this.handleGameStarted.bind(this));
         socket.on('hintRevealed', this.handleHintRevealed.bind(this));
         socket.on('wordSelectionStarted', this.handleWordSelectionStarted.bind(this));
+        socket.on('spectatorWord', this.handleSpectatorWord.bind(this));
+        socket.on('userLeft', this.handleUserLeft.bind(this));
 
         // Creative Mode Events
         socket.on('creativeRoundStart', this.handleCreativeRoundStart.bind(this));
@@ -55,7 +57,6 @@ export class GameHandler {
         socket.on('telephoneRoundEnd', this.handleTelephoneRoundEnd.bind(this));
         socket.on('telephoneGameEnded', this.handleTelephoneGameEnded.bind(this));
         socket.on('telephoneRecapUpdate', this.handleTelephoneRecapUpdate.bind(this));
-        socket.on('telephoneHistory', this.handleTelephoneHistory.bind(this));
 
         if (btnUseHint) {
             btnUseHint.addEventListener('click', () => {
@@ -158,6 +159,14 @@ export class GameHandler {
         }
     }
 
+    handleUserLeft(data) {
+        // If we are in telephone recap, re-render to update controls if leader changed
+        const modal = document.getElementById('telephone-recap-modal');
+        if (modal && !modal.classList.contains('hidden')) {
+            this.renderTelephoneRecap();
+        }
+    }
+
     handleRoomJoined(data) {
         // Game state sync for mid-game join
         if (data.game && data.game.turnOrder && data.game.currentDrawerIndex !== undefined) {
@@ -169,9 +178,37 @@ export class GameHandler {
             }
 
             // Update Word Display and Timer if joining mid-game
-            if (data.game.currentHint) {
+            const isTelephone = state.settings && state.settings.mode === 'telephone';
+
+            if (data.game.currentHint || isTelephone) {
                 gameTopBar.classList.remove('hidden');
-                wordDisplay.textContent = this.formatHint(data.game.currentHint);
+
+                if (isTelephone && state.isSpectator) {
+                    const round = data.game.roundIndex || 1;
+                    if (wordDisplay) {
+                        if (round === 1) {
+                            wordDisplay.textContent = "Choix des phrases en cours...";
+                            wordDisplay.classList.add('choosing-word');
+                            wordDisplay.style.color = 'var(--text-main)';
+                        } else {
+                            if (data.game.phase === 'WRITING') {
+                                wordDisplay.textContent = "Description du dessin...";
+                                wordDisplay.classList.add('choosing-word');
+                                wordDisplay.style.color = 'var(--text-main)';
+                            } else if (data.game.phase === 'DRAWING') {
+                                wordDisplay.textContent = "Dessin en cours...";
+                                wordDisplay.classList.remove('choosing-word');
+                                wordDisplay.style.color = 'var(--primary)';
+                            } else {
+                                wordDisplay.textContent = "Partie en cours...";
+                                wordDisplay.classList.remove('choosing-word');
+                                wordDisplay.style.color = 'var(--primary)';
+                            }
+                        }
+                    }
+                } else if (data.game.currentHint) {
+                    wordDisplay.textContent = this.formatHint(data.game.currentHint);
+                }
 
                 // Update Hint Button Visibility for mid-game join
                 const progressiveHintsEnabled = state.settings && state.settings.hintsEnabled;
@@ -225,6 +262,17 @@ export class GameHandler {
         this.currentTimerInterval = this.startSmartTimer(timeLeft, (remaining) => {
             if (timerValue) timerValue.textContent = remaining;
         });
+    }
+
+    handleSpectatorWord(word) {
+        if (wordDisplay) {
+            wordDisplay.textContent = word;
+            wordDisplay.classList.add('choosing-word');
+            wordDisplay.style.color = 'var(--primary)';
+        }
+        if (drawerNameDisplay) {
+            drawerNameDisplay.classList.add('hidden');
+        }
     }
 
     handleChooseWord(data) {
@@ -788,7 +836,11 @@ export class GameHandler {
         roundResultOverlay.classList.add('hidden');
         gameTopBar.classList.remove('hidden');
         if (timerValue) timerValue.textContent = data.duration;
+        
         wordDisplay.textContent = data.word;
+        wordDisplay.style.color = 'var(--primary)'; // Ensure visible color
+        wordDisplay.classList.add('choosing-word'); // Use choosing style for better visibility
+        
         roundCurrent.textContent = data.roundIndex;
         roundTotal.textContent = data.totalRounds;
         
@@ -1268,6 +1320,43 @@ export class GameHandler {
         // Hide Drawer Name Display in Telephone Mode
         if (drawerNameDisplay) drawerNameDisplay.classList.add('hidden');
 
+        // Update Top Bar
+        roundCurrent.textContent = data.round;
+        roundTotal.textContent = data.totalRounds;
+        if (timerValue) timerValue.textContent = data.duration;
+
+        // Start Timer
+        if (this.currentTimerInterval) clearInterval(this.currentTimerInterval);
+        const telephoneTimerVal = document.getElementById('telephone-timer-val');
+        
+        this.currentTimerInterval = this.startSmartTimer(data.duration, (remaining) => {
+            if (timerValue) timerValue.textContent = remaining;
+            if (telephoneTimerVal) telephoneTimerVal.textContent = remaining;
+            if (remaining <= 10 && remaining > 0) playTickSound();
+        }, () => {
+            // Auto-submit on timeout (only for players)
+            if (!state.isSpectator) {
+                submitResponse();
+            }
+        });
+
+        if (state.isSpectator) {
+            if (data.phase === 'WRITING') {
+                if (wordDisplay) {
+                    wordDisplay.textContent = data.round === 1 ? "Choix des phrases en cours..." : "Description du dessin...";
+                    wordDisplay.classList.add('choosing-word');
+                    wordDisplay.style.color = 'var(--text-main)';
+                }
+            } else {
+                if (wordDisplay) {
+                    wordDisplay.textContent = "Dessin en cours...";
+                    wordDisplay.classList.remove('choosing-word');
+                    wordDisplay.style.color = 'var(--primary)';
+                }
+            }
+            return;
+        }
+
         // Reset Waiting State
         contentWrapper.classList.remove('hidden');
         waitingMsg.classList.add('hidden');
@@ -1307,11 +1396,6 @@ export class GameHandler {
             this.layerManager.renderCallback();
         }
 
-        // Update Top Bar
-        roundCurrent.textContent = data.round;
-        roundTotal.textContent = data.totalRounds;
-        if (timerValue) timerValue.textContent = data.duration;
-
         const submitResponse = () => {
             if (data.phase === 'WRITING') {
                 const input = document.getElementById('telephone-input');
@@ -1345,19 +1429,6 @@ export class GameHandler {
                 waitingMsg.classList.remove('hidden');
             }
         };
-
-        // Start Timer
-        if (this.currentTimerInterval) clearInterval(this.currentTimerInterval);
-        const telephoneTimerVal = document.getElementById('telephone-timer-val');
-        
-        this.currentTimerInterval = this.startSmartTimer(data.duration, (remaining) => {
-            if (timerValue) timerValue.textContent = remaining;
-            if (telephoneTimerVal) telephoneTimerVal.textContent = remaining;
-            if (remaining <= 10 && remaining > 0) playTickSound();
-        }, () => {
-            // Auto-submit on timeout
-            submitResponse();
-        });
 
         if (data.phase === 'WRITING') {
             // Show Writing Overlay
@@ -1410,14 +1481,6 @@ export class GameHandler {
             // DRAWING PHASE
             // Show Drawing UI (normal game UI) but with prompt
             
-            // Clear canvas
-            this.cursorManager.clearCursors();
-            const canvases = this.layerManager.getLayerCanvases();
-            Object.values(canvases).forEach(c => {
-                c.ctx.clearRect(0, 0, c.canvas.width, c.canvas.height);
-            });
-            this.layerManager.renderCallback();
-
             wordDisplay.textContent = data.previousStep.content; // The text to draw
             wordDisplay.style.color = 'var(--primary)';
             
@@ -1460,6 +1523,12 @@ export class GameHandler {
             Object.values(canvases).forEach(c => {
                 c.ctx.clearRect(0, 0, c.canvas.width, c.canvas.height);
             });
+            
+            // Request fresh state from server to ensure sync
+            if (state.currentRoom) {
+                socket.emit('requestCanvasState', { roomCode: state.currentRoom });
+            }
+
             this.layerManager.renderCallback();
             gameTopBar.classList.add('hidden');
         };
@@ -1532,18 +1601,6 @@ export class GameHandler {
         controls.className = 'recap-controls';
         controls.id = 'recap-controls';
         main.appendChild(controls);
-
-        // Leader Controls
-        if (state.leaderId === socket.id) {
-            const btnNext = document.createElement('button');
-            btnNext.className = 'btn-primary';
-            btnNext.id = 'recap-btn-next';
-            btnNext.textContent = 'Suite';
-            btnNext.onclick = () => {
-                socket.emit('telephoneRecapNavigate', { roomCode: state.currentRoom, direction: 'next' });
-            };
-            controls.appendChild(btnNext);
-        }
 
         container.appendChild(main);
     }
@@ -1697,18 +1754,16 @@ export class GameHandler {
              timeline.appendChild(endMsg);
         }
 
-        // Finish Button Logic
+        // Controls Logic
         const controls = document.getElementById('recap-controls');
-        // Remove existing finish button if any
-        const existingFinishBtn = document.getElementById('recap-btn-finish');
-        if (existingFinishBtn) existingFinishBtn.remove();
-
         if (controls) {
-            // Check if we are at the very end of the recap
+            controls.innerHTML = ''; // Clear controls
+
             const isLastStory = this.recapProgress.storyIndex >= this.telephoneRecapData.length - 1;
             const currentChainLength = this.telephoneRecapData[this.recapProgress.storyIndex]?.chain.length || 0;
             const isLastStep = this.recapProgress.stepIndex >= currentChainLength - 1;
 
+            // Finish Button (Always visible at the very end)
             if (isLastStory && isLastStep) {
                 const btnFinish = document.createElement('button');
                 btnFinish.className = 'btn-primary';
@@ -1717,14 +1772,42 @@ export class GameHandler {
                 btnFinish.style.padding = '10px 20px';
                 btnFinish.style.fontSize = '1.1rem';
                 btnFinish.onclick = () => {
-                    // Close modal
                     const modal = document.getElementById('telephone-recap-modal');
-                    // Trigger cleanup via the close button handler if it exists
                     const closeBtn = modal.querySelector('.close-btn');
                     if (closeBtn) closeBtn.click();
                     else modal.classList.add('hidden');
                 };
                 controls.appendChild(btnFinish);
+            }
+
+            // Navigation Controls (Leader Only)
+            if (state.leaderId === socket.id) {
+                // If not finished, show Next/Suite
+                if (!(isLastStory && isLastStep)) {
+                    const btnNext = document.createElement('button');
+                    btnNext.className = 'btn-primary';
+                    btnNext.id = 'recap-btn-next';
+                    
+                    // Determine text
+                    const isChainEnd = this.recapProgress.stepIndex === chainData.chain.length - 1;
+                    btnNext.textContent = isChainEnd ? 'Histoire Suivante' : 'Suite';
+                    
+                    btnNext.onclick = () => {
+                        socket.emit('telephoneRecapNavigate', { roomCode: state.currentRoom, direction: 'next' });
+                    };
+                    controls.appendChild(btnNext);
+                }
+            } else {
+                // Non-leader view
+                if (!(isLastStory && isLastStep)) {
+                    const waitingMsg = document.createElement('div');
+                    waitingMsg.className = 'waiting-leader-msg';
+                    waitingMsg.textContent = 'En attente du leader...';
+                    waitingMsg.style.color = 'var(--text-dim)';
+                    waitingMsg.style.fontStyle = 'italic';
+                    waitingMsg.style.animation = 'pulse 2s infinite';
+                    controls.appendChild(waitingMsg);
+                }
             }
         }
 
@@ -1732,61 +1815,5 @@ export class GameHandler {
         setTimeout(() => {
             timeline.scrollTop = timeline.scrollHeight;
         }, 50);
-
-        // Update Controls (Leader)
-        const btnNext = document.getElementById('recap-btn-next');
-        if (btnNext) {
-            const isLastStep = this.recapProgress.stepIndex === chainData.chain.length - 1;
-            const isLastStory = this.recapProgress.storyIndex === this.telephoneRecapData.length - 1;
-
-            if (isLastStep) {
-                if (isLastStory) {
-                    btnNext.classList.add('hidden');
-                } else {
-                    btnNext.textContent = 'Histoire Suivante';
-                    btnNext.classList.remove('hidden');
-                }
-            } else {
-                btnNext.textContent = 'Suite';
-                btnNext.classList.remove('hidden');
-            }
-        }
-    }
-
-    handleTelephoneHistory(actions) {
-        // Clear all layers
-        const canvases = this.layerManager.getLayerCanvases();
-        Object.values(canvases).forEach(c => {
-            c.ctx.clearRect(0, 0, c.canvas.width, c.canvas.height);
-        });
-
-        // Replay all actions on correct layers
-        actions.forEach(action => {
-            const layerId = action.layerId || this.layerManager.getActiveLayerId();
-            const layer = canvases[layerId];
-            
-            if (layer) {
-                const ctx = layer.ctx;
-                ctx.lineCap = 'round';
-                ctx.lineJoin = 'round';
-
-                if (action.tool === 'fill') {
-                    performFloodFill(
-                        ctx, 
-                        ctx.canvas.width, 
-                        ctx.canvas.height, 
-                        action.x0, 
-                        action.y0, 
-                        action.color
-                    );
-                } else {
-                    performDraw(ctx, action.x0, action.y0, action.x1, action.y1, action.color, action.size, action.opacity, action.tool);
-                }
-            }
-        });
-
-        if (this.layerManager.renderCallback) {
-            this.layerManager.renderCallback();
-        }
     }
 }

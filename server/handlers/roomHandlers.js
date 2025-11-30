@@ -145,7 +145,10 @@ module.exports = (io, socket) => {
                 currentDrawerIndex: room.game.currentDrawerIndex,
                 turnOrder: room.game.turnOrder,
                 guessedPlayers: room.game.guessedPlayers,
-                personalHints: room.game.personalHints[socket.id] || 0
+                personalHints: room.game.personalHints[socket.id] || 0,
+                timeLeft: room.game.timeLeft, // Always send timeLeft
+                phase: room.game.telephonePhase || room.game.phase, // Send phase for Telephone/Creative
+                roundIndex: room.game.telephoneRound || room.game.currentRound // Send round index
             };
 
             // Calculate current hint for this user
@@ -153,7 +156,6 @@ module.exports = (io, socket) => {
                 const userRevealed = room.game.userRevealedIndices[socket.id] || [];
                 const allRevealed = [...room.game.revealedIndices, ...userRevealed];
                 roomState.game.currentHint = generateHint(room.game.currentWord, allRevealed);
-                roomState.game.timeLeft = room.game.timeLeft;
                 roomState.game.totalTime = room.settings.drawTime;
             }
         }

@@ -29,6 +29,23 @@ export class CanvasManager {
             const layerObj = state.layerCanvases[layer.id];
             if (layerObj && layerObj.visible) {
                 ctx.drawImage(layerObj.canvas, 0, 0);
+
+                // Draw remote buffers for this layer (Live Transparency)
+                if (state.remoteBuffers) {
+                    Object.values(state.remoteBuffers).forEach(buffer => {
+                        if (buffer.layerId === layer.id && buffer.canvas) {
+                            ctx.save();
+                            if (buffer.tool === 'eraser') {
+                                ctx.globalCompositeOperation = 'destination-out';
+                            } else {
+                                ctx.globalCompositeOperation = 'source-over';
+                            }
+                            ctx.globalAlpha = parseFloat(buffer.opacity);
+                            ctx.drawImage(buffer.canvas, 0, 0);
+                            ctx.restore();
+                        }
+                    });
+                }
             }
         });
 
@@ -442,6 +459,12 @@ export class CanvasManager {
                         targetCtx.globalCompositeOperation = prevGCO; 
                     }
                 }
+
+                // Emit endStroke to notify others to commit their buffers
+                socket.emit('endStroke', {
+                    roomCode: state.currentRoom,
+                    strokeId: state.currentStrokeId
+                });
                 
                 this.previewCtx.clearRect(0, 0, CANVAS_CONFIG.width, CANVAS_CONFIG.height);
                 this.isBuffering = false;

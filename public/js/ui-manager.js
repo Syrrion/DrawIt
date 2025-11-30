@@ -325,8 +325,14 @@ export class UIManager {
 
                 // Clear canvas
                 Object.values(state.layerCanvases).forEach(l => {
-                    l.ctx.clearRect(0, 0, 800, 600);
+                    l.ctx.clearRect(0, 0, CANVAS_CONFIG.width, CANVAS_CONFIG.height);
                 });
+                
+                // Request fresh state from server to ensure sync
+                if (state.currentRoom) {
+                    socket.emit('requestCanvasState', { roomCode: state.currentRoom });
+                }
+
                 if (this.renderCallback) this.renderCallback();
             }
         });

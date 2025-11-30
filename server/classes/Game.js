@@ -28,6 +28,7 @@ class Game {
         this.roundEnded = false;
         
         this.undoStacks = new Map();
+        this.redoStacks = new Map();
     }
 
     init(settings) {
@@ -106,6 +107,7 @@ class Game {
         });
         
         this.undoStacks.clear();
+        this.redoStacks.clear();
 
         this.startTelephoneRound();
     }
@@ -116,6 +118,7 @@ class Game {
         // Reset drawings for this round
         this.telephoneDrawings = {};
         this.undoStacks.clear();
+        this.redoStacks.clear();
         
         const players = this.room.getPlayers();
         const playerCount = players.length;
@@ -176,6 +179,24 @@ class Game {
                 previousStep: previousStep, // null for Round 1
                 duration: this.telephonePhase === 'WRITING' ? this.room.settings.writeTime : this.room.settings.drawTime
             });
+        });
+
+        // Notify spectators
+        this.room.users.forEach(u => {
+            if (u.isSpectator) {
+                this.io.to(u.id).emit('telephoneRoundStart', {
+                    round: this.telephoneRound,
+                    totalRounds: playerCount,
+                    phase: this.telephonePhase,
+                    duration: this.telephonePhase === 'WRITING' ? this.room.settings.writeTime : this.room.settings.drawTime
+                });
+            }
+        });
+
+        // Notify spectators of the new round state (for prompt update)
+        Object.entries(this.spectatorSubscriptions).forEach(([spectatorId, targetId]) => {
+            // Re-subscribe to trigger prompt update
+            this.subscribeSpectator(spectatorId, targetId);
         });
 
         const duration = this.telephonePhase === 'WRITING' ? this.room.settings.writeTime : this.room.settings.drawTime;
@@ -268,6 +289,8 @@ class Game {
     endTelephoneGame() {
         this.clearTimers();
         this.room.setGameState('LOBBY');
+        this.room.clearCanvas();
+        this.room.resetLayers();
 
         // Prepare recap data
         // Map ownerId to username for display
@@ -305,11 +328,23 @@ class Game {
                  stack.shift();
              }
         }
+
+        // Clear Redo Stack
+        if (this.redoStacks.has(action.userId)) {
+            this.redoStacks.get(action.userId).length = 0;
+        }
         
         // Emit state
         this.io.to(action.userId).emit('undoRedoState', { 
             canUndo: stack.length > 0, 
             canRedo: false 
+        });
+
+        // Broadcast to subscribers
+        Object.entries(this.spectatorSubscriptions).forEach(([spectatorId, targetId]) => {
+            if (targetId === action.userId) {
+                this.io.to(spectatorId).emit('draw', action);
+            }
         });
     }
 
@@ -321,16 +356,68 @@ class Game {
             const lastStrokeId = undoStack.pop();
 
             if (this.telephoneDrawings[userId]) {
+                // Find actions to remove
+                const actionsToRemove = this.telephoneDrawings[userId].filter(action => action.strokeId === lastStrokeId);
+                
                 // Remove all actions with this strokeId
                 this.telephoneDrawings[userId] = this.telephoneDrawings[userId].filter(action => action.strokeId !== lastStrokeId);
                 
+                // Store in redo stack
+                if (!this.redoStacks.has(userId)) this.redoStacks.set(userId, []);
+                this.redoStacks.get(userId).push(actionsToRemove);
+
                 // Send back new history
                 this.io.to(userId).emit('telephoneHistory', this.telephoneDrawings[userId]);
+
+                // Broadcast new history to subscribers
+                Object.entries(this.spectatorSubscriptions).forEach(([spectatorId, targetId]) => {
+                    if (targetId === userId) {
+                        this.io.to(spectatorId).emit('telephoneHistory', this.telephoneDrawings[userId]);
+                    }
+                });
             }
             
+            const redoStack = this.redoStacks.get(userId);
             this.io.to(userId).emit('undoRedoState', { 
                 canUndo: undoStack.length > 0, 
-                canRedo: false 
+                canRedo: redoStack && redoStack.length > 0 
+            });
+        }
+    }
+
+    handleTelephoneRedo(userId) {
+        if (this.telephonePhase !== 'DRAWING') return;
+        
+        const redoStack = this.redoStacks.get(userId);
+        if (redoStack && redoStack.length > 0) {
+            const actionsToRestore = redoStack.pop();
+            
+            if (actionsToRestore && actionsToRestore.length > 0) {
+                const strokeId = actionsToRestore[0].strokeId;
+                
+                // Restore actions
+                if (!this.telephoneDrawings[userId]) this.telephoneDrawings[userId] = [];
+                this.telephoneDrawings[userId].push(...actionsToRestore);
+                
+                // Restore to undo stack
+                if (!this.undoStacks.has(userId)) this.undoStacks.set(userId, []);
+                this.undoStacks.get(userId).push(strokeId);
+                
+                // Send back new history
+                this.io.to(userId).emit('telephoneHistory', this.telephoneDrawings[userId]);
+
+                // Broadcast new history to subscribers
+                Object.entries(this.spectatorSubscriptions).forEach(([spectatorId, targetId]) => {
+                    if (targetId === userId) {
+                        this.io.to(spectatorId).emit('telephoneHistory', this.telephoneDrawings[userId]);
+                    }
+                });
+            }
+            
+            const undoStack = this.undoStacks.get(userId);
+            this.io.to(userId).emit('undoRedoState', { 
+                canUndo: undoStack && undoStack.length > 0, 
+                canRedo: redoStack.length > 0 
             });
         }
     }
@@ -349,6 +436,7 @@ class Game {
         });
         
         this.undoStacks.clear();
+        this.redoStacks.clear();
 
         // Clear global canvas for everyone
         this.room.clearCanvas();
@@ -382,10 +470,15 @@ class Game {
              }
         }
         
+        // Clear Redo Stack
+        if (this.redoStacks.has(action.userId)) {
+            this.redoStacks.get(action.userId).length = 0;
+        }
+
         // Emit state
         this.io.to(action.userId).emit('undoRedoState', { 
             canUndo: stack.length > 0, 
-            canRedo: false // Redo not implemented for creative mode yet
+            canRedo: false 
         });
 
         // Broadcast to subscribers
@@ -397,13 +490,47 @@ class Game {
     }
 
     subscribeSpectator(spectatorId, targetId) {
-        if (this.phase !== 'DRAWING') return;
-        
-        this.spectatorSubscriptions[spectatorId] = targetId;
-        
-        // Send current history
-        const history = this.playerDrawings[targetId] || [];
-        this.io.to(spectatorId).emit('creativeHistory', history);
+        if (this.phase === 'DRAWING') {
+            // Creative Mode
+            this.spectatorSubscriptions[spectatorId] = targetId;
+            const history = this.playerDrawings[targetId] || [];
+            this.io.to(spectatorId).emit('creativeHistory', history);
+            this.io.to(spectatorId).emit('spectatorWord', this.currentWord);
+        } else if (this.mode === 'telephone') {
+            // Telephone Mode
+            this.spectatorSubscriptions[spectatorId] = targetId;
+            
+            if (this.telephonePhase === 'DRAWING') {
+                const history = this.telephoneDrawings[targetId] || [];
+                this.io.to(spectatorId).emit('telephoneHistory', history);
+            }
+
+            // Find the prompt for the target player
+            const players = this.room.getPlayers();
+            const targetIndex = players.findIndex(p => p.id === targetId);
+            
+            if (targetIndex !== -1) {
+                const playerCount = players.length;
+                // In Round 1 (Writing), prompt is "Choix des phrases en cours..."
+                if (this.telephoneRound === 1) {
+                     this.io.to(spectatorId).emit('spectatorWord', "Choix des phrases en cours...");
+                } else {
+                    // In other rounds, prompt comes from the chain
+                    const chainOwnerIndex = (targetIndex - (this.telephoneRound - 1) + playerCount * 100) % playerCount;
+                    const chainOwnerId = players[chainOwnerIndex].id;
+                    const chain = this.telephoneChains[chainOwnerId];
+                    
+                    if (chain && chain.length > 0) {
+                        const previousStep = chain[chain.length - 1];
+                        if (previousStep.type === 'text') {
+                            this.io.to(spectatorId).emit('spectatorWord', previousStep.content);
+                        } else if (previousStep.type === 'drawing') {
+                            this.io.to(spectatorId).emit('spectatorWord', "Décrivez le dessin");
+                        }
+                    }
+                }
+            }
+        }
     }
 
     handleCreativeUndo(userId) {
@@ -414,8 +541,52 @@ class Game {
             const lastStrokeId = undoStack.pop();
 
             if (this.playerDrawings[userId]) {
+                // Find actions to remove
+                const actionsToRemove = this.playerDrawings[userId].filter(action => action.strokeId === lastStrokeId);
+
                 // Remove all actions with this strokeId
                 this.playerDrawings[userId] = this.playerDrawings[userId].filter(action => action.strokeId !== lastStrokeId);
+                
+                // Store in redo stack
+                if (!this.redoStacks.has(userId)) this.redoStacks.set(userId, []);
+                this.redoStacks.get(userId).push(actionsToRemove);
+
+                // Send back new history
+                this.io.to(userId).emit('creativeHistory', this.playerDrawings[userId]);
+
+                // Broadcast new history to subscribers
+                Object.entries(this.spectatorSubscriptions).forEach(([spectatorId, targetId]) => {
+                    if (targetId === userId) {
+                        this.io.to(spectatorId).emit('creativeHistory', this.playerDrawings[userId]);
+                    }
+                });
+            }
+            
+            const redoStack = this.redoStacks.get(userId);
+            this.io.to(userId).emit('undoRedoState', { 
+                canUndo: undoStack.length > 0, 
+                canRedo: redoStack && redoStack.length > 0 
+            });
+        }
+    }
+
+    handleCreativeRedo(userId) {
+        if (this.phase !== 'DRAWING') return;
+        
+        const redoStack = this.redoStacks.get(userId);
+        if (redoStack && redoStack.length > 0) {
+            const actionsToRestore = redoStack.pop();
+            
+            if (actionsToRestore && actionsToRestore.length > 0) {
+                const strokeId = actionsToRestore[0].strokeId;
+                
+                // Restore actions
+                if (!this.playerDrawings[userId]) this.playerDrawings[userId] = [];
+                this.playerDrawings[userId].push(...actionsToRestore);
+                
+                // Restore to undo stack
+                if (!this.undoStacks.has(userId)) this.undoStacks.set(userId, []);
+                this.undoStacks.get(userId).push(strokeId);
                 
                 // Send back new history
                 this.io.to(userId).emit('creativeHistory', this.playerDrawings[userId]);
@@ -428,9 +599,10 @@ class Game {
                 });
             }
             
+            const undoStack = this.undoStacks.get(userId);
             this.io.to(userId).emit('undoRedoState', { 
-                canUndo: undoStack.length > 0, 
-                canRedo: false 
+                canUndo: undoStack && undoStack.length > 0, 
+                canRedo: redoStack.length > 0 
             });
         }
     }
@@ -787,6 +959,8 @@ class Game {
     endGame() {
         this.clearTimers();
         this.room.setGameState('LOBBY');
+        this.room.clearCanvas();
+        this.room.resetLayers();
 
         const results = this.compileResults();
 

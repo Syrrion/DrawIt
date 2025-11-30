@@ -123,7 +123,7 @@ module.exports = (io, socket) => {
 
     socket.on('spectatePlayer', ({ roomCode, targetId }) => {
         const room = rooms[roomCode];
-        if (room && room.gameState === 'PLAYING' && room.settings.mode === 'creative') {
+        if (room && room.gameState === 'PLAYING' && (room.settings.mode === 'creative' || room.settings.mode === 'telephone')) {
              if (room.game && room.game.subscribeSpectator) {
                  room.game.subscribeSpectator(socket.id, targetId);
              }

@@ -18,6 +18,8 @@ export class DrawingHandler {
     }
 
     init() {
+        state.remoteBuffers = {}; // Initialize remote buffers
+        socket.on('gameStateChanged', this.handleGameStateChanged.bind(this));
         socket.on('layerAdded', this.handleLayerAdded.bind(this));
         socket.on('layerDeleted', this.handleLayerDeleted.bind(this));
         socket.on('layerRenamed', this.handleLayerRenamed.bind(this));
@@ -26,9 +28,27 @@ export class DrawingHandler {
         socket.on('playerLayerChanged', this.handlePlayerLayerChanged.bind(this));
         socket.on('canvasState', this.handleCanvasState.bind(this));
         socket.on('draw', this.handleDraw.bind(this));
+        socket.on('endStroke', this.handleEndStroke.bind(this));
         socket.on('clearCanvas', this.handleClearCanvas.bind(this));
         socket.on('clearLayer', this.handleClearLayer.bind(this));
         socket.on('undoRedoState', this.handleUndoRedoState.bind(this));
+        
+        // Creative & Telephone History
+        socket.on('creativeHistory', this.handleCanvasState.bind(this));
+        socket.on('telephoneHistory', this.handleCanvasState.bind(this));
+    }
+
+    handleGameStateChanged(stateVal) {
+        if (stateVal === 'LOBBY') {
+            this.clearHistory();
+            socket.emit('requestCanvasState', { roomCode: state.currentRoom });
+        }
+    }
+
+    clearHistory() {
+        this.snapshots = [];
+        state.remoteBuffers = {};
+        state.isUndoRedoProcessing = false;
     }
 
     handleUndoRedoState({ canUndo, canRedo }) {
@@ -117,7 +137,19 @@ export class DrawingHandler {
     }
 
     applyAction(action) {
-        const targetLayerId = action.layerId || (state.layers[0] ? state.layers[0].id : null);
+        let targetLayerId = action.layerId;
+
+        // Special handling for Telephone Mode Spectating
+        // Since players have unique local layer IDs, we map incoming actions to the local layer
+        if (state.settings && state.settings.mode === 'telephone' && state.isSpectator) {
+             // If the layer doesn't exist locally, use the first available layer
+             if (!targetLayerId || !state.layerCanvases[targetLayerId]) {
+                 targetLayerId = state.layers[0] ? state.layers[0].id : null;
+             }
+        }
+
+        targetLayerId = targetLayerId || (state.layers[0] ? state.layers[0].id : null);
+        
         if (targetLayerId && state.layerCanvases[targetLayerId]) {
             const targetCtx = state.layerCanvases[targetLayerId].ctx;
             if (action.tool === 'fill') {
@@ -177,6 +209,22 @@ export class DrawingHandler {
     handleCanvasState(history) {
         state.isUndoRedoProcessing = false;
         
+        // Fix for Double Draw / Transparency Issue
+        // If a stroke is present in the history, it means it's committed to the layer.
+        // We must remove any corresponding remote buffer to avoid drawing it twice (Layer + Buffer).
+        if (history && state.remoteBuffers) {
+            const historyStrokeIds = new Set();
+            for (const action of history) {
+                if (action.strokeId) historyStrokeIds.add(action.strokeId);
+            }
+            
+            Object.keys(state.remoteBuffers).forEach(strokeId => {
+                if (historyStrokeIds.has(strokeId)) {
+                    delete state.remoteBuffers[strokeId];
+                }
+            });
+        }
+
         // 1. Find best snapshot
         let bestSnapshot = null;
         
@@ -275,7 +323,14 @@ export class DrawingHandler {
         if (actions.length === 0) return;
         // Use properties from the last action to match CanvasManager's behavior (final size/opacity)
         const lastAction = actions[actions.length - 1];
-        const layerId = lastAction.layerId;
+        let layerId = lastAction.layerId;
+
+        // Special handling for Telephone Mode Spectating
+        if (state.settings && state.settings.mode === 'telephone' && state.isSpectator) {
+             if (!layerId || !state.layerCanvases[layerId]) {
+                 layerId = state.layers[0] ? state.layers[0].id : null;
+             }
+        }
         
         if (!state.layerCanvases[layerId]) return;
         const targetCtx = state.layerCanvases[layerId].ctx;
@@ -351,8 +406,130 @@ export class DrawingHandler {
     }
 
     handleDraw(data) {
-        this.applyAction(data);
+        // Check if buffering is needed
+        const isTransparent = data.opacity < 1;
+        const isStrokeTool = data.tool === 'pen' || data.tool === 'eraser';
+        
+        if (isTransparent && isStrokeTool && data.strokeId) {
+            this.bufferRemoteStroke(data);
+        } else {
+            this.applyAction(data);
+        }
         if (this.render) this.render();
+    }
+
+    bufferRemoteStroke(action) {
+        let buffer = state.remoteBuffers[action.strokeId];
+        if (!buffer) {
+            const canvas = document.createElement('canvas');
+            canvas.width = CANVAS_CONFIG.width;
+            canvas.height = CANVAS_CONFIG.height;
+            
+            let layerId = action.layerId;
+            // Spectator mapping
+            if (state.settings && state.settings.mode === 'telephone' && state.isSpectator) {
+                 if (!layerId || !state.layerCanvases[layerId]) {
+                     layerId = state.layers[0] ? state.layers[0].id : null;
+                 }
+            }
+
+            buffer = {
+                canvas: canvas,
+                ctx: canvas.getContext('2d'),
+                actions: [],
+                tool: action.tool,
+                color: action.color,
+                size: action.size,
+                opacity: action.opacity,
+                layerId: layerId
+            };
+            state.remoteBuffers[action.strokeId] = buffer;
+        }
+        
+        buffer.actions.push(action);
+        
+        // Update properties to match the latest action (like applyBufferedStroke)
+        buffer.color = action.color;
+        buffer.size = action.size;
+        buffer.opacity = action.opacity;
+
+        this.updateRemoteBuffer(buffer);
+    }
+
+    updateRemoteBuffer(buffer) {
+        const ctx = buffer.ctx;
+        ctx.clearRect(0, 0, CANVAS_CONFIG.width, CANVAS_CONFIG.height);
+        
+        ctx.beginPath();
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = buffer.size;
+        
+        // Draw with Opacity 1 on the buffer to prevent self-overlap accumulation
+        ctx.globalAlpha = 1;
+
+        if (buffer.tool === 'eraser') {
+             ctx.strokeStyle = 'rgba(0,0,0,1)';
+        } else {
+             ctx.strokeStyle = buffer.color;
+             if (buffer.tool === 'pen') {
+                 ctx.shadowBlur = 2.5;
+                 ctx.shadowColor = buffer.color;
+             }
+        }
+        
+        if (buffer.actions.length > 0) {
+            const first = buffer.actions[0];
+            ctx.moveTo(first.x0, first.y0);
+            ctx.lineTo(first.x1, first.y1);
+            
+            for (let i = 1; i < buffer.actions.length; i++) {
+                const prev = buffer.actions[i-1];
+                const curr = buffer.actions[i];
+                
+                if (Math.abs(curr.x0 - prev.x1) < 0.1 && Math.abs(curr.y0 - prev.y1) < 0.1) {
+                    ctx.lineTo(curr.x1, curr.y1);
+                } else {
+                    ctx.moveTo(curr.x0, curr.y0);
+                    ctx.lineTo(curr.x1, curr.y1);
+                }
+            }
+        }
+        
+        ctx.globalAlpha = 1;
+        ctx.stroke();
+        
+        ctx.shadowBlur = 0;
+        ctx.shadowColor = 'transparent';
+    }
+
+    handleEndStroke({ strokeId }) {
+        const buffer = state.remoteBuffers[strokeId];
+        if (buffer) {
+            if (buffer.layerId && state.layerCanvases[buffer.layerId]) {
+                const targetCtx = state.layerCanvases[buffer.layerId].ctx;
+                const opacity = parseFloat(buffer.opacity);
+                
+                if (buffer.tool === 'eraser') {
+                    const prevGCO = targetCtx.globalCompositeOperation;
+                    targetCtx.globalCompositeOperation = 'destination-out';
+                    targetCtx.globalAlpha = opacity;
+                    targetCtx.drawImage(buffer.canvas, 0, 0);
+                    targetCtx.globalCompositeOperation = prevGCO;
+                } else {
+                    const prevGCO = targetCtx.globalCompositeOperation;
+                    targetCtx.globalCompositeOperation = 'source-over';
+                    targetCtx.globalAlpha = opacity;
+                    targetCtx.drawImage(buffer.canvas, 0, 0);
+                    targetCtx.globalCompositeOperation = prevGCO;
+                }
+                // Reset globalAlpha to be safe
+                targetCtx.globalAlpha = 1;
+            }
+            
+            delete state.remoteBuffers[strokeId];
+            if (this.render) this.render();
+        }
     }
 
     handleClearCanvas() {
