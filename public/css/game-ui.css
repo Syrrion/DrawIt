@@ -1825,3 +1825,21 @@ canvas {
  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
 }
 
+
+/* Disabled Slider Style */
+.disabled-slider {
+ opacity: 0.3;
+ pointer-events: none;
+ filter: grayscale(100%);
+}
+
+.disabled-slider input[type=range]::-webkit-slider-thumb {
+ opacity: 0;
+ visibility: hidden;
+}
+
+.disabled-slider input[type=range]::-moz-range-thumb {
+ opacity: 0;
+ visibility: hidden;
+}
+

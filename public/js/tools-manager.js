@@ -13,7 +13,8 @@ import { deleteSelection } from './selection-manager.js';
 import { Modal } from './components/modal.js';
 
 export class ToolsManager {
-    constructor() {
+    constructor(getZoom) {
+        this.getZoom = getZoom;
         this.previousTool = null;
         this.toolSizes = {
             pen: 10,
@@ -33,6 +34,12 @@ export class ToolsManager {
 
     updateSliderBackground(slider) {
         if (!slider) return;
+
+        if (slider.disabled) {
+            slider.style.background = 'rgba(255, 255, 255, 0.1)';
+            return;
+        }
+
         const min = parseFloat(slider.min) || 0;
         const max = parseFloat(slider.max) || 100;
         const val = parseFloat(slider.value) || 0;
@@ -306,6 +313,35 @@ export class ToolsManager {
             this.updateSliderBackground(penSizeInput);
         }
 
+        // Disable sliders for specific tools
+        const disableSize = ['pipette', 'selection', 'fill'].includes(state.currentTool);
+        const disableOpacity = ['pipette', 'selection'].includes(state.currentTool);
+
+        if (penSizeInput) {
+            penSizeInput.disabled = disableSize;
+            const row = penSizeInput.closest('.slider-row');
+            if (row) {
+                if (disableSize) row.classList.add('disabled-slider');
+                else row.classList.remove('disabled-slider');
+            }
+            // Remove inline styles if they exist
+            penSizeInput.parentElement.style.opacity = '';
+            penSizeInput.parentElement.style.pointerEvents = '';
+            this.updateSliderBackground(penSizeInput);
+        }
+
+        if (penOpacityInput) {
+            penOpacityInput.disabled = disableOpacity;
+            const row = penOpacityInput.closest('.slider-row');
+            if (row) {
+                if (disableOpacity) row.classList.add('disabled-slider');
+                else row.classList.remove('disabled-slider');
+            }
+            penOpacityInput.parentElement.style.opacity = '';
+            penOpacityInput.parentElement.style.pointerEvents = '';
+            this.updateSliderBackground(penOpacityInput);
+        }
+
         // Update brush preview visibility
         this.updateBrushPreview();
 
@@ -324,7 +360,13 @@ export class ToolsManager {
     updateBrushPreview() {
         if (!cursorBrushPreview) return;
 
-        const size = parseInt(penSizeInput.value, 10);
+        let size = parseInt(penSizeInput.value, 10);
+        
+        // Apply zoom scaling if available
+        if (this.getZoom) {
+            size *= this.getZoom();
+        }
+
         const toolsWithBrush = ['pen', 'eraser', 'airbrush', 'smudge'];
 
         if (toolsWithBrush.includes(state.currentTool)) {
@@ -334,9 +376,11 @@ export class ToolsManager {
 
             // Adjust for smudge which is larger
             if (state.currentTool === 'smudge') {
-                const effectiveSize = size;
-                cursorBrushPreview.style.width = `${effectiveSize}px`;
-                cursorBrushPreview.style.height = `${effectiveSize}px`;
+                // Smudge might need different scaling if its logic is different, 
+                // but usually it follows the brush size.
+                // If effectiveSize was meant to be different, it should be calculated here.
+                // Assuming effectiveSize = size for now as per previous code logic structure
+                // (previous code had: const effectiveSize = size; ... width = effectiveSize)
             }
         } else {
             cursorBrushPreview.style.display = 'none';

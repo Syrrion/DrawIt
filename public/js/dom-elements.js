@@ -174,3 +174,6 @@ export const globalPinControls = document.getElementById('global-pin-controls');
 export const browserOpacity = document.getElementById('browser-opacity');
 export const btnBrowserUnpin = document.getElementById('btn-browser-unpin');
 
+// Loading Modal
+export const loadingModal = document.getElementById('loading-modal');
+

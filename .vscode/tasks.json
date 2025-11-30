@@ -370,6 +370,26 @@
 				"\n/* Ensure canvas wrapper clips content */\n.canvas-wrapper {\n    overflow: hidden;\n}\n\n/* Use as Layer Button Style */\n.use-as-layer-btn {\n    align-self: flex-start;\n    background: var(--success);\n    border: none;\n    color: white;\n    padding: 8px 16px;\n    border-radius: 4px;\n    cursor: pointer;\n    display: flex;\n    align-items: center;\n    gap: 8px;\n    font-size: 0.9rem;\n    font-weight: 600;\n    box-shadow: 0 2px 5px rgba(0,0,0,0.2);\n    transition: all 0.2s;\n}\n\n.use-as-layer-btn:hover {\n    background: #22c55e; /* Success hover */\n    transform: translateY(-1px);\n    box-shadow: 0 4px 8px rgba(0,0,0,0.3);\n}\n"
 			],
 			"group": "build"
+		},
+		{
+			"label": "append_css_disabled_slider",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\game-ui.css",
+				"\n/* Disabled Slider Style */\n.disabled-slider {\n    opacity: 0.3;\n    pointer-events: none;\n    filter: grayscale(100%);\n}\n\n.disabled-slider input[type=range]::-webkit-slider-thumb {\n    opacity: 0;\n    visibility: hidden;\n}\n\n.disabled-slider input[type=range]::-moz-range-thumb {\n    opacity: 0;\n    visibility: hidden;\n}\n"
+			],
+			"group": "build"
+		},
+		{
+			"label": "append_css_tools",
+			"type": "shell",
+			"command": "Add-Content",
+			"args": [
+				"c:\\Users\\thiba\\Mon Drive\\Documents\\Projets\\Jeux Web\\DrawIt\\public\\css\\tools.css",
+				"\n/* Disabled State for Tool Buttons */\n.tool-btn:disabled,\n.tool-btn[disabled] {\n    opacity: 0.2 !important;\n    cursor: not-allowed;\n    pointer-events: none;\n    filter: grayscale(100%);\n    user-select: none;\n    -webkit-user-select: none;\n    -moz-user-select: none;\n    -ms-user-select: none;\n}\n\n.tool-btn:disabled .tool-label,\n.tool-btn[disabled] .tool-label {\n    user-select: none;\n}\n"
+			],
+			"group": "build"
 		}
 	]
 }

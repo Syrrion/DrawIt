@@ -87,7 +87,15 @@
         <!-- Column 1: Room, Players, Footer -->
                                     <div class="sidebar-col-1">
                                         <div class="room-info">
-                                            <h3>Room <span id="room-privacy-badge" class="privacy-badge"></span></h3>
+                                            <div class="room-header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem;">
+                                                <h3 style="margin: 0;">Room <span id="room-privacy-badge" class="privacy-badge"></span></h3>
+                                                <div id="network-stats" style="font-size: 0.65rem; color: var(--text-dim); display: grid; grid-template-columns: 1fr 12px; gap: 2px 6px; font-family: monospace; align-items: center;">
+                                                    <span id="net-up" style="text-align: right;">0.00 ko/s</span>
+                                                    <i class="fas fa-arrow-up" style="color: var(--success); text-align: center;" title="Upload"></i>
+                                                    <span id="net-down" style="text-align: right;">0.00 ko/s</span>
+                                                    <i class="fas fa-arrow-down" style="color: var(--primary); text-align: center;" title="Download"></i>
+                                                </div>
+                                            </div>
                                             <div class="room-code-wrapper">
                                                 <span id="display-room-code" class="code-hidden"></span>
                                                 <div class="room-actions">

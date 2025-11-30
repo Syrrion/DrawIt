@@ -20,6 +20,8 @@ export class CameraManager {
         this.zoomTimeout = setTimeout(() => {
             this.zoomLevelDisplay.classList.add('hidden');
         }, 1500);
+
+        if (this.onUpdate) this.onUpdate();
     }
 
     handleWheel(e) {

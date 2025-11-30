@@ -32,7 +32,14 @@ export class CanvasManager {
 
         // Draw preview canvas (for non-accumulating transparency)
         if (this.isBuffering && this.previewCanvas) {
-            ctx.drawImage(this.previewCanvas, 0, 0);
+            if (state.currentTool === 'eraser') {
+                ctx.save();
+                ctx.globalCompositeOperation = 'destination-out';
+                ctx.drawImage(this.previewCanvas, 0, 0);
+                ctx.restore();
+            } else {
+                ctx.drawImage(this.previewCanvas, 0, 0);
+            }
         }
     }
 
@@ -187,7 +194,13 @@ export class CanvasManager {
         this.previewCtx.lineCap = 'round';
         this.previewCtx.lineJoin = 'round';
         this.previewCtx.lineWidth = size;
-        this.previewCtx.strokeStyle = color;
+        
+        if (state.currentTool === 'eraser') {
+            this.previewCtx.strokeStyle = 'rgba(0,0,0,1)';
+        } else {
+            this.previewCtx.strokeStyle = color;
+        }
+        
         this.previewCtx.globalAlpha = opacity;
         this.previewCtx.stroke();
         
@@ -262,6 +275,7 @@ export class CanvasManager {
 
         if (state.currentTool === 'fill') {
             const color = penColorInput.value;
+            const opacity = penOpacityInput.value;
 
             if (state.activeLayerId && state.layerCanvases[state.activeLayerId]) {
                 // Prevent filling on hidden layer
@@ -270,7 +284,7 @@ export class CanvasManager {
                     return;
                 }
 
-                performFloodFill(state.layerCanvases[state.activeLayerId].ctx, 800, 600, Math.floor(x), Math.floor(y), color);
+                performFloodFill(state.layerCanvases[state.activeLayerId].ctx, 800, 600, Math.floor(x), Math.floor(y), color, opacity);
                 this.render();
 
                 socket.emit('draw', {
@@ -279,6 +293,7 @@ export class CanvasManager {
                     x0: Math.floor(x),
                     y0: Math.floor(y),
                     color: color,
+                    opacity: opacity,
                     strokeId: Date.now() + Math.random(),
                     layerId: state.activeLayerId
                 });
@@ -301,8 +316,8 @@ export class CanvasManager {
             const size = penSizeInput.value;
             const opacity = penOpacityInput.value;
             
-            // Use buffering for transparent pen to avoid accumulation
-            if (state.currentTool === 'pen' && opacity < 1) {
+            // Use buffering for transparent pen or eraser to avoid accumulation
+            if ((state.currentTool === 'pen' && opacity < 1) || (state.currentTool === 'eraser' && opacity < 1)) {
                 this.isBuffering = true;
                 this.currentPath = [{x, y}];
                 this.updatePreview();
@@ -399,11 +414,19 @@ export class CanvasManager {
                 // Commit buffered stroke to layer
                 if (state.activeLayerId && state.layerCanvases[state.activeLayerId]) {
                     const targetCtx = state.layerCanvases[state.activeLayerId].ctx;
-                    // Ensure we use source-over when committing the buffer
-                    const prevGCO = targetCtx.globalCompositeOperation;
-                    targetCtx.globalCompositeOperation = 'source-over';
-                    targetCtx.drawImage(this.previewCanvas, 0, 0);
-                    targetCtx.globalCompositeOperation = prevGCO; // Restore just in case, though usually we want source-over
+                    
+                    if (state.currentTool === 'eraser') {
+                        const prevGCO = targetCtx.globalCompositeOperation;
+                        targetCtx.globalCompositeOperation = 'destination-out';
+                        targetCtx.drawImage(this.previewCanvas, 0, 0);
+                        targetCtx.globalCompositeOperation = prevGCO;
+                    } else {
+                        // Ensure we use source-over when committing the buffer
+                        const prevGCO = targetCtx.globalCompositeOperation;
+                        targetCtx.globalCompositeOperation = 'source-over';
+                        targetCtx.drawImage(this.previewCanvas, 0, 0);
+                        targetCtx.globalCompositeOperation = prevGCO; 
+                    }
                 }
                 
                 this.previewCtx.clearRect(0, 0, 800, 600);

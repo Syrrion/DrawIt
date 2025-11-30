@@ -144,7 +144,7 @@ export class RoomHandler {
                 if (targetLayerId && state.layerCanvases[targetLayerId]) {
                     const targetCtx = state.layerCanvases[targetLayerId].ctx;
                     if (action.tool === 'fill') {
-                        performFloodFill(targetCtx, canvas.width, canvas.height, action.x0, action.y0, action.color);
+                        performFloodFill(targetCtx, canvas.width, canvas.height, action.x0, action.y0, action.color, action.opacity);
                     } else if (action.tool === 'move-selection') {
                         performMoveSelection(targetCtx, action.srcX, action.srcY, action.w, action.h, action.destX, action.destY);
                     } else if (action.tool === 'clear-rect') {

@@ -16,6 +16,7 @@ import { ToolsManager } from './js/tools-manager.js';
 import { CanvasManager } from './js/canvas-manager.js';
 import { UIManager } from './js/ui-manager.js';
 import { SocketManager } from './js/socket-manager.js';
+import { NetworkMonitor } from './js/network-monitor.js';
 
 const animationSystem = new AnimationSystem();
 const tooltipManager = new TooltipManager();
@@ -85,7 +86,10 @@ const gameSettingsManager = new GameSettingsManager(
 );
 
 // Tools
-const toolsManager = new ToolsManager();
+const toolsManager = new ToolsManager(() => cameraManager.getCamera().z);
+
+// Link camera update to tools update
+cameraManager.onUpdate = () => toolsManager.updateBrushPreview();
 
 // Canvas
 const canvasManager = new CanvasManager(cursorManager, cameraManager, toolsManager);
@@ -117,3 +121,6 @@ new SocketManager({
     animationSystem,
     render: () => canvasManager.renderAsync()
 });
+
+// Network Monitor
+new NetworkMonitor(socket);

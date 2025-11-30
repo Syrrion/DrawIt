@@ -12,7 +12,8 @@ import {
     clearOptionsModal, btnClearLayer, btnClearAll, btnCancelClear,
     toolbarDragHandle, gameToolbar, sidebarCol2, sidebarGroup, chatSidebar, btnToggleSidebarPos,
     toolModelBtn, referenceBrowser, btnBrowserClose, browserUrlInput, btnBrowserGo, browserHeader, imageResultsGrid,
-    btnBrowserPin, globalPinControls, browserOpacity, btnBrowserUnpin, layersList, canvasWrapper
+    btnBrowserPin, globalPinControls, browserOpacity, btnBrowserUnpin, layersList, canvasWrapper,
+    loadingModal
 } from './dom-elements.js';
 import { state } from './state.js';
 import { showToast, generateRandomUsername, copyToClipboard, escapeHtml } from './utils.js';
@@ -37,6 +38,9 @@ export class UIManager {
     init() {
         // Randomize background gradient start
         document.body.style.animationDelay = `-${Math.random() * 60}s`;
+
+        // Loading Modal
+        this.loadingModalInstance = new Modal(loadingModal);
 
         // Login Tabs Logic
         this.loginTabs = new Tabs('.login-tab', '.login-tab-content');
@@ -124,6 +128,9 @@ export class UIManager {
             gameScreen.classList.remove('hidden');
             displayRoomCode.textContent = state.currentRoom;
             document.body.classList.add('game-active');
+            
+            // Hide loading modal when room is fully joined
+            this.loadingModalInstance.close();
         });
 
         socket.on('updateLobbyStatus', ({ status }) => {
@@ -1245,6 +1252,9 @@ export class UIManager {
     }
 
     joinRoom(roomCode, username, isSpectator = false, isPrivate = false, maxPlayers = 8, allowSpectators = true) {
+        // Show loading modal
+        this.loadingModalInstance.open();
+
         state.user.username = username;
         state.currentRoom = roomCode;
 

@@ -157,6 +157,7 @@ export function performDraw(targetCtx, x0, y0, x1, y1, color, size, opacity, too
     if (tool === 'eraser') {
         targetCtx.globalCompositeOperation = 'destination-out';
         targetCtx.strokeStyle = 'rgba(0,0,0,1)'; 
+        targetCtx.globalAlpha = opacity; // Apply opacity to eraser
         targetCtx.stroke();
     } else {
         targetCtx.globalCompositeOperation = 'source-over';
@@ -169,12 +170,12 @@ export function performDraw(targetCtx, x0, y0, x1, y1, color, size, opacity, too
 }
 
 // Helper function for flood fill on any context
-export function performFloodFill(targetCtx, width, height, startX, startY, fillColor) {
+export function performFloodFill(targetCtx, width, height, startX, startY, fillColor, opacity = 1) {
     // Convert hex color to RGB
     const r = parseInt(fillColor.slice(1, 3), 16);
     const g = parseInt(fillColor.slice(3, 5), 16);
     const b = parseInt(fillColor.slice(5, 7), 16);
-    const a = 255;
+    const a = Math.round(opacity * 255); // Apply opacity
 
     const imageData = targetCtx.getImageData(0, 0, width, height);
     const { data } = imageData;
@@ -230,10 +231,13 @@ export function performFloodFill(targetCtx, width, height, startX, startY, fillC
             stack.push([x, y - 1]);
         } else {
             // Paint boundary pixel to cover artifacts
-            data[pos] = r;
-            data[pos + 1] = g;
-            data[pos + 2] = b;
-            data[pos + 3] = a;
+            // Only paint boundary if it's not already the fill color
+            if (!matchesFill(pos)) {
+                data[pos] = r;
+                data[pos + 1] = g;
+                data[pos + 2] = b;
+                data[pos + 3] = a;
+            }
         }
     }
 

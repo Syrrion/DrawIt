@@ -8,6 +8,10 @@ export class DrawingHandler {
         this.cursorManager = managers.cursorManager;
         this.render = managers.render;
 
+        this.snapshots = [];
+        this.SNAPSHOT_INTERVAL = 50;
+        this.MAX_SNAPSHOTS = 10;
+
         this.init();
     }
 
@@ -93,6 +97,7 @@ export class DrawingHandler {
             this.layerManager.setActiveLayerId(state.activeLayerId);
         }
 
+        this.snapshots = []; // Clear snapshots on reset
         this.layerManager.updateLayersUI();
         if (this.render) this.render();
     }
@@ -101,44 +106,102 @@ export class DrawingHandler {
         this.layerManager.updatePlayerLayer(userId, layerId);
     }
 
-    handleCanvasState(history) {
-        Object.values(state.layerCanvases).forEach(l => {
-            l.ctx.clearRect(0, 0, 800, 600);
+    applyAction(action) {
+        const targetLayerId = action.layerId || (state.layers[0] ? state.layers[0].id : null);
+        if (targetLayerId && state.layerCanvases[targetLayerId]) {
+            const targetCtx = state.layerCanvases[targetLayerId].ctx;
+            if (action.tool === 'fill') {
+                performFloodFill(targetCtx, 800, 600, action.x0, action.y0, action.color, action.opacity);
+            } else if (action.tool === 'move-selection') {
+                performMoveSelection(targetCtx, action.srcX, action.srcY, action.w, action.h, action.destX, action.destY);
+            } else if (action.tool === 'clear-rect') {
+                performClearRect(targetCtx, action.x, action.y, action.w, action.h);
+            } else {
+                performDraw(targetCtx, action.x0, action.y0, action.x1, action.y1, action.color, action.size, action.opacity, action.tool);
+            }
+        }
+    }
+
+    createSnapshot(index, lastAction) {
+        const snapshot = {
+            index: index,
+            signature: JSON.stringify(lastAction),
+            layers: {}
+        };
+
+        Object.keys(state.layerCanvases).forEach(layerId => {
+            const sourceCanvas = state.layerCanvases[layerId].canvas;
+            const offscreen = document.createElement('canvas');
+            offscreen.width = sourceCanvas.width;
+            offscreen.height = sourceCanvas.height;
+            offscreen.getContext('2d').drawImage(sourceCanvas, 0, 0);
+            snapshot.layers[layerId] = offscreen;
         });
 
-        history.forEach(action => {
-            const targetLayerId = action.layerId || (state.layers[0] ? state.layers[0].id : null);
-            if (targetLayerId && state.layerCanvases[targetLayerId]) {
-                const targetCtx = state.layerCanvases[targetLayerId].ctx;
-                if (action.tool === 'fill') {
-                    performFloodFill(targetCtx, 800, 600, action.x0, action.y0, action.color);
-                } else if (action.tool === 'move-selection') {
-                    performMoveSelection(targetCtx, action.srcX, action.srcY, action.w, action.h, action.destX, action.destY);
-                } else if (action.tool === 'clear-rect') {
-                    performClearRect(targetCtx, action.x, action.y, action.w, action.h);
-                } else {
-                    performDraw(targetCtx, action.x0, action.y0, action.x1, action.y1, action.color, action.size, action.opacity, action.tool);
-                }
+        // Remove existing snapshot at this index if any
+        this.snapshots = this.snapshots.filter(s => s.index !== index);
+        this.snapshots.push(snapshot);
+        this.snapshots.sort((a, b) => a.index - b.index);
+
+        // Prune
+        if (this.snapshots.length > this.MAX_SNAPSHOTS) {
+            this.snapshots.shift(); // Remove oldest
+        }
+    }
+
+    restoreSnapshot(snapshot) {
+        this.handleClearCanvas(); // Clear current state
+
+        Object.keys(snapshot.layers).forEach(layerId => {
+            if (state.layerCanvases[layerId]) {
+                const ctx = state.layerCanvases[layerId].ctx;
+                ctx.drawImage(snapshot.layers[layerId], 0, 0);
             }
         });
+    }
+
+    handleCanvasState(history) {
+        // 1. Find best snapshot
+        let bestSnapshot = null;
+        for (let i = this.snapshots.length - 1; i >= 0; i--) {
+            const s = this.snapshots[i];
+            if (s.index <= history.length) {
+                const actionToCheck = history[s.index - 1];
+                if (s.index === 0 || (actionToCheck && JSON.stringify(actionToCheck) === s.signature)) {
+                    bestSnapshot = s;
+                    break;
+                }
+            }
+        }
+
+        // 2. Restore or Clear
+        let startIndex = 0;
+        if (bestSnapshot) {
+            this.restoreSnapshot(bestSnapshot);
+            startIndex = bestSnapshot.index;
+        } else {
+            this.handleClearCanvas();
+        }
+
+        // 3. Replay and Snapshot
+        for (let i = startIndex; i < history.length; i++) {
+            const action = history[i];
+            this.applyAction(action);
+
+            // Take snapshot if interval hit
+            if ((i + 1) % this.SNAPSHOT_INTERVAL === 0) {
+                // Only create if we don't have it (or overwrite if we want to be safe, but checking index is enough usually)
+                // Since we are replaying authoritative history, we can overwrite.
+                this.createSnapshot(i + 1, action);
+            }
+        }
+        
         if (this.render) this.render();
     }
 
     handleDraw(data) {
-        const targetLayerId = data.layerId || (state.layers[0] ? state.layers[0].id : null);
-        if (targetLayerId && state.layerCanvases[targetLayerId]) {
-            const targetCtx = state.layerCanvases[targetLayerId].ctx;
-            if (data.tool === 'fill') {
-                performFloodFill(targetCtx, 800, 600, data.x0, data.y0, data.color);
-            } else if (data.tool === 'move-selection') {
-                performMoveSelection(targetCtx, data.srcX, data.srcY, data.w, data.h, data.destX, data.destY);
-            } else if (data.tool === 'clear-rect') {
-                performClearRect(targetCtx, data.x, data.y, data.w, data.h);
-            } else {
-                performDraw(targetCtx, data.x0, data.y0, data.x1, data.y1, data.color, data.size, data.opacity, data.tool);
-            }
-            if (this.render) this.render();
-        }
+        this.applyAction(data);
+        if (this.render) this.render();
     }
 
     handleClearCanvas() {
