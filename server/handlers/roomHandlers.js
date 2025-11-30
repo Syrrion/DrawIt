@@ -134,6 +134,9 @@ module.exports = (io, socket) => {
             allowSpectators: room.allowSpectators
         };
 
+        // Send initial Undo/Redo state
+        room.emitUndoRedoState(socket.id);
+
         if (room.gameState === 'PLAYING') {
             roomState.game = {
                 scores: room.game.scores,

@@ -26,6 +26,8 @@ class Game {
         this.wordChoiceTimer = null;
         this.timeLeft = 0;
         this.roundEnded = false;
+        
+        this.undoStacks = new Map();
     }
 
     init(settings) {
@@ -94,6 +96,8 @@ class Game {
             this.playerDrawings[p.id] = [];
             this.votes[p.id] = {};
         });
+        
+        this.undoStacks.clear();
 
         // Clear global canvas for everyone
         this.room.clearCanvas();
@@ -114,6 +118,24 @@ class Game {
             this.playerDrawings[action.userId] = [];
         }
         this.playerDrawings[action.userId].push(action);
+
+        // Update Undo Stack
+        if (!this.undoStacks.has(action.userId)) {
+            this.undoStacks.set(action.userId, []);
+        }
+        const stack = this.undoStacks.get(action.userId);
+        if (stack.length === 0 || stack[stack.length - 1] !== action.strokeId) {
+             stack.push(action.strokeId);
+             if (stack.length > 10) {
+                 stack.shift();
+             }
+        }
+        
+        // Emit state
+        this.io.to(action.userId).emit('undoRedoState', { 
+            canUndo: stack.length > 0, 
+            canRedo: false // Redo not implemented for creative mode yet
+        });
 
         // Broadcast to subscribers
         Object.entries(this.spectatorSubscriptions).forEach(([spectatorId, targetId]) => {
@@ -136,20 +158,13 @@ class Game {
     handleCreativeUndo(userId) {
         if (this.phase !== 'DRAWING') return;
         
-        if (this.playerDrawings[userId] && this.playerDrawings[userId].length > 0) {
-            // Find last strokeId
-            const history = this.playerDrawings[userId];
-            let lastStrokeId = null;
-            for (let i = history.length - 1; i >= 0; i--) {
-                if (history[i].strokeId) {
-                    lastStrokeId = history[i].strokeId;
-                    break;
-                }
-            }
+        const undoStack = this.undoStacks.get(userId);
+        if (undoStack && undoStack.length > 0) {
+            const lastStrokeId = undoStack.pop();
 
-            if (lastStrokeId) {
+            if (this.playerDrawings[userId]) {
                 // Remove all actions with this strokeId
-                this.playerDrawings[userId] = history.filter(action => action.strokeId !== lastStrokeId);
+                this.playerDrawings[userId] = this.playerDrawings[userId].filter(action => action.strokeId !== lastStrokeId);
                 
                 // Send back new history
                 this.io.to(userId).emit('creativeHistory', this.playerDrawings[userId]);
@@ -161,6 +176,11 @@ class Game {
                     }
                 });
             }
+            
+            this.io.to(userId).emit('undoRedoState', { 
+                canUndo: undoStack.length > 0, 
+                canRedo: false 
+            });
         }
     }
 

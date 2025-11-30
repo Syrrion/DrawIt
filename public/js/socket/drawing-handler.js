@@ -6,6 +6,7 @@ export class DrawingHandler {
     constructor(managers) {
         this.layerManager = managers.layerManager;
         this.cursorManager = managers.cursorManager;
+        this.toolsManager = managers.toolsManager;
         this.render = managers.render;
 
         this.snapshots = [];
@@ -26,6 +27,13 @@ export class DrawingHandler {
         socket.on('draw', this.handleDraw.bind(this));
         socket.on('clearCanvas', this.handleClearCanvas.bind(this));
         socket.on('clearLayer', this.handleClearLayer.bind(this));
+        socket.on('undoRedoState', this.handleUndoRedoState.bind(this));
+    }
+
+    handleUndoRedoState({ canUndo, canRedo }) {
+        if (this.toolsManager) {
+            this.toolsManager.updateUndoRedoState(canUndo, canRedo);
+        }
     }
 
     handleLayerAdded(layer) {
@@ -162,7 +170,9 @@ export class DrawingHandler {
 
     handleCanvasState(history) {
         // 1. Find best snapshot
+        // Disabled snapshots to fix undo issues with eraser/disappearing elements
         let bestSnapshot = null;
+        /*
         for (let i = this.snapshots.length - 1; i >= 0; i--) {
             const s = this.snapshots[i];
             if (s.index <= history.length) {
@@ -173,6 +183,7 @@ export class DrawingHandler {
                 }
             }
         }
+        */
 
         // 2. Restore or Clear
         let startIndex = 0;

@@ -119,6 +119,7 @@ new SocketManager({
     chatManager,
     cursorManager,
     animationSystem,
+    toolsManager,
     render: () => canvasManager.renderAsync()
 });
 

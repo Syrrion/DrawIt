@@ -294,7 +294,7 @@ export class CanvasManager {
                     y0: Math.floor(y),
                     color: color,
                     opacity: opacity,
-                    strokeId: Date.now() + Math.random(),
+                    strokeId: 'fill-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
                     layerId: state.activeLayerId
                 });
             }
@@ -303,7 +303,7 @@ export class CanvasManager {
 
         state.isDrawing = true;
         state.hasMoved = false;
-        state.currentStrokeId = Date.now() + Math.random();
+        state.currentStrokeId = 'stroke-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
 
         state.lastX = x;
         state.lastY = y;
@@ -326,6 +326,10 @@ export class CanvasManager {
             } else {
                 this.drawOnCanvas(x, y, x, y, color, size, opacity, state.currentTool, true);
             }
+        } else if (state.currentTool === 'fill') {
+             // Fill doesn't use drawOnCanvas but emits manually.
+             // We need to ensure it has a strokeId too if we want to undo it.
+             // It is handled in handleMouseDown.
         }
     }
 

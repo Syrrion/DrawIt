@@ -20,6 +20,8 @@
     transition: all 0.3s ease;
     width: auto;
     max-width: 95vw;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 .toolbar:hover {
@@ -290,5 +292,23 @@
 
 .tool-separator.hidden-spacer {
     visibility: hidden;
+}
+
+/* Disabled State for Tool Buttons */
+.tool-btn:disabled,
+.tool-btn[disabled] {
+    opacity: 0.2 !important;
+    cursor: not-allowed;
+    pointer-events: none;
+    filter: grayscale(100%);
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+.tool-btn:disabled .tool-label,
+.tool-btn[disabled] .tool-label {
+    user-select: none;
 }
 

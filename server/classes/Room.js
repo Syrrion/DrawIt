@@ -9,6 +9,7 @@ class Room {
         this.users = [];
         this.drawHistory = [];
         this.redoHistory = [];
+        this.undoStacks = new Map(); // userId -> [strokeIds]
         this.layers = [
             { id: 'layer-1', name: 'Calque 1', order: 0 }
         ];
@@ -104,6 +105,19 @@ class Room {
         this.io.to(this.code).emit('layersReordered', layers);
     }
 
+    emitUndoRedoState(userId) {
+        const undoStack = this.undoStacks.get(userId) || [];
+        const canUndo = undoStack.length > 0;
+        
+        let canRedo = false;
+        if (this.redoHistory && this.redoHistory.length > 0) {
+            // Check if user has any redo actions
+            canRedo = this.redoHistory.some(item => item.userId === userId);
+        }
+
+        this.io.to(userId).emit('undoRedoState', { canUndo, canRedo });
+    }
+
     addDrawAction(action) {
         this.drawHistory.push(action);
 
@@ -143,36 +157,52 @@ class Room {
         if (this.redoHistory) {
             this.redoHistory = this.redoHistory.filter(item => item.userId !== action.userId);
         }
+
+        // Update Undo Stack
+        if (!this.undoStacks.has(action.userId)) {
+            this.undoStacks.set(action.userId, []);
+        }
+        const stack = this.undoStacks.get(action.userId);
+        
+        // Only push if it's a new stroke (avoid duplicates if multiple packets for same stroke)
+        // But usually recordDrawAction is called per packet?
+        // Wait, draw events are usually points or lines.
+        // If `strokeId` is consistent for a stroke, we should only push it once.
+        if (stack.length === 0 || stack[stack.length - 1] !== action.strokeId) {
+             stack.push(action.strokeId);
+             if (stack.length > 10) {
+                 stack.shift();
+             }
+        }
+        
+        this.emitUndoRedoState(action.userId);
     }
 
     undo(userId) {
-        if (this.drawHistory.length > 0) {
-            const history = this.drawHistory;
-            // Find the last strokeId by this user
-            let lastStrokeId = null;
-            for (let i = history.length - 1; i >= 0; i--) {
-                if (history[i].userId === userId) {
-                    lastStrokeId = history[i].strokeId;
-                    break;
-                }
-            }
+        const undoStack = this.undoStacks.get(userId);
+        if (undoStack && undoStack.length > 0) {
+            const lastStrokeId = undoStack.pop();
+            
+            // Identify actions to remove
+            const actionsToRemove = this.drawHistory.filter(action => action.strokeId === lastStrokeId);
 
-            if (lastStrokeId) {
-                // Identify actions to remove
-                const actionsToRemove = history.filter(action => action.strokeId === lastStrokeId);
-
+            if (actionsToRemove.length > 0) {
                 // Add to redo history
                 if (!this.redoHistory) this.redoHistory = [];
                 this.redoHistory.push({
                     userId: userId,
-                    actions: actionsToRemove
+                    actions: actionsToRemove,
+                    strokeId: lastStrokeId
                 });
 
                 // Remove all actions with this strokeId
-                this.drawHistory = history.filter(action => action.strokeId !== lastStrokeId);
+                this.drawHistory = this.drawHistory.filter(action => action.strokeId !== lastStrokeId);
+                
                 // Broadcast new state
                 this.io.to(this.code).emit('canvasState', this.drawHistory);
             }
+            
+            this.emitUndoRedoState(userId);
         }
     }
 
@@ -195,22 +225,68 @@ class Room {
 
                 // Add back to draw history
                 this.drawHistory.push(...redoItem.actions);
+                
+                // Add back to undo stack
+                if (!this.undoStacks.has(userId)) {
+                    this.undoStacks.set(userId, []);
+                }
+                const stack = this.undoStacks.get(userId);
+                const strokeId = redoItem.strokeId || (redoItem.actions[0] ? redoItem.actions[0].strokeId : null);
+                
+                if (strokeId) {
+                    stack.push(strokeId);
+                    // Enforce limit on redo as well? 
+                    // If I redo, I am adding to undo stack.
+                    // If undo stack exceeds 10, I should shift.
+                    if (stack.length > 10) {
+                        stack.shift();
+                    }
+                }
 
                 // Broadcast new state
                 this.io.to(this.code).emit('canvasState', this.drawHistory);
+                
+                this.emitUndoRedoState(userId);
             }
         }
     }
 
     clearCanvas() {
         this.drawHistory = [];
+        this.redoHistory = [];
+        this.undoStacks.clear();
         this.io.to(this.code).emit('clearCanvas');
+        
+        this.users.forEach(user => {
+            this.emitUndoRedoState(user.id);
+        });
     }
 
     clearLayer(layerId) {
         // Remove draw actions for this layer
         this.drawHistory = this.drawHistory.filter(action => action.layerId !== layerId);
+        
+        // Also clear redo history for this layer
+        if (this.redoHistory) {
+            this.redoHistory = this.redoHistory.filter(item => {
+                // Check if any action in the redo item belongs to this layer
+                // Actually redoItem.actions is an array of actions.
+                // If all actions are on this layer, remove the item.
+                // If mixed (unlikely for one stroke), filter actions?
+                // Usually a stroke is on one layer.
+                return !item.actions.some(action => action.layerId === layerId);
+            });
+        }
+
+        // Rebuild undo stacks or just clear them?
+        // Clearing is safer to avoid inconsistencies
+        this.undoStacks.clear();
+
         this.io.to(this.code).emit('clearLayer', layerId);
+
+        this.users.forEach(user => {
+            this.emitUndoRedoState(user.id);
+        });
     }
 
     startGame() {

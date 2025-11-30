@@ -63,6 +63,11 @@ export class ToolsManager {
         slider.style.background = `linear-gradient(to right, var(--primary) 0%, var(--primary) ${percentage}%, rgba(255, 255, 255, 0.1) ${percentage}%, rgba(255, 255, 255, 0.1) 100%)`;
     }
 
+    updateUndoRedoState(canUndo, canRedo) {
+        btnUndo.disabled = !canUndo;
+        btnRedo.disabled = !canRedo;
+    }
+
     init() {
         // Initialize sliders with ResizeObserver for robust sizing
         const resizeObserver = new ResizeObserver(entries => {
@@ -110,16 +115,16 @@ export class ToolsManager {
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
                 e.preventDefault();
                 if (e.shiftKey) {
-                    socket.emit('redo', state.currentRoom);
+                    if (!btnRedo.disabled) socket.emit('redo', state.currentRoom);
                 } else {
-                    socket.emit('undo', state.currentRoom);
+                    if (!btnUndo.disabled) socket.emit('undo', state.currentRoom);
                 }
             }
 
             // Ctrl + Y for Redo
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
                 e.preventDefault();
-                socket.emit('redo', state.currentRoom);
+                if (!btnRedo.disabled) socket.emit('redo', state.currentRoom);
             }
 
             // Tool Shortcuts
@@ -249,11 +254,11 @@ export class ToolsManager {
         // --- Actions ---
 
         btnUndo.addEventListener('click', () => {
-            socket.emit('undo', state.currentRoom);
+            if (!btnUndo.disabled) socket.emit('undo', state.currentRoom);
         });
 
         btnRedo.addEventListener('click', () => {
-            socket.emit('redo', state.currentRoom);
+            if (!btnRedo.disabled) socket.emit('redo', state.currentRoom);
         });
 
         btnHelp.addEventListener('click', () => {
@@ -294,6 +299,9 @@ export class ToolsManager {
 
         // Initialize default tool state
         this.updateActiveTool(toolPenBtn);
+        
+        // Initialize Undo/Redo buttons as disabled
+        this.updateUndoRedoState(false, false);
     }
 
     updateActiveTool(activeBtn) {

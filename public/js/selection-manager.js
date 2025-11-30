@@ -183,7 +183,8 @@ function commitSelectionMove() {
         h: selectionRect.h,
         destX: Math.floor(dest.x),
         destY: Math.floor(dest.y),
-        layerId: state.activeLayerId
+        layerId: state.activeLayerId,
+        strokeId: 'sel-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9)
     });
     
     // Reset
@@ -207,7 +208,8 @@ export function deleteSelection() {
             y: selectionRect.y,
             w: selectionRect.w,
             h: selectionRect.h,
-            layerId: state.activeLayerId
+            layerId: state.activeLayerId,
+            strokeId: 'clear-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9)
         });
         
         // Perform local clear
