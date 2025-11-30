@@ -1107,3 +1107,37 @@
 }
 
 
+
+/* Gamemode Description */
+.gamemode-description {
+    background: rgba(255, 255, 255, 0.05);
+    border-left: 4px solid var(--primary);
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    color: var(--text-main);
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+/* Compact Sidebar Cards */
+.gamemode-cards {
+    gap: 0.5rem;
+}
+
+.gamemode-card {
+    padding: 0.8rem 0.5rem;
+    gap: 0.3rem;
+}
+
+.card-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 1.1rem;
+    border-radius: 8px;
+}
+
+.card-info h4 {
+    font-size: 0.8rem;
+}
+

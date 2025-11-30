@@ -15,6 +15,13 @@ export class GameSettingsManager {
             'custom-word': 45
         };
 
+        this.modeDescriptions = {
+            'guess-word': 'Un joueur dessine, les autres doivent deviner le mot le plus vite possible.',
+            'custom-word': 'Le dessinateur choisit son propre mot à faire deviner.',
+            'creative': 'Tout le monde dessine le même thème, puis vote pour le meilleur dessin.',
+            'telephone': 'Bouche à oreille dessiné : écrivez, dessinez, devinez en chaîne !'
+        };
+
         // Modal & Controls
         this.modalElement = document.getElementById('lobby-settings-modal');
         this.btnOpen = document.getElementById('btn-open-settings');
@@ -229,6 +236,12 @@ export class GameSettingsManager {
     }
 
     selectCard(mode) {
+        // Update Description
+        const descEl = document.getElementById('gamemode-description');
+        if (descEl && this.modeDescriptions[mode]) {
+            descEl.textContent = this.modeDescriptions[mode];
+        }
+
         // Save current time for previous mode
         if (this.currentMode === 'guess-word' || this.currentMode === 'custom-word') {
             if (this.wordChoiceTimeInput) {
