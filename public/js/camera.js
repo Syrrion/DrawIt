@@ -1,13 +1,28 @@
+import { CANVAS_CONFIG, BASE_DIMENSIONS } from './config.js';
+
 export class CameraManager {
     constructor(canvasWrapper, zoomLevelDisplay) {
         this.canvasWrapper = canvasWrapper;
         this.zoomLevelDisplay = zoomLevelDisplay;
-        this.camera = { x: 0, y: 0, z: 1 };
+        // Calculate initial zoom to fit BASE_DIMENSIONS (800x600) view
+        const initialZoom = BASE_DIMENSIONS.width / CANVAS_CONFIG.width;
+        
+        // Center the camera: Shift by half the difference between unscaled and scaled size
+        // This aligns the scaled center with the unscaled center (which is centered by CSS)
+        const centerX = CANVAS_CONFIG.width * (1 - initialZoom) / 2;
+        const centerY = CANVAS_CONFIG.height * (1 - initialZoom) / 2;
+
+        this.camera = { x: centerX, y: centerY, z: initialZoom };
         this.zoomTimeout = null;
+        this.listeners = [];
     }
 
     getCamera() {
         return this.camera;
+    }
+
+    addListener(callback) {
+        this.listeners.push(callback);
     }
 
     updateCameraTransform() {
@@ -21,7 +36,7 @@ export class CameraManager {
             this.zoomLevelDisplay.classList.add('hidden');
         }, 1500);
 
-        if (this.onUpdate) this.onUpdate();
+        this.listeners.forEach(callback => callback());
     }
 
     handleWheel(e) {
@@ -53,7 +68,11 @@ export class CameraManager {
     }
 
     reset() {
-        this.camera = { x: 0, y: 0, z: 1 };
+        const initialZoom = BASE_DIMENSIONS.width / CANVAS_CONFIG.width;
+        const centerX = CANVAS_CONFIG.width * (1 - initialZoom) / 2;
+        const centerY = CANVAS_CONFIG.height * (1 - initialZoom) / 2;
+        
+        this.camera = { x: centerX, y: centerY, z: initialZoom };
         this.updateCameraTransform();
     }
 }

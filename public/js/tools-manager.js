@@ -8,26 +8,31 @@ import {
     localCursor, cursorBrushPreview, cursorIcon, penSizeInput, penOpacityInput
 } from './dom-elements.js';
 import { state } from './state.js';
-import { showToast, rgbToHex, getContrastColor } from './utils.js';
+import { showToast, rgbToHex, getContrastColor, calculateBrushSize } from './utils.js';
 import { deleteSelection } from './selection-manager.js';
 import { Modal } from './components/modal.js';
+
+import { CANVAS_CONFIG, BASE_DIMENSIONS } from './config.js';
 
 export class ToolsManager {
     constructor(getZoom) {
         this.getZoom = getZoom;
         this.previousTool = null;
+        
+        const scaleFactor = 1;
+        
         this.toolSizes = {
-            pen: 10,
-            airbrush: 100,
-            eraser: 100,
-            fill: 5,
-            smudge: 5,
-            pipette: 5,
-            selection: 5,
-            rectangle: 5,
-            circle: 5,
-            triangle: 5,
-            line: 5
+            pen: 25 * scaleFactor,
+            airbrush: 140 * scaleFactor,
+            eraser: 140 * scaleFactor,
+            fill: 5 * scaleFactor,
+            smudge: 140 * scaleFactor,
+            pipette: 5 * scaleFactor,
+            selection: 5 * scaleFactor,
+            rectangle: 30 * scaleFactor,
+            circle: 30 * scaleFactor,
+            triangle: 30 * scaleFactor,
+            line: 30 * scaleFactor
         };
         this.init();
     }
@@ -114,17 +119,28 @@ export class ToolsManager {
             // Ctrl + Z for Undo
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
                 e.preventDefault();
+                if (state.isUndoRedoProcessing) return;
                 if (e.shiftKey) {
-                    if (!btnRedo.disabled) socket.emit('redo', state.currentRoom);
+                    if (!btnRedo.disabled) {
+                        state.isUndoRedoProcessing = true;
+                        socket.emit('redo', state.currentRoom);
+                    }
                 } else {
-                    if (!btnUndo.disabled) socket.emit('undo', state.currentRoom);
+                    if (!btnUndo.disabled) {
+                        state.isUndoRedoProcessing = true;
+                        socket.emit('undo', state.currentRoom);
+                    }
                 }
             }
 
             // Ctrl + Y for Redo
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
                 e.preventDefault();
-                if (!btnRedo.disabled) socket.emit('redo', state.currentRoom);
+                if (state.isUndoRedoProcessing) return;
+                if (!btnRedo.disabled) {
+                    state.isUndoRedoProcessing = true;
+                    socket.emit('redo', state.currentRoom);
+                }
             }
 
             // Tool Shortcuts
@@ -254,11 +270,19 @@ export class ToolsManager {
         // --- Actions ---
 
         btnUndo.addEventListener('click', () => {
-            if (!btnUndo.disabled) socket.emit('undo', state.currentRoom);
+            if (state.isUndoRedoProcessing) return;
+            if (!btnUndo.disabled) {
+                state.isUndoRedoProcessing = true;
+                socket.emit('undo', state.currentRoom);
+            }
         });
 
         btnRedo.addEventListener('click', () => {
-            if (!btnRedo.disabled) socket.emit('redo', state.currentRoom);
+            if (state.isUndoRedoProcessing) return;
+            if (!btnRedo.disabled) {
+                state.isUndoRedoProcessing = true;
+                socket.emit('redo', state.currentRoom);
+            }
         });
 
         btnHelp.addEventListener('click', () => {
@@ -368,7 +392,7 @@ export class ToolsManager {
     updateBrushPreview() {
         if (!cursorBrushPreview) return;
 
-        let size = parseInt(penSizeInput.value, 10);
+        let size = calculateBrushSize(parseInt(penSizeInput.value, 10) || 10);
         
         // Apply zoom scaling if available
         if (this.getZoom) {

@@ -1,11 +1,12 @@
 import { stringToColor } from './utils.js';
 
 export class CursorManager {
-    constructor(socket, cursorsLayer, roomCodeProvider, usernameProvider) {
+    constructor(socket, cursorsLayer, roomCodeProvider, usernameProvider, cameraManager) {
         this.socket = socket;
         this.cursorsLayer = cursorsLayer;
         this.roomCodeProvider = roomCodeProvider;
         this.usernameProvider = usernameProvider;
+        this.cameraManager = cameraManager;
 
         this.cursors = {};
         this.lastCursorEmit = 0;
@@ -15,6 +16,10 @@ export class CursorManager {
         
         // Check for inactive cursors every second
         setInterval(() => this.checkInactiveCursors(), 1000);
+
+        if (this.cameraManager) {
+            this.cameraManager.addListener(() => this.updateCursorsScale());
+        }
     }
 
     init() {
@@ -33,6 +38,9 @@ export class CursorManager {
             `;
             this.cursorsLayer.appendChild(cursor);
             this.cursors[id] = { element: cursor, x, y, lastUpdate: Date.now() };
+            
+            // Apply initial scale
+            this.updateCursorScale(id);
         }
         
         this.cursors[id].x = x;
@@ -58,6 +66,24 @@ export class CursorManager {
             } else {
                 cursor.element.style.display = 'none';
             }
+        }
+    }
+
+    updateCursorScale(id) {
+        const cursor = this.cursors[id];
+        if (cursor && this.cameraManager) {
+            const zoom = this.cameraManager.getCamera().z;
+            const scale = 1 / zoom;
+            // We want the center of the pointer (5px, 5px) to remain at the anchor point (0,0)
+            // So we translate by -5 * scale
+            cursor.element.style.transformOrigin = '0 0';
+            cursor.element.style.transform = `translate(${-5 * scale}px, ${-5 * scale}px) scale(${scale})`;
+        }
+    }
+
+    updateCursorsScale() {
+        for (const id in this.cursors) {
+            this.updateCursorScale(id);
         }
     }
 

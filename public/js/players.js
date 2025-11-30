@@ -36,6 +36,8 @@ export class PlayerListManager {
     }
 
     playSuccessSound() {
+        if (state.isMuted) return;
+
         try {
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             if (!AudioContext) return;

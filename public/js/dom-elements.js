@@ -113,6 +113,7 @@ export const userSettingsModal = document.getElementById('user-settings-modal');
 export const btnCloseUserSettings = document.getElementById('btn-close-user-settings');
 export const settingShowCursors = document.getElementById('setting-show-cursors');
 export const settingShowLayerAvatars = document.getElementById('setting-show-layer-avatars');
+export const settingMuteSound = document.getElementById('setting-mute-sound');
 // export const settingSwapSidebars = document.getElementById('setting-swap-sidebars'); // Removed
 
 // Layout Elements

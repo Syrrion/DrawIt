@@ -22,5 +22,7 @@ export const state = {
     activeColorTarget: 'game', // 'game' or 'avatar'
     currentDrawerName: null,
     isSpectator: false,
-    settings: {}
+    isUndoRedoProcessing: false,
+    settings: {},
+    isMuted: false
 };

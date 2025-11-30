@@ -1,6 +1,7 @@
 import { socket, canvas } from '../dom-elements.js';
 import { state } from '../state.js';
 import { performDraw, performFloodFill, performMoveSelection, performClearRect } from '../draw.js';
+import { CANVAS_CONFIG } from '../config.js';
 
 export class DrawingHandler {
     constructor(managers) {
@@ -10,8 +11,8 @@ export class DrawingHandler {
         this.render = managers.render;
 
         this.snapshots = [];
-        this.SNAPSHOT_INTERVAL = 50;
-        this.MAX_SNAPSHOTS = 10;
+        this.SNAPSHOT_INTERVAL = 20; // More frequent snapshots for smoother undo
+        this.MAX_SNAPSHOTS = 20; // Keep more history
 
         this.init();
     }
@@ -31,6 +32,7 @@ export class DrawingHandler {
     }
 
     handleUndoRedoState({ canUndo, canRedo }) {
+        state.isUndoRedoProcessing = false;
         if (this.toolsManager) {
             this.toolsManager.updateUndoRedoState(canUndo, canRedo);
         }
@@ -119,7 +121,7 @@ export class DrawingHandler {
         if (targetLayerId && state.layerCanvases[targetLayerId]) {
             const targetCtx = state.layerCanvases[targetLayerId].ctx;
             if (action.tool === 'fill') {
-                performFloodFill(targetCtx, 800, 600, action.x0, action.y0, action.color, action.opacity);
+                performFloodFill(targetCtx, CANVAS_CONFIG.width, CANVAS_CONFIG.height, action.x0, action.y0, action.color, action.opacity);
             } else if (action.tool === 'move-selection') {
                 performMoveSelection(targetCtx, action.srcX, action.srcY, action.w, action.h, action.destX, action.destY);
             } else if (action.tool === 'clear-rect') {
@@ -163,27 +165,31 @@ export class DrawingHandler {
         Object.keys(snapshot.layers).forEach(layerId => {
             if (state.layerCanvases[layerId]) {
                 const ctx = state.layerCanvases[layerId].ctx;
+                // Fix: Reset composite operation and alpha to ensure snapshot is drawn correctly
+                // (Previous eraser usage might have left it in destination-out)
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.globalAlpha = 1;
                 ctx.drawImage(snapshot.layers[layerId], 0, 0);
             }
         });
     }
 
     handleCanvasState(history) {
+        state.isUndoRedoProcessing = false;
         // 1. Find best snapshot
-        // Disabled snapshots to fix undo issues with eraser/disappearing elements
         let bestSnapshot = null;
-        /*
+        
         for (let i = this.snapshots.length - 1; i >= 0; i--) {
             const s = this.snapshots[i];
             if (s.index <= history.length) {
                 const actionToCheck = history[s.index - 1];
+                // Check if the snapshot matches the current history at that point
                 if (s.index === 0 || (actionToCheck && JSON.stringify(actionToCheck) === s.signature)) {
                     bestSnapshot = s;
                     break;
                 }
             }
         }
-        */
 
         // 2. Restore or Clear
         let startIndex = 0;
@@ -217,14 +223,14 @@ export class DrawingHandler {
 
     handleClearCanvas() {
         Object.values(state.layerCanvases).forEach(l => {
-            l.ctx.clearRect(0, 0, 800, 600);
+            l.ctx.clearRect(0, 0, CANVAS_CONFIG.width, CANVAS_CONFIG.height);
         });
         if (this.render) this.render();
     }
 
     handleClearLayer(layerId) {
         if (state.layerCanvases[layerId]) {
-            state.layerCanvases[layerId].ctx.clearRect(0, 0, 800, 600);
+            state.layerCanvases[layerId].ctx.clearRect(0, 0, CANVAS_CONFIG.width, CANVAS_CONFIG.height);
             if (this.render) this.render();
         }
     }

@@ -3,8 +3,10 @@ import {
     localCursor
 } from './dom-elements.js';
 import { state } from './state.js';
+import { calculateBrushSize } from './utils.js';
 import { performDraw, performFloodFill } from './draw.js';
 import { handleSelectionMouseDown, handleSelectionMouseMove, handleSelectionMouseUp, drawSelectionOverlay, setRenderCallback } from './selection-manager.js';
+import { CANVAS_CONFIG } from './config.js';
 
 export class CanvasManager {
     constructor(cursorManager, cameraManager, toolsManager) {
@@ -55,13 +57,13 @@ export class CanvasManager {
     init() {
         setRenderCallback(this.render.bind(this));
 
-        canvas.width = 800;
-        canvas.height = 600;
+        canvas.width = CANVAS_CONFIG.width;
+        canvas.height = CANVAS_CONFIG.height;
 
         // Preview canvas for buffering strokes
         this.previewCanvas = document.createElement('canvas');
-        this.previewCanvas.width = 800;
-        this.previewCanvas.height = 600;
+        this.previewCanvas.width = CANVAS_CONFIG.width;
+        this.previewCanvas.height = CANVAS_CONFIG.height;
         this.previewCtx = this.previewCanvas.getContext('2d');
         this.isBuffering = false;
         this.currentPath = [];
@@ -86,6 +88,9 @@ export class CanvasManager {
 
         // Track global mouse position for entry interpolation
         window.addEventListener('mousemove', this.handleGlobalMouseMove.bind(this));
+
+        // Initialize camera transform to ensure correct zoom level on load
+        this.cameraManager.updateCameraTransform();
     }
 
     handleGlobalMouseMove(e) {
@@ -159,11 +164,11 @@ export class CanvasManager {
     }
 
     updatePreview() {
-        this.previewCtx.clearRect(0, 0, 800, 600);
+        this.previewCtx.clearRect(0, 0, CANVAS_CONFIG.width, CANVAS_CONFIG.height);
         if (this.currentPath.length < 1) return;
         
         const color = penColorInput.value;
-        const size = penSizeInput.value;
+        const size = calculateBrushSize(parseInt(penSizeInput.value, 10) || 10);
         const opacity = penOpacityInput.value;
         
         this.previewCtx.beginPath();
@@ -177,6 +182,11 @@ export class CanvasManager {
         if (startIndex < this.currentPath.length) {
             this.previewCtx.moveTo(this.currentPath[startIndex].x, this.currentPath[startIndex].y);
             
+            // If single point, draw a dot
+            if (this.currentPath.length === startIndex + 1) {
+                this.previewCtx.lineTo(this.currentPath[startIndex].x, this.currentPath[startIndex].y);
+            }
+
             for (let i = startIndex + 1; i < this.currentPath.length; i++) {
                 const point = this.currentPath[i];
                 if (point === null) {
@@ -284,7 +294,7 @@ export class CanvasManager {
                     return;
                 }
 
-                performFloodFill(state.layerCanvases[state.activeLayerId].ctx, 800, 600, Math.floor(x), Math.floor(y), color, opacity);
+                performFloodFill(state.layerCanvases[state.activeLayerId].ctx, CANVAS_CONFIG.width, CANVAS_CONFIG.height, Math.floor(x), Math.floor(y), color, opacity);
                 this.render();
 
                 socket.emit('draw', {
@@ -313,7 +323,7 @@ export class CanvasManager {
         // Draw immediately for pen/eraser to avoid delay feeling
         if (['pen', 'eraser'].includes(state.currentTool)) {
             const color = penColorInput.value;
-            const size = penSizeInput.value;
+            const size = calculateBrushSize(parseInt(penSizeInput.value, 10) || 10);
             const opacity = penOpacityInput.value;
             
             // Use buffering for transparent pen or eraser to avoid accumulation
@@ -367,7 +377,7 @@ export class CanvasManager {
         // Throttling for airbrush to prevent excessive density
         if (state.currentTool === 'airbrush') {
             const dist = Math.sqrt((x - state.lastX) ** 2 + (y - state.lastY) ** 2);
-            const currentSize = parseInt(penSizeInput.value) || 10;
+            const currentSize = calculateBrushSize(parseInt(penSizeInput.value, 10)) || 10;
             // Only draw if we moved enough (based on size) to avoid over-saturation
             if (dist < Math.max(5, currentSize / 3)) return;
         }
@@ -375,7 +385,7 @@ export class CanvasManager {
         state.hasMoved = true;
 
         const color = penColorInput.value;
-        let size = penSizeInput.value;
+        let size = calculateBrushSize(parseInt(penSizeInput.value, 10) || 10);
         const opacity = penOpacityInput.value;
 
         if (['rectangle', 'circle', 'triangle', 'line'].includes(state.currentTool)) {
@@ -408,7 +418,7 @@ export class CanvasManager {
 
         if (state.isDrawing) {
             const color = penColorInput.value;
-            const size = penSizeInput.value;
+            const size = calculateBrushSize(parseInt(penSizeInput.value, 10) || 10);
             const opacity = penOpacityInput.value;
 
             if (['rectangle', 'circle', 'triangle', 'line'].includes(state.currentTool) && state.hasMoved) {
@@ -433,7 +443,7 @@ export class CanvasManager {
                     }
                 }
                 
-                this.previewCtx.clearRect(0, 0, 800, 600);
+                this.previewCtx.clearRect(0, 0, CANVAS_CONFIG.width, CANVAS_CONFIG.height);
                 this.isBuffering = false;
                 this.currentPath = [];
                 this.render();

@@ -7,7 +7,7 @@ import {
     btnReturnLobby, gameEndModal,
     btnIamReady, btnRefuseGame, readyCheckModal,
     socket, spectatorCheckbox, btnJoinRandom, activeGamesCount, privateRoomCheckbox, allowSpectatorsCheckbox,
-    btnUserSettings, userSettingsModal, btnCloseUserSettings, settingShowCursors, settingShowLayerAvatars,
+    btnUserSettings, userSettingsModal, btnCloseUserSettings, settingShowCursors, settingShowLayerAvatars, settingMuteSound,
     maxPlayersInput, btnSubmitCustomWord, customWordInput, customWordModal, waitingMessage,
     clearOptionsModal, btnClearLayer, btnClearAll, btnCancelClear,
     toolbarDragHandle, gameToolbar, sidebarCol2, sidebarGroup, chatSidebar, btnToggleSidebarPos,
@@ -379,6 +379,21 @@ export class UIManager {
                 const isVisible = e.target.checked;
                 localStorage.setItem('drawit_show_layer_avatars', isVisible);
                 if (this.layerManager) this.layerManager.setShowLayerAvatars(isVisible);
+            });
+        }
+
+        const savedMuteSound = localStorage.getItem('drawit_mute_sound');
+        if (savedMuteSound !== null) {
+            const isMuted = savedMuteSound === 'true';
+            if (settingMuteSound) settingMuteSound.checked = isMuted;
+            state.isMuted = isMuted;
+        }
+
+        if (settingMuteSound) {
+            settingMuteSound.addEventListener('change', (e) => {
+                const isMuted = e.target.checked;
+                localStorage.setItem('drawit_mute_sound', isMuted);
+                state.isMuted = isMuted;
             });
         }
 

@@ -1,4 +1,5 @@
 const Game = require('./Game');
+const { UNDO_HISTORY_SIZE } = require('../utils/config');
 
 class Room {
     constructor(code, io, leaderId, settings = {}) {
@@ -170,7 +171,7 @@ class Room {
         // If `strokeId` is consistent for a stroke, we should only push it once.
         if (stack.length === 0 || stack[stack.length - 1] !== action.strokeId) {
              stack.push(action.strokeId);
-             if (stack.length > 10) {
+             if (stack.length > UNDO_HISTORY_SIZE) {
                  stack.shift();
              }
         }
@@ -237,8 +238,8 @@ class Room {
                     stack.push(strokeId);
                     // Enforce limit on redo as well? 
                     // If I redo, I am adding to undo stack.
-                    // If undo stack exceeds 10, I should shift.
-                    if (stack.length > 10) {
+                    // If undo stack exceeds limit, I should shift.
+                    if (stack.length > UNDO_HISTORY_SIZE) {
                         stack.shift();
                     }
                 }

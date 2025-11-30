@@ -71,11 +71,11 @@ const playerListManager = new PlayerListManager(socket, playersList, (id, userna
 // Chat
 const chatManager = new ChatManager(socket, () => state.currentRoom, () => state.user.username, (username) => playerListManager.getPlayerByUsername(username));
 
-// Cursors
-const cursorManager = new CursorManager(socket, cursorsLayer, () => state.currentRoom, () => state.user.username);
-
 // Camera
 const cameraManager = new CameraManager(canvasWrapper, zoomLevelDisplay);
+
+// Cursors
+const cursorManager = new CursorManager(socket, cursorsLayer, () => state.currentRoom, () => state.user.username, cameraManager);
 
 // Game Settings
 const gameSettingsManager = new GameSettingsManager(
@@ -89,7 +89,7 @@ const gameSettingsManager = new GameSettingsManager(
 const toolsManager = new ToolsManager(() => cameraManager.getCamera().z);
 
 // Link camera update to tools update
-cameraManager.onUpdate = () => toolsManager.updateBrushPreview();
+cameraManager.addListener(() => toolsManager.updateBrushPreview());
 
 // Canvas
 const canvasManager = new CanvasManager(cursorManager, cameraManager, toolsManager);

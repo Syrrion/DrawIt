@@ -1,3 +1,6 @@
+import { CANVAS_CONFIG, BASE_DIMENSIONS } from './config.js';
+import { state } from './state.js';
+
 export function hexToRgb(hex) {
     var shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
     hex = hex.replace(shorthandRegex, function(m, r, g, b) {
@@ -183,6 +186,8 @@ function fallbackCopy(text) {
 }
 
 export function playTickSound() {
+    if (state.isMuted) return;
+
     try {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         if (!AudioContext) return;
@@ -207,3 +212,26 @@ export function playTickSound() {
         console.error('Audio error:', e);
     }
 }
+
+export function calculateBrushSize(sliderValue) {
+    const min = 1;
+    const max = 400;
+    const t = (sliderValue - min) / (max - min);
+    const baseSize = min + (max - min) * Math.pow(t, 2);
+    
+    // Scale brush size based on resolution increase
+    const scaleFactor = CANVAS_CONFIG.width / BASE_DIMENSIONS.width;
+    return baseSize * scaleFactor;
+}
+
+export function calculateSliderValue(brushSize) {
+    // Reverse scaling
+    const scaleFactor = CANVAS_CONFIG.width / BASE_DIMENSIONS.width;
+    const baseSize = brushSize / scaleFactor;
+
+    const min = 1;
+    const max = 400;
+    const t = Math.sqrt((baseSize - min) / (max - min));
+    return min + (max - min) * t;
+}
+

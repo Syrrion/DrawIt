@@ -163,7 +163,20 @@ export function performDraw(targetCtx, x0, y0, x1, y1, color, size, opacity, too
         targetCtx.globalCompositeOperation = 'source-over';
         targetCtx.strokeStyle = color;
         targetCtx.globalAlpha = opacity;
+
+        // Smooth edges for Pen tool
+        if (tool === 'pen') {
+            targetCtx.shadowBlur = 2.5;
+            targetCtx.shadowColor = color;
+        }
+
         targetCtx.stroke();
+
+        // Reset shadow
+        if (tool === 'pen') {
+            targetCtx.shadowBlur = 1.5;
+            targetCtx.shadowColor = 'transparent';
+        }
     }
 
     targetCtx.globalAlpha = 1;

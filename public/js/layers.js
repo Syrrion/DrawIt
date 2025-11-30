@@ -1,5 +1,6 @@
 import { performDraw, performFloodFill } from './draw.js';
 import { state as globalState } from './state.js';
+import { CANVAS_CONFIG } from './config.js';
 
 export class LayerManager {
     constructor(socket, currentRoomProvider, layers, layerCanvases, activeLayerId, renderCallback, showToast, onActiveLayerChange, getPlayerList) {
@@ -33,8 +34,8 @@ export class LayerManager {
     createLayerCanvas(layerId) {
         if (!this.layerCanvases[layerId]) {
             const c = document.createElement('canvas');
-            c.width = 800;
-            c.height = 600;
+            c.width = CANVAS_CONFIG.width;
+            c.height = CANVAS_CONFIG.height;
             this.layerCanvases[layerId] = {
                 canvas: c,
                 ctx: c.getContext('2d', { willReadFrequently: true }),
