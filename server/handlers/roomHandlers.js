@@ -287,7 +287,6 @@ module.exports = (io, socket) => {
     });
 
     socket.on('disconnect', () => {
-        console.log('User disconnected:', socket.id);
         // Remove user from rooms
         for (const roomCode in rooms) {
             const room = rooms[roomCode];

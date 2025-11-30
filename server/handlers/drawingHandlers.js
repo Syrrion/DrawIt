@@ -47,6 +47,14 @@ module.exports = (io, socket) => {
                 return;
             }
 
+            if (room.gameState === 'PLAYING' && room.settings.mode === 'telephone') {
+                // Telephone Mode: Everyone draws, no broadcast
+                if (room.game && room.game.handleTelephoneDraw) {
+                    room.game.handleTelephoneDraw(data);
+                }
+                return;
+            }
+
             // Restriction: Only drawer can draw during game
             if (room.gameState === 'PLAYING' && (room.settings.mode === 'guess-word' || room.settings.mode === 'custom-word')) {
                 const drawerId = room.game.turnOrder[room.game.currentDrawerIndex];
@@ -64,6 +72,12 @@ module.exports = (io, socket) => {
             if (room.gameState === 'PLAYING' && room.settings.mode === 'creative') {
                 if (room.game && room.game.handleCreativeUndo) {
                     room.game.handleCreativeUndo(socket.id);
+                }
+                return;
+            }
+            if (room.gameState === 'PLAYING' && room.settings.mode === 'telephone') {
+                if (room.game && room.game.handleTelephoneUndo) {
+                    room.game.handleTelephoneUndo(socket.id);
                 }
                 return;
             }

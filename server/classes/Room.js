@@ -31,6 +31,7 @@ class Room {
             maxWordLength: 20,
             personalHints: 3,
             allowTracing: true,
+            writeTime: 30,
             ...settings
         };
 

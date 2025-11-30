@@ -176,6 +176,7 @@ export class DrawingHandler {
 
     handleCanvasState(history) {
         state.isUndoRedoProcessing = false;
+        
         // 1. Find best snapshot
         let bestSnapshot = null;
         
@@ -201,19 +202,152 @@ export class DrawingHandler {
         }
 
         // 3. Replay and Snapshot
+        let currentStrokeId = null;
+        let strokeBuffer = [];
+        let lastSnapshotIndex = startIndex;
+
         for (let i = startIndex; i < history.length; i++) {
             const action = history[i];
-            this.applyAction(action);
+            
+            // Check if we can buffer this action
+            const needsBuffering = (action.tool === 'pen' || action.tool === 'eraser') && action.strokeId;
 
-            // Take snapshot if interval hit
-            if ((i + 1) % this.SNAPSHOT_INTERVAL === 0) {
-                // Only create if we don't have it (or overwrite if we want to be safe, but checking index is enough usually)
-                // Since we are replaying authoritative history, we can overwrite.
-                this.createSnapshot(i + 1, action);
+            if (needsBuffering) {
+                if (currentStrokeId !== action.strokeId) {
+                    // Stroke changed!
+                    // 1. Flush previous buffer
+                    if (strokeBuffer.length > 0) {
+                        this.applyBufferedStroke(strokeBuffer);
+                        
+                        // Safe boundary: We just finished a stroke.
+                        // The current index 'i' is the start of the NEW stroke.
+                        // So the state at 'i' (before processing action 'i') is clean.
+                        // We can take a snapshot for index 'i'.
+                        if (i - lastSnapshotIndex >= this.SNAPSHOT_INTERVAL) {
+                             this.createSnapshot(i, history[i-1]);
+                             lastSnapshotIndex = i;
+                        }
+                        
+                        strokeBuffer = [];
+                    }
+                    currentStrokeId = action.strokeId;
+                }
+                strokeBuffer.push(action);
+            } else {
+                // Atomic action (Fill, Shape, etc.)
+                // 1. Flush previous buffer if any
+                if (strokeBuffer.length > 0) {
+                    this.applyBufferedStroke(strokeBuffer);
+                    
+                    // Safe boundary at index 'i'
+                    if (i - lastSnapshotIndex >= this.SNAPSHOT_INTERVAL) {
+                         this.createSnapshot(i, history[i-1]);
+                         lastSnapshotIndex = i;
+                    }
+                    
+                    strokeBuffer = [];
+                    currentStrokeId = null;
+                }
+                
+                this.applyAction(action);
+                
+                // Safe boundary at index 'i + 1' (after this atomic action)
+                if ((i + 1) - lastSnapshotIndex >= this.SNAPSHOT_INTERVAL) {
+                    this.createSnapshot(i + 1, action);
+                    lastSnapshotIndex = i + 1;
+                }
+            }
+        }
+        
+        // Flush remaining buffer
+        if (strokeBuffer.length > 0) {
+            this.applyBufferedStroke(strokeBuffer);
+            // Snapshot at the end
+            if (history.length - lastSnapshotIndex >= this.SNAPSHOT_INTERVAL) {
+                this.createSnapshot(history.length, history[history.length-1]);
             }
         }
         
         if (this.render) this.render();
+    }
+
+    applyBufferedStroke(actions) {
+        if (actions.length === 0) return;
+        // Use properties from the last action to match CanvasManager's behavior (final size/opacity)
+        const lastAction = actions[actions.length - 1];
+        const layerId = lastAction.layerId;
+        
+        if (!state.layerCanvases[layerId]) return;
+        const targetCtx = state.layerCanvases[layerId].ctx;
+
+        if (!this.replayBufferCanvas) {
+            this.replayBufferCanvas = document.createElement('canvas');
+            this.replayBufferCanvas.width = CANVAS_CONFIG.width;
+            this.replayBufferCanvas.height = CANVAS_CONFIG.height;
+            this.replayBufferCtx = this.replayBufferCanvas.getContext('2d');
+        }
+        
+        const ctx = this.replayBufferCtx;
+        ctx.clearRect(0, 0, CANVAS_CONFIG.width, CANVAS_CONFIG.height);
+        
+        ctx.beginPath();
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = lastAction.size;
+        
+        // Draw with Opacity 1 on the buffer to prevent self-overlap accumulation
+        ctx.globalAlpha = 1;
+        
+        if (lastAction.tool === 'eraser') {
+            ctx.strokeStyle = 'rgba(0,0,0,1)';
+        } else {
+            ctx.strokeStyle = lastAction.color;
+            if (lastAction.tool === 'pen') {
+                ctx.shadowBlur = 2.5;
+                ctx.shadowColor = lastAction.color;
+            }
+        }
+        
+        if (actions.length > 0) {
+            ctx.moveTo(actions[0].x0, actions[0].y0);
+            ctx.lineTo(actions[0].x1, actions[0].y1);
+            
+            for (let i = 1; i < actions.length; i++) {
+                const prev = actions[i-1];
+                const curr = actions[i];
+                
+                // Check continuity
+                if (Math.abs(curr.x0 - prev.x1) < 0.1 && Math.abs(curr.y0 - prev.y1) < 0.1) {
+                    ctx.lineTo(curr.x1, curr.y1);
+                } else {
+                    ctx.moveTo(curr.x0, curr.y0);
+                    ctx.lineTo(curr.x1, curr.y1);
+                }
+            }
+        }
+        
+        ctx.stroke();
+        
+        // Reset shadow
+        ctx.shadowBlur = 0;
+        ctx.shadowColor = 'transparent';
+
+        // Composite to target with the desired opacity
+        const opacity = parseFloat(lastAction.opacity);
+
+        if (lastAction.tool === 'eraser') {
+            targetCtx.globalCompositeOperation = 'destination-out';
+            targetCtx.globalAlpha = opacity;
+        } else {
+            targetCtx.globalCompositeOperation = 'source-over';
+            targetCtx.globalAlpha = opacity;
+        }
+        
+        targetCtx.drawImage(this.replayBufferCanvas, 0, 0);
+        
+        // Reset target context
+        targetCtx.globalAlpha = 1;
+        targetCtx.globalCompositeOperation = 'source-over';
     }
 
     handleDraw(data) {

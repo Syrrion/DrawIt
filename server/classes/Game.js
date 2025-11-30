@@ -56,6 +56,12 @@ class Game {
         this.phase = 'IDLE';
         this.spectatorSubscriptions = {}; // spectatorId -> targetId
 
+        // Telephone Mode Data
+        this.telephoneChains = {}; // { ownerId: [ { type: 'text'|'drawing', content: string, authorId: string } ] }
+        this.telephoneRound = 0;
+        this.telephonePhase = 'IDLE'; // WRITING, DRAWING, GUESSING
+        this.telephonePendingSubmissions = {}; // userId -> submission
+
         this.room.users.forEach(u => {
             u.score = 0;
             this.userRevealedIndices[u.id] = [];
@@ -79,8 +85,253 @@ class Game {
 
         if (this.mode === 'creative') {
             this.startCreativeRound();
+        } else if (this.mode === 'telephone') {
+            this.startTelephoneGame();
         } else {
             this.startTurn();
+        }
+    }
+
+    // Telephone Mode Methods
+    startTelephoneGame() {
+        this.telephoneChains = {};
+        this.telephoneRound = 0;
+        this.telephonePendingSubmissions = {};
+        this.telephoneDrawings = {}; // userId -> [actions]
+        
+        // Initialize chains for each player
+        this.room.getPlayers().forEach(p => {
+            this.telephoneChains[p.id] = [];
+            this.telephoneDrawings[p.id] = [];
+        });
+        
+        this.undoStacks.clear();
+
+        this.startTelephoneRound();
+    }
+
+    startTelephoneRound() {
+        this.telephoneRound++;
+        this.telephonePendingSubmissions = {};
+        // Reset drawings for this round
+        this.telephoneDrawings = {};
+        this.undoStacks.clear();
+        
+        const players = this.room.getPlayers();
+        const playerCount = players.length;
+        
+        players.forEach(p => {
+            this.telephoneDrawings[p.id] = [];
+        });
+
+        // Determine phase based on round number
+        // Round 1: Writing (Initial Sentence)
+        // Round 2: Drawing
+        // Round 3: Guessing (Writing)
+        // Round 4: Drawing
+        // ...
+        
+        // If round > player count, game over (everyone has contributed to every chain)
+        // Or maybe round > player count if we want full rotation.
+        // Let's say N players. 
+        // Round 1: P1 writes in Chain 1.
+        // Round 2: P2 draws in Chain 1.
+        // ...
+        // Round N: PN does something in Chain 1.
+        // So we need N rounds.
+        
+        if (this.telephoneRound > playerCount) {
+            this.endTelephoneGame();
+            return;
+        }
+
+        const isWritingPhase = (this.telephoneRound % 2 !== 0); // Odd rounds are writing (1, 3, 5...)
+        this.telephonePhase = isWritingPhase ? 'WRITING' : 'DRAWING';
+
+        // Clear canvas for everyone
+        this.room.clearCanvas();
+
+        // Assign tasks to players
+        players.forEach((player, index) => {
+            // Determine which chain this player is working on
+            // Logic: In Round R, Player at Index I works on Chain belonging to Player at Index (I - (R-1) + N) % N
+            // Example: 3 Players [A, B, C]
+            // Round 1 (R=1): A works on Chain A (Index 0 - 0 = 0). B on B. C on C.
+            // Round 2 (R=2): A works on Chain C (Index 0 - 1 = -1 -> 2). B on A. C on B.
+            // Round 3 (R=3): A works on Chain B (Index 0 - 2 = -2 -> 1). B on C. C on A.
+            
+            const chainOwnerIndex = (index - (this.telephoneRound - 1) + playerCount * 100) % playerCount; // *100 to avoid negative modulo issues
+            const chainOwnerId = players[chainOwnerIndex].id;
+            const chain = this.telephoneChains[chainOwnerId];
+            
+            let previousStep = null;
+            if (chain.length > 0) {
+                previousStep = chain[chain.length - 1];
+            }
+
+            this.io.to(player.id).emit('telephoneRoundStart', {
+                round: this.telephoneRound,
+                totalRounds: playerCount,
+                phase: this.telephonePhase,
+                previousStep: previousStep, // null for Round 1
+                duration: this.telephonePhase === 'WRITING' ? this.room.settings.writeTime : this.room.settings.drawTime
+            });
+        });
+
+        const duration = this.telephonePhase === 'WRITING' ? this.room.settings.writeTime : this.room.settings.drawTime;
+        // Add a buffer to the server timer to allow for network latency and client auto-submission
+        this.startTimer(duration + 3, () => this.endTelephoneRound());
+    }
+
+    handleTelephoneSubmission(userId, content) {
+        // content is string (text) or array of draw actions (drawing)
+        // Actually for drawing, we might just save the final canvas state or history?
+        // For simplicity, let's assume client sends a dataURL or history.
+        // But wait, `handleCreativeDraw` saves history.
+        // Here, if it's drawing phase, we receive 'draw' events continuously.
+        // So `content` here is likely just a confirmation "I'm done" or the text guess.
+        
+        if (this.telephonePhase === 'DRAWING') {
+            // For drawing, we need to capture what they drew.
+            // We can use `this.playerDrawings` logic or similar.
+            // Let's assume we track drawings in `this.telephonePendingSubmissions` as they come in via `handleDraw`?
+            // No, `handleDraw` broadcasts.
+            // We need a specific `handleTelephoneDraw`.
+            // Or we reuse `handleCreativeDraw` logic but store in `telephonePendingSubmissions`.
+            
+            // Let's say `content` is the history of strokes if sent at end, OR we track it live.
+            // Tracking live is better for spectators/reconnection.
+            // But for simplicity of "submission", let's assume the client sends the full history/image on submit.
+            // Actually, sending full history on submit is safer for "Telephone" where intermediate states don't matter as much as the result passed to next player.
+            
+            this.telephonePendingSubmissions[userId] = {
+                type: 'drawing',
+                content: content, // Array of actions or DataURL? Let's use DataURL for easier display in recap, or History for replaying?
+                                  // DataURL is easier for "Guessing" phase (just show image).
+                                  // History is better if we want to edit? No editing in next phase.
+                                  // Let's use DataURL (image) for the "content" passed to next player.
+                authorId: userId
+            };
+        } else {
+            this.telephonePendingSubmissions[userId] = {
+                type: 'text',
+                content: content, // String
+                authorId: userId
+            };
+        }
+
+        this.checkTelephoneCompletion();
+    }
+
+    checkTelephoneCompletion() {
+        const players = this.room.getPlayers();
+        const submittedCount = Object.keys(this.telephonePendingSubmissions).length;
+        
+        if (submittedCount >= players.length) {
+            this.endTelephoneRound();
+        }
+    }
+
+    endTelephoneRound() {
+        this.clearTimers();
+        
+        const players = this.room.getPlayers();
+        const playerCount = players.length;
+        const submittedCount = Object.keys(this.telephonePendingSubmissions).length;
+
+        // Process submissions
+        players.forEach((player, index) => {
+            const chainOwnerIndex = (index - (this.telephoneRound - 1) + playerCount * 100) % playerCount;
+            const chainOwnerId = players[chainOwnerIndex].id;
+            
+            let submission = this.telephonePendingSubmissions[player.id];
+            
+            // Handle timeout/no submission
+            if (!submission) {
+                submission = {
+                    type: this.telephonePhase === 'WRITING' ? 'text' : 'drawing',
+                    content: this.telephonePhase === 'WRITING' ? '...' : null, // Empty drawing or text
+                    authorId: player.id
+                };
+            }
+
+            this.telephoneChains[chainOwnerId].push(submission);
+        });
+
+        this.io.to(this.room.code).emit('telephoneRoundEnd');
+        
+        setTimeout(() => {
+            this.startTelephoneRound();
+        }, 3000);
+    }
+
+    endTelephoneGame() {
+        this.clearTimers();
+        this.room.setGameState('LOBBY');
+
+        // Prepare recap data
+        // Map ownerId to username for display
+        const recap = [];
+        Object.keys(this.telephoneChains).forEach(ownerId => {
+            const owner = this.room.getUser(ownerId);
+            recap.push({
+                ownerName: owner ? owner.username : 'Inconnu',
+                ownerId: ownerId,
+                chain: this.telephoneChains[ownerId]
+            });
+        });
+
+        this.io.to(this.room.code).emit('telephoneGameEnded', {
+            recap: recap
+        });
+        this.io.to(this.room.code).emit('gameStateChanged', 'LOBBY');
+    }
+
+    handleTelephoneDraw(action) {
+        if (this.telephonePhase !== 'DRAWING') return;
+        if (!this.telephoneDrawings[action.userId]) {
+            this.telephoneDrawings[action.userId] = [];
+        }
+        this.telephoneDrawings[action.userId].push(action);
+
+        // Update Undo Stack
+        if (!this.undoStacks.has(action.userId)) {
+            this.undoStacks.set(action.userId, []);
+        }
+        const stack = this.undoStacks.get(action.userId);
+        if (stack.length === 0 || stack[stack.length - 1] !== action.strokeId) {
+             stack.push(action.strokeId);
+             if (stack.length > 10) {
+                 stack.shift();
+             }
+        }
+        
+        // Emit state
+        this.io.to(action.userId).emit('undoRedoState', { 
+            canUndo: stack.length > 0, 
+            canRedo: false 
+        });
+    }
+
+    handleTelephoneUndo(userId) {
+        if (this.telephonePhase !== 'DRAWING') return;
+        
+        const undoStack = this.undoStacks.get(userId);
+        if (undoStack && undoStack.length > 0) {
+            const lastStrokeId = undoStack.pop();
+
+            if (this.telephoneDrawings[userId]) {
+                // Remove all actions with this strokeId
+                this.telephoneDrawings[userId] = this.telephoneDrawings[userId].filter(action => action.strokeId !== lastStrokeId);
+                
+                // Send back new history
+                this.io.to(userId).emit('telephoneHistory', this.telephoneDrawings[userId]);
+            }
+            
+            this.io.to(userId).emit('undoRedoState', { 
+                canUndo: undoStack.length > 0, 
+                canRedo: false 
+            });
         }
     }
 

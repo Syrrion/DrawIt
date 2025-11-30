@@ -509,4 +509,36 @@
                                         </a>
                                     </div>
                                 </div>
+
+                                <!-- Telephone Write Overlay -->
+                                <div id="telephone-write-overlay" class="telephone-overlay hidden">
+                                    <div id="telephone-content-wrapper" class="telephone-content">
+                                        <h2 id="telephone-prompt-text">Décrivez ce dessin :</h2>
+                                        
+                                        <div class="telephone-timer" style="font-size: 1.5rem; color: var(--primary); font-weight: bold; margin-bottom: 1rem; text-align: center;">
+                                            <i class="fas fa-clock"></i> <span id="telephone-timer-val">--</span>s
+                                        </div>
+
+                                        <div class="telephone-prev-drawing-container">
+                                            <canvas id="telephone-prev-drawing" width="800" height="600" class="hidden"></canvas>
+                                        </div>
+
+                                        <div class="telephone-input-area">
+                                            <textarea id="telephone-input" placeholder="Votre description..." maxlength="100"></textarea>
+                                            <button id="btn-telephone-submit" class="btn-primary">Envoyer</button>
+                                        </div>
+                                    </div>
+                                    <div id="telephone-waiting-msg" class="telephone-content hidden">
+                                        <div class="waiting-message">
+                                            <h3>Réponse envoyée !</h3>
+                                            <p>En attente des autres joueurs...</p>
+                                            <div class="loader" style="margin: 20px auto;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Telephone Finish Draw Button -->
+                                <button id="btn-telephone-finish-draw" class="tracing-finalize-btn hidden">
+                                    <i class="fas fa-check"></i> Terminer le dessin
+                                </button>
 </div>

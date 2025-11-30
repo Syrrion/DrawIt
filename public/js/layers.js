@@ -49,6 +49,7 @@ export class LayerManager {
         if (globalState.currentGameState === 'LOBBY') return true;
         if (globalState.currentGameState === 'PLAYING') {
             if (globalState.settings && globalState.settings.mode === 'creative') return true;
+            if (globalState.settings && globalState.settings.mode === 'telephone') return true;
             return this.socket.id === globalState.currentDrawerId;
         }
         return false;
@@ -337,7 +338,14 @@ export class LayerManager {
                 const [movedLayer] = newLayers.splice(srcIndex, 1);
                 newLayers.splice(targetIndex, 0, movedLayer);
                 
-                this.socket.emit('reorderLayers', { roomCode: this.currentRoomProvider(), layers: newLayers });
+                if (globalState.settings && globalState.settings.mode === 'telephone') {
+                    this.layers.length = 0;
+                    this.layers.push(...newLayers);
+                    this.updateLayersUI();
+                    this.renderCallback();
+                } else {
+                    this.socket.emit('reorderLayers', { roomCode: this.currentRoomProvider(), layers: newLayers });
+                }
             }
         }
         return false;
@@ -360,7 +368,15 @@ export class LayerManager {
     }
 
     renameLayer(layerId, newName) {
-        this.socket.emit('renameLayer', { roomCode: this.currentRoomProvider(), layerId, name: newName });
+        if (globalState.settings && globalState.settings.mode === 'telephone') {
+            const layer = this.layers.find(l => l.id === layerId);
+            if (layer) {
+                layer.name = newName;
+                this.updateLayersUI();
+            }
+        } else {
+            this.socket.emit('renameLayer', { roomCode: this.currentRoomProvider(), layerId, name: newName });
+        }
     }
 
     deleteLayer(layerId) {
@@ -373,7 +389,21 @@ export class LayerManager {
             'Supprimer le calque',
             'Voulez-vous vraiment supprimer ce calque ?',
             () => {
-                this.socket.emit('deleteLayer', { roomCode: this.currentRoomProvider(), layerId });
+                if (globalState.settings && globalState.settings.mode === 'telephone') {
+                    const index = this.layers.findIndex(l => l.id === layerId);
+                    if (index !== -1) {
+                        this.layers.splice(index, 1);
+                        delete this.layerCanvases[layerId];
+                        if (this.activeLayerId === layerId) {
+                            this.activeLayerId = this.layers[this.layers.length - 1].id;
+                            if (this.onActiveLayerChange) this.onActiveLayerChange(this.activeLayerId);
+                        }
+                        this.updateLayersUI();
+                        this.renderCallback();
+                    }
+                } else {
+                    this.socket.emit('deleteLayer', { roomCode: this.currentRoomProvider(), layerId });
+                }
             },
             'Supprimer'
         );
@@ -384,7 +414,15 @@ export class LayerManager {
         if (index < this.layers.length - 1) {
             const newLayers = [...this.layers];
             [newLayers[index], newLayers[index + 1]] = [newLayers[index + 1], newLayers[index]];
-            this.socket.emit('reorderLayers', { roomCode: this.currentRoomProvider(), layers: newLayers });
+            
+            if (globalState.settings && globalState.settings.mode === 'telephone') {
+                this.layers.length = 0;
+                this.layers.push(...newLayers);
+                this.updateLayersUI();
+                this.renderCallback();
+            } else {
+                this.socket.emit('reorderLayers', { roomCode: this.currentRoomProvider(), layers: newLayers });
+            }
         }
     }
 
@@ -393,7 +431,15 @@ export class LayerManager {
         if (index > 0) {
             const newLayers = [...this.layers];
             [newLayers[index], newLayers[index - 1]] = [newLayers[index - 1], newLayers[index]];
-            this.socket.emit('reorderLayers', { roomCode: this.currentRoomProvider(), layers: newLayers });
+            
+            if (globalState.settings && globalState.settings.mode === 'telephone') {
+                this.layers.length = 0;
+                this.layers.push(...newLayers);
+                this.updateLayersUI();
+                this.renderCallback();
+            } else {
+                this.socket.emit('reorderLayers', { roomCode: this.currentRoomProvider(), layers: newLayers });
+            }
         }
     }
 
@@ -409,7 +455,16 @@ export class LayerManager {
             order: this.layers.length,
             creatorId: this.socket.id
         };
-        this.socket.emit('addLayer', { roomCode: this.currentRoomProvider(), layer: newLayer });
+        
+        if (globalState.settings && globalState.settings.mode === 'telephone') {
+            this.layers.push(newLayer);
+            this.createLayerCanvas(newLayer.id);
+            this.updateLayersUI();
+            this.activeLayerId = newLayer.id;
+            if (this.onActiveLayerChange) this.onActiveLayerChange(newLayer.id);
+        } else {
+            this.socket.emit('addLayer', { roomCode: this.currentRoomProvider(), layer: newLayer });
+        }
     }
 
     // Public API

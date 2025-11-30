@@ -8,4 +8,4 @@ export const BASE_DIMENSIONS = {
     height: 600
 };
 
-export const UNDO_HISTORY_SIZE = 10;
+export const UNDO_HISTORY_SIZE = 25;

@@ -19,6 +19,7 @@ import { state } from './state.js';
 import { showToast, generateRandomUsername, copyToClipboard, escapeHtml } from './utils.js';
 import { Modal } from './components/modal.js';
 import { Tabs } from './components/tabs.js';
+import { CANVAS_CONFIG } from './config.js';
 
 export class UIManager {
     constructor(avatarManager, animationSystem, gameSettingsManager, renderCallback, cursorManager, layerManager) {
@@ -531,10 +532,11 @@ export class UIManager {
 
                 if (state.currentGameState !== 'PLAYING') return false;
                 
-                // Check global setting
-                if (state.settings && state.settings.allowTracing === false) return false;
+                // Check global setting (default to true if undefined)
+                const allowTracing = state.settings ? (state.settings.allowTracing !== false) : true;
+                if (!allowTracing) return false;
 
-                if (state.settings && state.settings.mode === 'creative') {
+                if (state.settings && (state.settings.mode === 'creative' || state.settings.mode === 'telephone')) {
                     return true;
                 } else {
                     return state.currentDrawerId === socket.id;
@@ -703,8 +705,11 @@ export class UIManager {
                 const existingCartridge = document.getElementById('tracing-actions-cartridge');
                 if (existingCartridge) existingCartridge.remove();
                 
-                // Reset clipping
-                if (canvasWrapper) canvasWrapper.classList.remove('clipped');
+                // Reset clipping and add model class
+                if (canvasWrapper) {
+                    canvasWrapper.classList.remove('clipped');
+                    canvasWrapper.classList.add('has-model');
+                }
 
                 if (!currentSingleImageUrl) {
                     showToast("Veuillez sélectionner une image d'abord", "warning");
@@ -714,11 +719,20 @@ export class UIManager {
                 // Create Tracing Image
                 if (canvasWrapper) {
                     const img = new Image();
+                    // Add crossOrigin to avoid tainting issues if we were to draw it (though we just display it)
+                    img.crossOrigin = "Anonymous"; 
                     img.src = currentSingleImageUrl;
+
+                    img.onerror = () => {
+                        showToast("Impossible de charger l'image modèle.", "error");
+                        // Clean up if image fails
+                        togglePinMode(false);
+                    };
+
                     img.onload = () => {
                         // Calculate dimensions
-                        const canvasW = canvasWrapper.offsetWidth;
-                        const canvasH = canvasWrapper.offsetHeight;
+                        const canvasW = CANVAS_CONFIG.width;
+                        const canvasH = CANVAS_CONFIG.height;
 
                         const imgRatio = img.width / img.height;
                         const canvasRatio = canvasW / canvasH;
@@ -849,7 +863,10 @@ export class UIManager {
                         tracingCartridge.remove();
                         
                         // Clip overflow
-                        if (canvasWrapper) canvasWrapper.classList.add('clipped');
+                        if (canvasWrapper) {
+                            canvasWrapper.classList.add('clipped');
+                            canvasWrapper.classList.add('has-model');
+                        }
                         
                         showToast('Pose validée. Vous pouvez dessiner par dessus.', 'success');
                     });
@@ -892,8 +909,11 @@ export class UIManager {
                 const tracingCartridge = document.getElementById('tracing-actions-cartridge');
                 if (tracingCartridge) tracingCartridge.remove();
                 
-                // Reset clipping
-                if (canvasWrapper) canvasWrapper.classList.remove('clipped');
+                // Reset clipping and remove model class
+                if (canvasWrapper) {
+                    canvasWrapper.classList.remove('clipped');
+                    canvasWrapper.classList.remove('has-model');
+                }
             }
         };
 
@@ -926,6 +946,12 @@ export class UIManager {
         socket.on('turnStart', cleanupTracing);
         socket.on('roundEnd', cleanupTracing);
         socket.on('gameEnded', cleanupTracing);
+
+        // Creative & Telephone Mode Cleanup
+        socket.on('creativeRoundStart', cleanupTracing);
+        socket.on('creativeRoundEnd', cleanupTracing);
+        socket.on('telephoneRoundStart', cleanupTracing);
+        socket.on('telephoneRoundEnd', cleanupTracing);
     }
 
     setupResizeHandlers(controls, image, aspectRatio) {

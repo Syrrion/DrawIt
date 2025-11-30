@@ -58,8 +58,6 @@ app.get('/api/pixabay', (req, res) => {
 });
 
 io.on('connection', (socket) => {
-    console.log('A user connected:', socket.id);
-
     // Register handlers
     registerRoomHandlers(io, socket);
     registerGameHandlers(io, socket);
@@ -68,5 +66,4 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
 });

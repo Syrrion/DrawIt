@@ -119,7 +119,8 @@ export class PlayerListManager {
 
             const spectatorIcon = u.isSpectator ? '<i class="fas fa-eye" style="margin-right:5px; color:var(--text-dim);" title="Observateur"></i>' : '';
             
-            const score = this.currentScores[u.id] !== undefined && !u.isSpectator 
+            const isTelephone = state.settings && state.settings.mode === 'telephone';
+            const score = this.currentScores[u.id] !== undefined && !u.isSpectator && !isTelephone
                 ? `<div class="player-score-container" style="display: flex; align-items: center; gap: 5px;">
                      ${statusIcon}
                      <div class="player-score">${this.currentScores[u.id]} pts</div>

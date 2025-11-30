@@ -2079,3 +2079,151 @@ canvas {
     background: rgba(236, 72, 153, 0.2) !important;
 }
 
+
+/* Hide DOM Tracing Image (rendered on canvas instead) - REMOVED */
+/* #tracing-image {
+    opacity: 0 !important;
+} */
+
+
+/* Telephone Mode Styles */
+.telephone-overlay {
+ position: absolute;
+ top: 0;
+ left: 0;
+ width: 100%;
+ height: 100%;
+ background: rgba(18, 18, 24, 0.95);
+ z-index: 100;
+ display: flex;
+ align-items: center;
+ justify-content: center;
+ backdrop-filter: blur(10px);
+}
+
+.telephone-content {
+ background: var(--bg-glass-strong);
+ border: 1px solid var(--border-color);
+ border-radius: var(--radius-lg);
+ padding: 2rem;
+ width: 90%;
+ max-width: 600px;
+ text-align: center;
+ box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.telephone-prev-drawing-container {
+ background: white;
+ border-radius: 8px;
+ overflow: hidden;
+ margin: 1rem auto;
+ max-width: 100%;
+ box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+#telephone-prev-drawing {
+ width: 100%;
+ height: auto;
+ display: block;
+}
+
+.telephone-input-area {
+ display: flex;
+ flex-direction: column;
+ gap: 1rem;
+ margin-top: 1.5rem;
+}
+
+#telephone-input {
+ width: 100%;
+ padding: 1rem;
+ background: rgba(0, 0, 0, 0.3);
+ border: 1px solid var(--border-color);
+ border-radius: var(--radius-md);
+ color: white;
+ font-size: 1.1rem;
+ resize: none;
+ height: 100px;
+}
+
+#telephone-input:focus {
+ border-color: var(--primary);
+ outline: none;
+ box-shadow: 0 0 0 2px var(--primary-glow);
+}
+
+/* Recap Styles */
+.telephone-chain {
+ background: rgba(255, 255, 255, 0.03);
+ border: 1px solid rgba(255, 255, 255, 0.05);
+ border-radius: var(--radius-md);
+ padding: 1.5rem;
+}
+
+.telephone-chain h3 {
+ color: var(--primary);
+ margin-bottom: 1rem;
+ font-size: 1.1rem;
+ border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+ padding-bottom: 0.5rem;
+}
+
+.chain-steps {
+ display: flex;
+ flex-wrap: wrap;
+ gap: 1rem;
+ align-items: center;
+}
+
+.chain-step {
+ background: rgba(0, 0, 0, 0.2);
+ border-radius: 8px;
+ padding: 0.8rem;
+ min-width: 150px;
+ max-width: 200px;
+ position: relative;
+}
+
+.step-author {
+ display: block;
+ font-size: 0.8rem;
+ color: var(--text-dim);
+ margin-bottom: 0.5rem;
+ font-weight: bold;
+}
+
+.step-text {
+ font-size: 1rem;
+ color: white;
+ font-style: italic;
+}
+
+.step-image {
+ width: 100%;
+ border-radius: 4px;
+ border: 1px solid rgba(255, 255, 255, 0.1);
+ background: white;
+}
+
+.step-arrow {
+ color: var(--text-dim);
+ font-size: 1.2rem;
+}
+
+
+/* Fix for Model Visibility */
+.canvas-wrapper.has-model canvas {
+    background: transparent !important;
+}
+
+.canvas-wrapper.has-model {
+    background: white; /* Ensure background for the image */
+}
+
+
+/* Fix for Canvas Wrapper Shrinking */
+.canvas-wrapper {
+    flex-shrink: 0;
+    min-width: min-content;
+    min-height: min-content;
+}

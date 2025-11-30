@@ -53,7 +53,6 @@ module.exports = (io, socket) => {
             }
         }
 
-        console.log(`Chat in ${roomCode} from ${username}: ${message}`);
         io.to(roomCode).emit('chatMessage', { username, message });
     });
 
@@ -128,6 +127,22 @@ module.exports = (io, socket) => {
              if (room.game && room.game.subscribeSpectator) {
                  room.game.subscribeSpectator(socket.id, targetId);
              }
+        }
+    });
+
+    socket.on('telephoneSubmit', ({ roomCode, content }) => {
+        const room = rooms[roomCode];
+        if (room && room.gameState === 'PLAYING' && room.settings.mode === 'telephone') {
+            if (room.game && room.game.handleTelephoneSubmission) {
+                room.game.handleTelephoneSubmission(socket.id, content);
+            }
+        }
+    });
+
+    socket.on('telephoneRecapNavigate', ({ roomCode, direction }) => {
+        const room = rooms[roomCode];
+        if (room && room.leaderId === socket.id) {
+            io.to(roomCode).emit('telephoneRecapUpdate', { direction });
         }
     });
 };

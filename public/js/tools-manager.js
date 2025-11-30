@@ -34,6 +34,21 @@ export class ToolsManager {
             triangle: 30 * scaleFactor,
             line: 30 * scaleFactor
         };
+
+        this.toolOpacities = {
+            pen: 1,
+            airbrush: 1,
+            eraser: 1,
+            fill: 1,
+            smudge: 0.75,
+            pipette: 1,
+            selection: 1,
+            rectangle: 1,
+            circle: 1,
+            triangle: 1,
+            line: 1
+        };
+
         this.init();
     }
 
@@ -92,6 +107,9 @@ export class ToolsManager {
 
         if (penOpacityInput) {
             penOpacityInput.addEventListener('input', () => {
+                if (this.toolOpacities[state.currentTool] !== undefined) {
+                    this.toolOpacities[state.currentTool] = parseFloat(penOpacityInput.value);
+                }
                 this.updateSliderBackground(penOpacityInput);
             });
         }
@@ -343,6 +361,12 @@ export class ToolsManager {
         if (this.toolSizes[state.currentTool]) {
             penSizeInput.value = this.toolSizes[state.currentTool];
             this.updateSliderBackground(penSizeInput);
+        }
+
+        // Restore tool opacity
+        if (this.toolOpacities[state.currentTool] !== undefined && penOpacityInput) {
+            penOpacityInput.value = this.toolOpacities[state.currentTool];
+            this.updateSliderBackground(penOpacityInput);
         }
 
         // Disable sliders for specific tools

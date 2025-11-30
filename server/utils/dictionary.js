@@ -10,7 +10,6 @@ function loadDictionary(basePath) {
             .split('\n')
             .map(w => w.trim())
             .filter(w => w.length > 0);
-        console.log(`Dictionary loaded: ${dictionary.length} words`);
     } catch (err) {
         console.error('Error loading dictionary:', err);
         dictionary = ['POMME', 'MAISON', 'CHAT', 'CHIEN']; // Fallback

@@ -27,6 +27,12 @@
                             <h4>Mode Créatif</h4>
                         </div>
                     </div>
+                    <div class="gamemode-card" data-mode="telephone" data-tooltip="Téléphone arabe dessiné : écrivez, dessinez, devinez en chaîne !">
+                        <div class="card-icon"><i class="fas fa-phone-alt"></i></div>
+                        <div class="card-info">
+                            <h4>Téléphone Dessiné</h4>
+                        </div>
+                    </div>
                 </div>
             </div>
             
@@ -71,6 +77,19 @@
                         <div class="setting-group">
                             <label>Tours <i class="fas fa-info-circle setting-info" data-tooltip="Le nombre de manches jouées."></i></label>
                             <input type="number" id="setting-creative-rounds" value="3" min="1" max="10">
+                        </div>
+                    </div>
+                </div>
+
+                <div id="settings-telephone" class="mode-settings hidden">
+                    <div class="settings-grid compact-grid">
+                        <div class="setting-group">
+                            <label>Temps d'écriture <i class="fas fa-info-circle setting-info" data-tooltip="La durée (en secondes) pour écrire une phrase ou deviner."></i></label>
+                            <input type="number" id="setting-telephone-writetime" value="30" min="15" max="120">
+                        </div>
+                        <div class="setting-group">
+                            <label>Temps de dessin <i class="fas fa-info-circle setting-info" data-tooltip="La durée (en secondes) pour réaliser le dessin."></i></label>
+                            <input type="number" id="setting-telephone-drawtime" value="60" min="30" max="300">
                         </div>
                     </div>
                 </div>

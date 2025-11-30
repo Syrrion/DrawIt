@@ -58,7 +58,7 @@ export function performDraw(targetCtx, x0, y0, x1, y1, color, size, opacity, too
         
         const dist = Math.sqrt((x1 - x0) ** 2 + (y1 - y0) ** 2);
         // Smoother steps for better finesse
-        const step = Math.max(1, effectiveSize / 8); 
+        const step = Math.max(1, effectiveSize / 6); 
         const steps = Math.ceil(dist / step);
         const r = effectiveSize / 2;
 
@@ -71,9 +71,10 @@ export function performDraw(targetCtx, x0, y0, x1, y1, color, size, opacity, too
             maskCanvas.height = canvasSize;
 
             // Pre-calculate gradient for soft round brush on maskCanvas
+            // Use black to avoid potential color bleeding from white in some blending modes
             const grad = maskCtx.createRadialGradient(r, r, 0, r, r, r);
-            grad.addColorStop(0, 'rgba(255,255,255,1)');
-            grad.addColorStop(1, 'rgba(255,255,255,0)');
+            grad.addColorStop(0, 'rgba(0,0,0,1)');
+            grad.addColorStop(1, 'rgba(0,0,0,0)');
 
             maskCtx.clearRect(0, 0, canvasSize, canvasSize);
             maskCtx.fillStyle = grad;
@@ -89,12 +90,11 @@ export function performDraw(targetCtx, x0, y0, x1, y1, color, size, opacity, too
             const currY = y0 + (y1 - y0) * t;
 
             // 1. Copy source (from prev position) to temp canvas
-            smudgeCtx.globalCompositeOperation = 'source-over';
-            smudgeCtx.clearRect(0, 0, canvasSize, canvasSize);
-            // Use integer coordinates to avoid interpolation with transparent black
+            smudgeCtx.globalCompositeOperation = 'copy';
+            // Use round to snap to nearest pixel center
             smudgeCtx.drawImage(
                 targetCtx.canvas,
-                Math.floor(prevX - r), Math.floor(prevY - r), effectiveSize, effectiveSize,
+                Math.round(prevX - r), Math.round(prevY - r), effectiveSize, effectiveSize,
                 0, 0, effectiveSize, effectiveSize
             );
 
@@ -102,15 +102,11 @@ export function performDraw(targetCtx, x0, y0, x1, y1, color, size, opacity, too
             smudgeCtx.globalCompositeOperation = 'destination-in';
             smudgeCtx.drawImage(maskCanvas, 0, 0);
 
-            // 3. Erase destination (Make room for new paint - simulates dragging transparency)
-            targetCtx.globalCompositeOperation = 'destination-out';
-            targetCtx.globalAlpha = opacity * 0.9;
-            targetCtx.drawImage(maskCanvas, Math.floor(currX - r), Math.floor(currY - r));
-
-            // 4. Draw to destination
-            targetCtx.globalCompositeOperation = 'lighter';
-            targetCtx.globalAlpha = opacity * 0.9;
-            targetCtx.drawImage(smudgeCanvas, Math.floor(currX - r), Math.floor(currY - r));
+            // 3. Draw to destination
+            targetCtx.globalCompositeOperation = 'source-over';
+            targetCtx.globalAlpha = opacity;
+            targetCtx.drawImage(smudgeCanvas, Math.round(currX - r), Math.round(currY - r));
+            
             targetCtx.globalAlpha = 1;
             targetCtx.globalCompositeOperation = 'source-over';
 

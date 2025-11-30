@@ -2,6 +2,7 @@ import { socket, gameTopBar, wordChoiceModal, wordChoicesContainer, timerValue, 
 import { state } from '../state.js';
 import { showToast, playTickSound } from '../utils.js';
 import { performDraw, performFloodFill } from '../draw.js';
+import { CANVAS_CONFIG } from '../config.js';
 
 export class GameHandler {
     constructor(managers) {
@@ -48,6 +49,13 @@ export class GameHandler {
         socket.on('votingAllDone', this.handleVotingAllDone.bind(this));
         socket.on('creativeRoundEnd', this.handleCreativeRoundEnd.bind(this));
         socket.on('creativeHistory', this.handleCreativeHistory.bind(this));
+
+        // Telephone Mode Events
+        socket.on('telephoneRoundStart', this.handleTelephoneRoundStart.bind(this));
+        socket.on('telephoneRoundEnd', this.handleTelephoneRoundEnd.bind(this));
+        socket.on('telephoneGameEnded', this.handleTelephoneGameEnded.bind(this));
+        socket.on('telephoneRecapUpdate', this.handleTelephoneRecapUpdate.bind(this));
+        socket.on('telephoneHistory', this.handleTelephoneHistory.bind(this));
 
         if (btnUseHint) {
             btnUseHint.addEventListener('click', () => {
@@ -108,6 +116,46 @@ export class GameHandler {
     handleGameStateChanged(stateVal) {
         state.currentGameState = stateVal;
         this.layerManager.updateLayersUI();
+
+        if (stateVal === 'LOBBY') {
+            // Reset layers and clear canvas
+            if (this.layerManager) {
+                // Reset to default layer
+                const defaultLayer = {
+                    id: 'layer-1',
+                    name: 'Calque 1',
+                    order: 0,
+                    creatorId: null
+                };
+                
+                state.layers.length = 0;
+                state.layers.push(defaultLayer);
+                
+                // Clear and re-init canvases
+                Object.keys(state.layerCanvases).forEach(key => delete state.layerCanvases[key]);
+                this.layerManager.createLayerCanvas(defaultLayer.id);
+                
+                // Force update active layer ID and UI
+                state.activeLayerId = defaultLayer.id;
+                this.layerManager.setActiveLayerId(defaultLayer.id);
+                
+                // Reset player position to default layer
+                this.layerManager.updatePlayerLayer(socket.id, defaultLayer.id);
+                
+                this.layerManager.updateLayersUI();
+                this.layerManager.renderCallback();
+                
+                // Ensure the UI reflects the active state
+                setTimeout(() => {
+                    this.layerManager.updateLayersUI();
+                }, 50);
+            }
+            
+            // Clear cursors
+            if (this.cursorManager) {
+                this.cursorManager.clearCursors();
+            }
+        }
     }
 
     handleRoomJoined(data) {
@@ -163,6 +211,7 @@ export class GameHandler {
         }
 
         if (drawerNameDisplay) {
+            drawerNameDisplay.classList.remove('hidden');
             const drawer = this.playerListManager.getPlayer(data.drawerId);
             const drawerName = drawer ? drawer.username : 'Un joueur';
             drawerNameDisplay.innerHTML = `C'est au tour de <strong>${drawerName}</strong>`;
@@ -293,6 +342,7 @@ export class GameHandler {
 
         if (state.currentDrawerName) {
             if (drawerNameDisplay) {
+                drawerNameDisplay.classList.remove('hidden');
                 drawerNameDisplay.innerHTML = `C'est au tour de <strong>${state.currentDrawerName}</strong>`;
             }
         }
@@ -325,6 +375,7 @@ export class GameHandler {
         roundTotal.textContent = data.totalRounds;
 
         if (drawerNameDisplay) {
+            drawerNameDisplay.classList.remove('hidden');
             drawerNameDisplay.innerHTML = `C'est au tour de <strong>${data.drawerName}</strong>`;
         }
 
@@ -528,14 +579,22 @@ export class GameHandler {
             allowFuzzy: (v) => v ? 'Accents Cool' : 'Accents Stricts',
             hintsEnabled: (v) => v ? 'Indices Auto' : 'Sans Indices Auto',
             maxWordLength: (v) => `Max ${v} lettres`,
-            personalHints: (v) => `${v} Indices Perso`
+            personalHints: (v) => `${v} Indices Perso`,
+            writeTime: (v) => `${v}s Écriture`,
+            allowTracing: (v) => v ? 'Modèles autorisés' : 'Modèles interdits',
+            anonymousVoting: (v) => v ? 'Votes cachés' : 'Votes publics'
         };
 
         const ignoredKeys = ['mode'];
-        if (settings.mode === 'guess-word') ignoredKeys.push('maxWordLength');
-        if (settings.mode === 'custom-word') ignoredKeys.push('wordChoices');
-        if (settings.mode === 'creative') {
-            ignoredKeys.push('wordChoiceTime', 'wordChoices', 'allowFuzzy', 'hintsEnabled', 'personalHints', 'maxWordLength');
+        
+        if (settings.mode === 'guess-word') {
+            ignoredKeys.push('maxWordLength', 'writeTime', 'anonymousVoting');
+        } else if (settings.mode === 'custom-word') {
+            ignoredKeys.push('wordChoices', 'writeTime', 'anonymousVoting');
+        } else if (settings.mode === 'creative') {
+            ignoredKeys.push('wordChoiceTime', 'wordChoices', 'allowFuzzy', 'hintsEnabled', 'personalHints', 'maxWordLength', 'writeTime');
+        } else if (settings.mode === 'telephone') {
+            ignoredKeys.push('wordChoiceTime', 'wordChoices', 'allowFuzzy', 'hintsEnabled', 'personalHints', 'maxWordLength', 'rounds', 'anonymousVoting');
         }
         
         if (settings.hintsEnabled) ignoredKeys.push('personalHints');
@@ -556,7 +615,8 @@ export class GameHandler {
         const modeLabels = {
             'guess-word': 'Devine le dessin',
             'custom-word': 'Mot personnalisé',
-            'creative': 'Mode Créatif'
+            'creative': 'Mode Créatif',
+            'telephone': 'Téléphone Dessiné'
         };
 
         const modeLabel = modeLabels[data.settings.mode] || data.settings.mode;
@@ -732,6 +792,9 @@ export class GameHandler {
         roundCurrent.textContent = data.roundIndex;
         roundTotal.textContent = data.totalRounds;
         
+        // Hide Drawer Name Display in Creative Mode
+        if (drawerNameDisplay) drawerNameDisplay.classList.add('hidden');
+        
         // Clear canvas & cursors
         this.cursorManager.clearCursors();
         
@@ -824,12 +887,12 @@ export class GameHandler {
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
 
+        // Calculate scale based on canvas size vs original config size
+        const scaleX = ctx.canvas.width / CANVAS_CONFIG.width;
+        const scaleY = ctx.canvas.height / CANVAS_CONFIG.height;
+
         actions.forEach(action => {
             if (action.tool === 'fill') {
-                // Calculate scale based on canvas size vs original 800x600
-                const scaleX = ctx.canvas.width / 800;
-                const scaleY = ctx.canvas.height / 600;
-                
                 performFloodFill(
                     ctx, 
                     ctx.canvas.width, 
@@ -839,7 +902,17 @@ export class GameHandler {
                     action.color
                 );
             } else {
-                performDraw(ctx, action.x0, action.y0, action.x1, action.y1, action.color, action.size, action.opacity, action.tool);
+                performDraw(
+                    ctx, 
+                    action.x0 * scaleX, 
+                    action.y0 * scaleY, 
+                    action.x1 * scaleX, 
+                    action.y1 * scaleY, 
+                    action.color, 
+                    action.size * scaleX, 
+                    action.opacity, 
+                    action.tool
+                );
             }
         });
     }
@@ -873,8 +946,8 @@ export class GameHandler {
             card.style.gap = '10px';
 
             const cvs = document.createElement('canvas');
-            cvs.width = 800;
-            cvs.height = 600;
+            cvs.width = CANVAS_CONFIG.width;
+            cvs.height = CANVAS_CONFIG.height;
             cvs.style.width = '100%';
             cvs.style.background = 'white';
             cvs.style.borderRadius = '4px';
@@ -1048,8 +1121,8 @@ export class GameHandler {
                 thumbWrapper.style.boxShadow = '0 4px 10px rgba(0,0,0,0.3)';
                 
                 const cvs = document.createElement('canvas');
-                cvs.width = 800;
-                cvs.height = 600;
+                cvs.width = CANVAS_CONFIG.width;
+                cvs.height = CANVAS_CONFIG.height;
                 cvs.style.width = '100%';
                 cvs.style.height = '100%';
                 
@@ -1146,6 +1219,541 @@ export class GameHandler {
     }
 
     handleCreativeHistory(actions) {
+        // Clear all layers
+        const canvases = this.layerManager.getLayerCanvases();
+        Object.values(canvases).forEach(c => {
+            c.ctx.clearRect(0, 0, c.canvas.width, c.canvas.height);
+        });
+
+        // Replay all actions on correct layers
+        actions.forEach(action => {
+            const layerId = action.layerId || this.layerManager.getActiveLayerId();
+            const layer = canvases[layerId];
+            
+            if (layer) {
+                const ctx = layer.ctx;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+
+                if (action.tool === 'fill') {
+                    performFloodFill(
+                        ctx, 
+                        ctx.canvas.width, 
+                        ctx.canvas.height, 
+                        action.x0, 
+                        action.y0, 
+                        action.color
+                    );
+                } else {
+                    performDraw(ctx, action.x0, action.y0, action.x1, action.y1, action.color, action.size, action.opacity, action.tool);
+                }
+            }
+        });
+
+        if (this.layerManager.renderCallback) {
+            this.layerManager.renderCallback();
+        }
+    }
+
+    handleTelephoneRoundStart(data) {
+        // Hide previous overlays
+        const overlay = document.getElementById('telephone-write-overlay');
+        const contentWrapper = document.getElementById('telephone-content-wrapper');
+        const waitingMsg = document.getElementById('telephone-waiting-msg');
+        
+        overlay.classList.add('hidden');
+        document.getElementById('telephone-guess-overlay')?.classList.add('hidden'); // Cleanup if exists
+        gameTopBar.classList.remove('hidden');
+        
+        // Hide Drawer Name Display in Telephone Mode
+        if (drawerNameDisplay) drawerNameDisplay.classList.add('hidden');
+
+        // Reset Waiting State
+        contentWrapper.classList.remove('hidden');
+        waitingMsg.classList.add('hidden');
+
+        // Reset Layers if Drawing Phase
+        if (data.phase !== 'WRITING') {
+            // Clear canvas
+            this.cursorManager.clearCursors();
+            const canvases = this.layerManager.getLayerCanvases();
+            Object.values(canvases).forEach(c => {
+                c.ctx.clearRect(0, 0, c.canvas.width, c.canvas.height);
+            });
+            
+            // Reset layers to default (1 layer)
+            // Since we are in telephone mode, we manage layers locally.
+            // We should reset state.layers to a single layer.
+            const defaultLayer = {
+                id: 'layer-' + Date.now(),
+                name: 'Calque 1',
+                order: 0,
+                creatorId: socket.id
+            };
+            
+            // We need to access state.layers. 
+            // Since we are in GameHandler, we imported state.
+            state.layers.length = 0;
+            state.layers.push(defaultLayer);
+            
+            // Re-init canvases
+            // Clear old canvases from state.layerCanvases
+            Object.keys(state.layerCanvases).forEach(key => delete state.layerCanvases[key]);
+            
+            this.layerManager.createLayerCanvas(defaultLayer.id);
+            this.layerManager.setActiveLayerId(defaultLayer.id);
+            if (this.layerManager.onActiveLayerChange) this.layerManager.onActiveLayerChange(defaultLayer.id);
+            this.layerManager.updateLayersUI();
+            this.layerManager.renderCallback();
+        }
+
+        // Update Top Bar
+        roundCurrent.textContent = data.round;
+        roundTotal.textContent = data.totalRounds;
+        if (timerValue) timerValue.textContent = data.duration;
+
+        const submitResponse = () => {
+            if (data.phase === 'WRITING') {
+                const input = document.getElementById('telephone-input');
+                const text = input.value.trim() || '...'; // Default if empty
+                socket.emit('telephoneSubmit', { roomCode: state.currentRoom, content: text });
+                contentWrapper.classList.add('hidden');
+                waitingMsg.classList.remove('hidden');
+            } else {
+                // Capture canvas
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = CANVAS_CONFIG.width;
+                tempCanvas.height = CANVAS_CONFIG.height;
+                const tCtx = tempCanvas.getContext('2d');
+                tCtx.fillStyle = 'white';
+                tCtx.fillRect(0, 0, CANVAS_CONFIG.width, CANVAS_CONFIG.height);
+                
+                const layers = this.layerManager.getLayerCanvases();
+                state.layers.forEach(l => {
+                    const layerObj = layers[l.id];
+                    if (layerObj && layerObj.visible) {
+                        tCtx.drawImage(layerObj.canvas, 0, 0);
+                    }
+                });
+                
+                const dataURL = tempCanvas.toDataURL('image/jpeg', 0.8);
+                socket.emit('telephoneSubmit', { roomCode: state.currentRoom, content: dataURL });
+                
+                // Show waiting overlay
+                overlay.classList.remove('hidden');
+                contentWrapper.classList.add('hidden');
+                waitingMsg.classList.remove('hidden');
+            }
+        };
+
+        // Start Timer
+        if (this.currentTimerInterval) clearInterval(this.currentTimerInterval);
+        const telephoneTimerVal = document.getElementById('telephone-timer-val');
+        
+        this.currentTimerInterval = this.startSmartTimer(data.duration, (remaining) => {
+            if (timerValue) timerValue.textContent = remaining;
+            if (telephoneTimerVal) telephoneTimerVal.textContent = remaining;
+            if (remaining <= 10 && remaining > 0) playTickSound();
+        }, () => {
+            // Auto-submit on timeout
+            submitResponse();
+        });
+
+        if (data.phase === 'WRITING') {
+            // Show Writing Overlay
+            const input = document.getElementById('telephone-input');
+            const prevDrawing = document.getElementById('telephone-prev-drawing');
+            const promptText = document.getElementById('telephone-prompt-text');
+            const btnSubmit = document.getElementById('btn-telephone-submit');
+
+            overlay.classList.remove('hidden');
+            input.value = '';
+            input.focus();
+            
+            // If Round 1, no previous step
+            if (data.round === 1) {
+                prevDrawing.classList.add('hidden');
+                promptText.textContent = "Inventez une phrase de départ !";
+            } else {
+                // Previous step was a drawing
+                prevDrawing.classList.remove('hidden');
+                promptText.textContent = "Décrivez ce dessin :";
+                
+                // Display previous drawing
+                const ctx = prevDrawing.getContext('2d');
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, prevDrawing.width, prevDrawing.height);
+                
+                // Replay drawing history or load image
+                if (Array.isArray(data.previousStep.content)) {
+                    this.replayDrawing(ctx, data.previousStep.content);
+                } else {
+                    // DataURL
+                    const img = new Image();
+                    img.onload = () => ctx.drawImage(img, 0, 0, prevDrawing.width, prevDrawing.height);
+                    img.src = data.previousStep.content;
+                }
+            }
+
+            btnSubmit.onclick = () => {
+                const text = input.value.trim();
+                if (text) {
+                    socket.emit('telephoneSubmit', { roomCode: state.currentRoom, content: text });
+                    contentWrapper.classList.add('hidden');
+                    waitingMsg.classList.remove('hidden');
+                } else {
+                    showToast('Écrivez quelque chose !', 'error');
+                }
+            };
+
+        } else {
+            // DRAWING PHASE
+            // Show Drawing UI (normal game UI) but with prompt
+            
+            // Clear canvas
+            this.cursorManager.clearCursors();
+            const canvases = this.layerManager.getLayerCanvases();
+            Object.values(canvases).forEach(c => {
+                c.ctx.clearRect(0, 0, c.canvas.width, c.canvas.height);
+            });
+            this.layerManager.renderCallback();
+
+            wordDisplay.textContent = data.previousStep.content; // The text to draw
+            wordDisplay.style.color = 'var(--primary)';
+            
+            showToast(`À vous de dessiner : ${data.previousStep.content}`, 'info');
+
+            // Hide finish button if it exists (user requested removal)
+            const finishBtn = document.getElementById('btn-telephone-finish-draw');
+            if (finishBtn) finishBtn.classList.add('hidden');
+        }
+    }
+
+    handleTelephoneRoundEnd() {
+        // Just a transition state, maybe show a spinner
+        if (this.currentTimerInterval) clearInterval(this.currentTimerInterval);
+    }
+
+    handleTelephoneGameEnded(data) {
+        // Show Recap
+        document.getElementById('telephone-write-overlay').classList.add('hidden');
+        const finishBtn = document.getElementById('btn-telephone-finish-draw');
+        if (finishBtn) finishBtn.classList.add('hidden');
+        
+        gameTopBar.classList.add('hidden');
+        
+        const modal = document.getElementById('telephone-recap-modal');
+        const container = document.getElementById('telephone-recap-container');
+        
+        // Hide close buttons initially
+        const closeBtns = modal.querySelectorAll('.close-btn, .modal-footer button');
+        closeBtns.forEach(btn => btn.classList.add('hidden'));
+
+        modal.classList.remove('hidden');
+        container.innerHTML = '';
+
+        // Cleanup function
+        const cleanup = () => {
+            modal.classList.add('hidden');
+            // Clear canvas
+            const canvases = this.layerManager.getLayerCanvases();
+            Object.values(canvases).forEach(c => {
+                c.ctx.clearRect(0, 0, c.canvas.width, c.canvas.height);
+            });
+            this.layerManager.renderCallback();
+            gameTopBar.classList.add('hidden');
+        };
+
+        // Attach cleanup to close buttons
+        closeBtns.forEach(btn => {
+            btn.onclick = cleanup;
+        });
+
+        // Store recap data for navigation
+        this.telephoneRecapData = data.recap;
+        
+        // State tracking
+        this.recapProgress = {
+            storyIndex: 0,
+            stepIndex: 0 // Start with first step (prompt) revealed
+        };
+        
+        this.activeRecapTab = 0; // Currently viewed story index
+
+        // Build Layout Structure
+        this.buildRecapLayout(container);
+
+        // Render initial view
+        this.renderTelephoneRecap();
+    }
+
+    buildRecapLayout(container) {
+        container.innerHTML = '';
+        container.style.padding = '0';
+        
+        // Sidebar
+        const sidebar = document.createElement('div');
+        sidebar.className = 'recap-sidebar';
+        sidebar.id = 'recap-sidebar';
+        
+        const sidebarTitle = document.createElement('h3');
+        sidebarTitle.textContent = 'Histoires';
+        sidebar.appendChild(sidebarTitle);
+        
+        const tabsContainer = document.createElement('div');
+        tabsContainer.id = 'recap-tabs-container';
+        tabsContainer.style.display = 'flex';
+        tabsContainer.style.flexDirection = 'column';
+        tabsContainer.style.gap = '0.5rem';
+        sidebar.appendChild(tabsContainer);
+        
+        container.appendChild(sidebar);
+
+        // Main Area
+        const main = document.createElement('div');
+        main.className = 'recap-main';
+        
+        // Header
+        const header = document.createElement('div');
+        header.className = 'recap-header';
+        const title = document.createElement('h2');
+        title.id = 'recap-story-title';
+        header.appendChild(title);
+        main.appendChild(header);
+
+        // Timeline
+        const timeline = document.createElement('div');
+        timeline.className = 'recap-timeline-container';
+        timeline.id = 'recap-timeline';
+        main.appendChild(timeline);
+
+        // Controls Container (for everyone)
+        const controls = document.createElement('div');
+        controls.className = 'recap-controls';
+        controls.id = 'recap-controls';
+        main.appendChild(controls);
+
+        // Leader Controls
+        if (state.leaderId === socket.id) {
+            const btnNext = document.createElement('button');
+            btnNext.className = 'btn-primary';
+            btnNext.id = 'recap-btn-next';
+            btnNext.textContent = 'Suite';
+            btnNext.onclick = () => {
+                socket.emit('telephoneRecapNavigate', { roomCode: state.currentRoom, direction: 'next' });
+            };
+            controls.appendChild(btnNext);
+        }
+
+        container.appendChild(main);
+    }
+
+    handleTelephoneRecapUpdate(data) {
+        if (data.direction === 'next') {
+            const currentChain = this.telephoneRecapData[this.recapProgress.storyIndex];
+            
+            if (this.recapProgress.stepIndex < currentChain.chain.length - 1) {
+                // Next Step
+                this.recapProgress.stepIndex++;
+            } else {
+                // Next Story
+                if (this.recapProgress.storyIndex < this.telephoneRecapData.length - 1) {
+                    this.recapProgress.storyIndex++;
+                    this.recapProgress.stepIndex = 0;
+                    this.activeRecapTab = this.recapProgress.storyIndex; // Auto-switch
+                } else {
+                    showToast('Fin du récapitulatif', 'info');
+                    return;
+                }
+            }
+        }
+        this.renderTelephoneRecap();
+    }
+
+    renderTelephoneRecap() {
+        // 1. Update Tabs
+        const tabsContainer = document.getElementById('recap-tabs-container');
+        tabsContainer.innerHTML = '';
+        
+        this.telephoneRecapData.forEach((chain, idx) => {
+            // Only show tabs for revealed stories
+            if (idx > this.recapProgress.storyIndex) return;
+
+            const tab = document.createElement('div');
+            tab.className = `recap-tab ${idx === this.activeRecapTab ? 'active' : ''}`;
+            
+            const owner = this.playerListManager.getPlayer(chain.ownerId);
+            const ownerName = owner ? owner.username : chain.ownerName;
+            
+            // Avatar
+            let avatarHtml = '';
+            if (owner) {
+                if (owner.avatar && owner.avatar.type === 'image') {
+                    avatarHtml = `<img src="${owner.avatar.value}" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover;">`;
+                } else {
+                    const color = (owner.avatar && owner.avatar.color) || '#3498db';
+                    const emoji = (owner.avatar && owner.avatar.emoji) || '🎨';
+                    avatarHtml = `<div style="background-color: ${color}; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; font-size: 14px;">${emoji}</div>`;
+                }
+            }
+
+            tab.innerHTML = `${avatarHtml} <span>${ownerName}</span>`;
+            tab.onclick = () => {
+                this.activeRecapTab = idx;
+                this.renderTelephoneRecap(); // Re-render view
+            };
+            tabsContainer.appendChild(tab);
+        });
+
+        // 2. Update Main Content
+        const chainData = this.telephoneRecapData[this.activeRecapTab];
+        if (!chainData) {
+            console.error('No chain data for tab', this.activeRecapTab);
+            return;
+        }
+
+        const title = document.getElementById('recap-story-title');
+        title.textContent = `Histoire de ${chainData.ownerName}`;
+
+        const timeline = document.getElementById('recap-timeline');
+        // We clear and rebuild to ensure correct order and state, 
+        // but we could optimize to append if it's the same story.
+        // For simplicity and correctness, rebuild.
+        timeline.innerHTML = '';
+
+        // Determine how many steps to show
+        // If viewing a previous story (fully revealed), show all.
+        // If viewing current story, show up to progress.
+        let maxStep = chainData.chain.length - 1;
+        if (this.activeRecapTab === this.recapProgress.storyIndex) {
+            maxStep = this.recapProgress.stepIndex;
+        }
+
+        for (let i = 0; i <= maxStep; i++) {
+            const step = chainData.chain[i];
+            if (!step) {
+                console.warn('Step undefined at index', i);
+                continue;
+            }
+
+            const stepDiv = document.createElement('div');
+            stepDiv.className = `recap-step ${step.type === 'text' ? 'text-step' : ''}`;
+
+            // Author
+            const author = this.playerListManager.getPlayer(step.authorId);
+            const authorName = author ? author.username : '???';
+            
+            let avatarHtml = '';
+            if (author) {
+                if (author.avatar && author.avatar.type === 'image') {
+                    avatarHtml = `<img src="${author.avatar.value}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">`;
+                } else {
+                    const color = (author.avatar && author.avatar.color) || '#3498db';
+                    const emoji = (author.avatar && author.avatar.emoji) || '🎨';
+                    avatarHtml = `<div style="background-color: ${color}; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; font-size: 16px;">${emoji}</div>`;
+                }
+            }
+
+            const authorDiv = document.createElement('div');
+            authorDiv.className = 'recap-author';
+            authorDiv.innerHTML = `${avatarHtml} ${authorName}`;
+            stepDiv.appendChild(authorDiv);
+
+            // Content
+            if (step.type === 'text') {
+                const p = document.createElement('div');
+                p.className = 'recap-content-text';
+                p.textContent = step.content;
+                stepDiv.appendChild(p);
+            } else {
+                if (step.content && step.content.length > 50) { // Basic check for valid dataURL
+                    const img = document.createElement('img');
+                    img.className = 'recap-content-image';
+                    img.src = step.content;
+                    stepDiv.appendChild(img);
+                } else {
+                    // Empty or invalid drawing
+                    const emptyDiv = document.createElement('div');
+                    emptyDiv.className = 'recap-content-image empty';
+                    emptyDiv.style.backgroundColor = 'white';
+                    emptyDiv.style.display = 'flex';
+                    emptyDiv.style.alignItems = 'center';
+                    emptyDiv.style.justifyContent = 'center';
+                    emptyDiv.innerHTML = '<i class="fas fa-ban" style="color: #ccc; font-size: 2rem;"></i>';
+                    stepDiv.appendChild(emptyDiv);
+                }
+            }
+
+            timeline.appendChild(stepDiv);
+        }
+
+        // End of Story Indicator
+        if (maxStep === chainData.chain.length - 1) {
+             const endMsg = document.createElement('div');
+             endMsg.textContent = "Fin de l'histoire";
+             endMsg.style.fontStyle = 'italic';
+             endMsg.style.color = 'var(--primary)';
+             endMsg.style.fontWeight = 'bold';
+             timeline.appendChild(endMsg);
+        }
+
+        // Finish Button Logic
+        const controls = document.getElementById('recap-controls');
+        // Remove existing finish button if any
+        const existingFinishBtn = document.getElementById('recap-btn-finish');
+        if (existingFinishBtn) existingFinishBtn.remove();
+
+        if (controls) {
+            // Check if we are at the very end of the recap
+            const isLastStory = this.recapProgress.storyIndex >= this.telephoneRecapData.length - 1;
+            const currentChainLength = this.telephoneRecapData[this.recapProgress.storyIndex]?.chain.length || 0;
+            const isLastStep = this.recapProgress.stepIndex >= currentChainLength - 1;
+
+            if (isLastStory && isLastStep) {
+                const btnFinish = document.createElement('button');
+                btnFinish.className = 'btn-primary';
+                btnFinish.id = 'recap-btn-finish';
+                btnFinish.textContent = 'Terminer la partie';
+                btnFinish.style.padding = '10px 20px';
+                btnFinish.style.fontSize = '1.1rem';
+                btnFinish.onclick = () => {
+                    // Close modal
+                    const modal = document.getElementById('telephone-recap-modal');
+                    // Trigger cleanup via the close button handler if it exists
+                    const closeBtn = modal.querySelector('.close-btn');
+                    if (closeBtn) closeBtn.click();
+                    else modal.classList.add('hidden');
+                };
+                controls.appendChild(btnFinish);
+            }
+        }
+
+        // Auto-scroll to bottom
+        setTimeout(() => {
+            timeline.scrollTop = timeline.scrollHeight;
+        }, 50);
+
+        // Update Controls (Leader)
+        const btnNext = document.getElementById('recap-btn-next');
+        if (btnNext) {
+            const isLastStep = this.recapProgress.stepIndex === chainData.chain.length - 1;
+            const isLastStory = this.recapProgress.storyIndex === this.telephoneRecapData.length - 1;
+
+            if (isLastStep) {
+                if (isLastStory) {
+                    btnNext.classList.add('hidden');
+                } else {
+                    btnNext.textContent = 'Histoire Suivante';
+                    btnNext.classList.remove('hidden');
+                }
+            } else {
+                btnNext.textContent = 'Suite';
+                btnNext.classList.remove('hidden');
+            }
+        }
+    }
+
+    handleTelephoneHistory(actions) {
         // Clear all layers
         const canvases = this.layerManager.getLayerCanvases();
         Object.values(canvases).forEach(c => {

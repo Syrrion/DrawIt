@@ -3,6 +3,17 @@
     margin: 0;
     padding: 0;
     font-family: 'Exo 2', sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+input, textarea {
+    user-select: text;
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
 }
 
 /* Responsive Scaling Based on Screen Resolution */

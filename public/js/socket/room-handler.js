@@ -1,4 +1,4 @@
-import { socket, roomPrivacyBadge } from '../dom-elements.js';
+import { socket, roomPrivacyBadge, toolModelBtn, referenceBrowser } from '../dom-elements.js';
 import { state } from '../state.js';
 import { showToast } from '../utils.js';
 import { performDraw, performFloodFill, performMoveSelection, performClearRect } from '../draw.js';
@@ -23,10 +23,117 @@ export class RoomHandler {
         socket.on('roomJoined', this.handleRoomJoined.bind(this));
         socket.on('kicked', this.handleKicked.bind(this));
         socket.on('disconnect', this.handleDisconnect.bind(this));
+
+        // Layer Events
+        socket.on('layerAdded', this.handleLayerAdded.bind(this));
+        socket.on('layerDeleted', this.handleLayerDeleted.bind(this));
+        socket.on('layerRenamed', this.handleLayerRenamed.bind(this));
+        socket.on('layersReordered', this.handleLayersReordered.bind(this));
+        socket.on('resetLayers', this.handleResetLayers.bind(this));
+    }
+
+    handleLayerAdded(layer) {
+        state.layers.push(layer);
+        this.layerManager.createLayerCanvas(layer.id);
+        this.layerManager.updateLayersUI();
+    }
+
+    handleLayerDeleted(layerId) {
+        const index = state.layers.findIndex(l => l.id === layerId);
+        if (index !== -1) {
+            state.layers.splice(index, 1);
+            this.layerManager.deleteLayerCanvas(layerId);
+            
+            if (state.activeLayerId === layerId) {
+                state.activeLayerId = state.layers.length > 0 ? state.layers[state.layers.length - 1].id : null;
+                this.layerManager.setActiveLayerId(state.activeLayerId);
+            }
+            this.layerManager.updateLayersUI();
+            this.render();
+        }
+    }
+
+    handleLayerRenamed({ layerId, name }) {
+        const layer = state.layers.find(l => l.id === layerId);
+        if (layer) {
+            layer.name = name;
+            this.layerManager.updateLayersUI();
+        }
+    }
+
+    handleLayersReordered(layers) {
+        // Update state.layers in place to preserve reference if possible, or just replace content
+        state.layers.length = 0;
+        state.layers.push(...layers);
+        
+        this.layerManager.updateLayersUI();
+        this.render();
+    }
+
+    handleResetLayers(layers) {
+        state.layers.length = 0;
+        state.layers.push(...layers);
+        
+        // Re-init canvases if needed, or just clear existing?
+        // Usually resetLayers implies new set.
+        // We should probably clear old canvases that are not in new set.
+        const newIds = layers.map(l => l.id);
+        Object.keys(state.layerCanvases).forEach(id => {
+            if (!newIds.includes(id)) {
+                delete state.layerCanvases[id];
+            }
+        });
+
+        layers.forEach(l => {
+            if (!state.layerCanvases[l.id]) {
+                this.layerManager.createLayerCanvas(l.id);
+            } else {
+                // Clear existing
+                const ctx = state.layerCanvases[l.id].ctx;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+        });
+
+        if (state.layers.length > 0) {
+            state.activeLayerId = state.layers[0].id;
+            this.layerManager.setActiveLayerId(state.activeLayerId);
+        }
+        this.layerManager.updateLayersUI();
+        this.render();
     }
 
     handleRoomSettingsUpdated(settings) {
         state.settings = settings;
+        this.updateModelToolState();
+    }
+
+    updateModelToolState() {
+        if (!toolModelBtn) return;
+        
+        // Creative mode always allows models
+        // Otherwise check allowTracing setting (default to true if undefined)
+        const isCreative = state.settings && state.settings.mode === 'creative';
+        // Explicitly check for false, otherwise true (undefined/null = true)
+        const allowTracing = state.settings ? (state.settings.allowTracing !== false) : true;
+        
+        const allowed = isCreative || allowTracing;
+        
+        if (allowed) {
+            toolModelBtn.disabled = false;
+            toolModelBtn.classList.remove('disabled');
+            // Restore original title if possible, or just set generic
+            toolModelBtn.setAttribute('data-tooltip', 'Modèle');
+        } else {
+            toolModelBtn.disabled = true;
+            toolModelBtn.classList.add('disabled');
+            toolModelBtn.setAttribute('data-tooltip', 'Modèles désactivés');
+            
+            // Also close if open
+            if (referenceBrowser && !referenceBrowser.classList.contains('hidden')) {
+                referenceBrowser.classList.add('hidden');
+                toolModelBtn.classList.remove('active');
+            }
+        }
     }
 
     handleError(msg) {
@@ -66,6 +173,7 @@ export class RoomHandler {
         state.currentGameState = data.gameState;
         state.isSpectator = data.isSpectator;
         state.settings = data.settings || {};
+        this.updateModelToolState();
 
         // Update Privacy Badge
         if (roomPrivacyBadge) {

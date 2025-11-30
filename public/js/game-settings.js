@@ -40,6 +40,10 @@ export class GameSettingsManager {
         this.creativeRoundsInput = document.getElementById('setting-creative-rounds');
         this.anonymousVotingInput = document.getElementById('setting-anonymous-voting');
 
+        // Telephone Settings
+        this.telephoneWriteTimeInput = document.getElementById('setting-telephone-writetime');
+        this.telephoneDrawTimeInput = document.getElementById('setting-telephone-drawtime');
+
         // Actions
         this.startBtn = document.getElementById('btn-start-game');
         this.waitingMsg = document.getElementById('waiting-message');
@@ -105,6 +109,10 @@ export class GameSettingsManager {
         if (this.creativeRoundsInput) this.creativeRoundsInput.addEventListener('change', () => this.emitSettingsUpdate());
         if (this.anonymousVotingInput) this.anonymousVotingInput.addEventListener('change', () => this.emitSettingsUpdate());
 
+        // Telephone Listeners
+        if (this.telephoneWriteTimeInput) this.telephoneWriteTimeInput.addEventListener('change', () => this.emitSettingsUpdate());
+        if (this.telephoneDrawTimeInput) this.telephoneDrawTimeInput.addEventListener('change', () => this.emitSettingsUpdate());
+
         // Start Game
         this.startBtn.addEventListener('click', () => {
             if (!this.isLeaderProvider()) return;
@@ -137,6 +145,9 @@ export class GameSettingsManager {
                 if (s.mode === 'creative') {
                     if (this.creativeDrawTimeInput) this.creativeDrawTimeInput.value = s.drawTime;
                     if (this.creativeRoundsInput) this.creativeRoundsInput.value = s.rounds;
+                } else if (s.mode === 'telephone') {
+                    if (this.telephoneWriteTimeInput) this.telephoneWriteTimeInput.value = s.writeTime || 30;
+                    if (this.telephoneDrawTimeInput) this.telephoneDrawTimeInput.value = s.drawTime || 60;
                 } else {
                     if (this.timeInput) this.timeInput.value = s.drawTime;
                     if (this.roundsInput) this.roundsInput.value = s.rounds;
@@ -174,6 +185,9 @@ export class GameSettingsManager {
             if (settings.mode === 'creative') {
                 if (this.creativeDrawTimeInput && this.creativeDrawTimeInput.value != settings.drawTime) this.creativeDrawTimeInput.value = settings.drawTime;
                 if (this.creativeRoundsInput && this.creativeRoundsInput.value != settings.rounds) this.creativeRoundsInput.value = settings.rounds;
+            } else if (settings.mode === 'telephone') {
+                if (this.telephoneWriteTimeInput && this.telephoneWriteTimeInput.value != settings.writeTime) this.telephoneWriteTimeInput.value = settings.writeTime;
+                if (this.telephoneDrawTimeInput && this.telephoneDrawTimeInput.value != settings.drawTime) this.telephoneDrawTimeInput.value = settings.drawTime;
             } else {
                 if (this.timeInput.value != settings.drawTime) this.timeInput.value = settings.drawTime;
                 if (this.roundsInput.value != settings.rounds) this.roundsInput.value = settings.rounds;
@@ -249,6 +263,8 @@ export class GameSettingsManager {
             document.querySelectorAll('.guess-word-only').forEach(el => el.classList.remove('hidden'));
         } else if (mode === 'creative') {
             document.querySelectorAll('.creative-only').forEach(el => el.classList.remove('hidden'));
+        } else if (mode === 'telephone') {
+            // No specific switches for telephone yet, maybe allow tracing?
         }
 
         // Show the selected mode settings
@@ -289,6 +305,8 @@ export class GameSettingsManager {
         if (this.creativeDrawTimeInput) this.creativeDrawTimeInput.disabled = disabled;
         if (this.creativeRoundsInput) this.creativeRoundsInput.disabled = disabled;
         if (this.anonymousVotingInput) this.anonymousVotingInput.disabled = disabled;
+        if (this.telephoneWriteTimeInput) this.telephoneWriteTimeInput.disabled = disabled;
+        if (this.telephoneDrawTimeInput) this.telephoneDrawTimeInput.disabled = disabled;
         
         // Cards interaction
         this.cards.forEach(card => {
@@ -333,8 +351,13 @@ export class GameSettingsManager {
             hintsEnabled: this.hintsInput ? this.hintsInput.checked : true,
             maxWordLength: this.maxWordLengthInput ? parseInt(this.maxWordLengthInput.value) : 20,
             personalHints: this.personalHintsInput ? parseInt(this.personalHintsInput.value) : 3,
-            anonymousVoting: this.anonymousVotingInput ? this.anonymousVotingInput.checked : true
+            anonymousVoting: this.anonymousVotingInput ? this.anonymousVotingInput.checked : true,
+            writeTime: this.telephoneWriteTimeInput ? parseInt(this.telephoneWriteTimeInput.value) : 30
         };
+
+        if (this.currentMode === 'telephone') {
+            settings.drawTime = this.telephoneDrawTimeInput ? parseInt(this.telephoneDrawTimeInput.value) : 60;
+        }
 
         this.socket.emit('updateSettings', {
             roomCode: this.roomCodeProvider(),
