@@ -133,6 +133,10 @@ export class UIManager {
             this.loadingModalInstance.close();
         });
 
+        socket.on('error', () => {
+            this.loadingModalInstance.close();
+        });
+
         socket.on('updateLobbyStatus', ({ status }) => {
             if (waitingMessage) {
                 const span = waitingMessage.querySelector('span');
