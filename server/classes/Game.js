@@ -635,10 +635,10 @@ class Game {
         this.io.to(this.room.code).emit('creativePresentation', {
             artist: this.room.settings.anonymousVoting ? 'Anonyme' : (player ? player.username : 'Inconnu'),
             drawing: drawing,
-            duration: 10
+            duration: this.room.settings.presentationTime || 10
         });
 
-        this.startTimer(10, () => {
+        this.startTimer(this.room.settings.presentationTime || 10, () => {
             this.presentationIndex++;
             this.startPresentation();
         });
@@ -655,10 +655,10 @@ class Game {
 
         this.io.to(this.room.code).emit('creativeVotingStart', {
             drawings: mosaicData,
-            duration: 60
+            duration: this.room.settings.voteTime || 60
         });
 
-        this.startTimer(60, () => this.endVoting());
+        this.startTimer(this.room.settings.voteTime || 60, () => this.endVoting());
     }
 
     handleVote(voterId, targetId, stars) {

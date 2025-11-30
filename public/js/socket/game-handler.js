@@ -630,7 +630,9 @@ export class GameHandler {
             personalHints: (v) => `${v} Indices Perso`,
             writeTime: (v) => `${v}s Écriture`,
             allowTracing: (v) => v ? 'Modèles autorisés' : 'Modèles interdits',
-            anonymousVoting: (v) => v ? 'Votes cachés' : 'Votes publics'
+            anonymousVoting: (v) => v ? 'Votes cachés' : 'Votes publics',
+            presentationTime: (v) => `${v}s Présentation`,
+            voteTime: (v) => `${v}s Vote`
         };
 
         const ignoredKeys = ['mode'];
@@ -1139,123 +1141,141 @@ export class GameHandler {
         podiumContainer.style.marginBottom = '20px';
         podiumContainer.style.marginTop = '-20px'; // Move up
         podiumContainer.style.minHeight = '250px';
+        podiumContainer.style.flexWrap = 'wrap';
 
-        // Top 3 Logic
-        const top3 = data.results.slice(0, 3);
-        
-        // Define slots: 2nd, 1st, 3rd
-        const slots = [
-            { rank: 2, player: top3[1] },
-            { rank: 1, player: top3[0] },
-            { rank: 3, player: top3[2] }
-        ];
-
-        slots.forEach(slot => {
-            if (slot.player) {
-                const res = { ...slot.player, rank: slot.rank };
-                
-                const item = document.createElement('div');
-                item.className = `podium-item rank-${res.rank}`;
-                item.style.display = 'flex';
-                item.style.flexDirection = 'column';
-                item.style.alignItems = 'center';
-                item.style.gap = '10px';
-                item.style.position = 'relative';
-                
-                // Thumbnail
-                const thumbWrapper = document.createElement('div');
-                thumbWrapper.style.width = res.rank === 1 ? '160px' : '120px';
-                thumbWrapper.style.height = res.rank === 1 ? '120px' : '90px';
-                thumbWrapper.style.background = 'white';
-                thumbWrapper.style.borderRadius = '8px';
-                thumbWrapper.style.overflow = 'hidden';
-                thumbWrapper.style.border = `3px solid ${res.rank === 1 ? '#ffd700' : res.rank === 2 ? '#c0c0c0' : '#cd7f32'}`;
-                thumbWrapper.style.boxShadow = '0 4px 10px rgba(0,0,0,0.3)';
-                
-                const cvs = document.createElement('canvas');
-                cvs.width = CANVAS_CONFIG.width;
-                cvs.height = CANVAS_CONFIG.height;
-                cvs.style.width = '100%';
-                cvs.style.height = '100%';
-                
-                const ctx = cvs.getContext('2d');
-                // Fill white background explicitly
-                ctx.fillStyle = 'white';
-                ctx.fillRect(0, 0, cvs.width, cvs.height);
-                this.replayDrawing(ctx, res.drawing);
-                
-                thumbWrapper.appendChild(cvs);
-                item.appendChild(thumbWrapper);
-
-                // Info
-                const info = document.createElement('div');
-                info.style.textAlign = 'center';
-                info.innerHTML = `
-                    <div style="font-weight:bold; color:var(--text-main); font-size:${res.rank === 1 ? '1.2rem' : '1rem'}">${res.username}</div>
-                    <div style="color:var(--primary); font-weight:bold;">+${res.score} <span style="font-size:0.8em">(${res.average}★)</span></div>
-                `;
-                item.appendChild(info);
-
-                // Rank Badge
-                const badge = document.createElement('div');
-                badge.textContent = `#${res.rank}`;
-                badge.style.position = 'absolute';
-                badge.style.top = '-10px';
-                badge.style.left = '50%';
-                badge.style.transform = 'translateX(-50%)';
-                badge.style.zIndex = '10';
-                badge.style.background = res.rank === 1 ? '#ffd700' : res.rank === 2 ? '#c0c0c0' : '#cd7f32';
-                badge.style.color = 'black';
-                badge.style.fontWeight = 'bold';
-                badge.style.width = '30px';
-                badge.style.height = '30px';
-                badge.style.borderRadius = '50%';
-                badge.style.display = 'flex';
-                badge.style.alignItems = 'center';
-                badge.style.justifyContent = 'center';
-                badge.style.boxShadow = '0 2px 5px rgba(0,0,0,0.3)';
-                item.appendChild(badge);
-
-                podiumContainer.appendChild(item);
-            } else if (top3.length > 0) {
-                // Placeholder
-                const item = document.createElement('div');
-                item.className = `podium-item rank-${slot.rank} placeholder`;
-                item.style.display = 'flex';
-                item.style.flexDirection = 'column';
-                item.style.alignItems = 'center';
-                item.style.gap = '10px';
-                item.style.visibility = 'hidden'; // Invisible
-                
-                const thumbWrapper = document.createElement('div');
-                thumbWrapper.style.width = slot.rank === 1 ? '160px' : '120px';
-                thumbWrapper.style.height = slot.rank === 1 ? '120px' : '90px';
-                item.appendChild(thumbWrapper);
-                
-                // Info placeholder
-                const info = document.createElement('div');
-                info.innerHTML = `<div>&nbsp;</div><div>&nbsp;</div>`;
-                item.appendChild(info);
-                
-                podiumContainer.appendChild(item);
+        // Calculate ranks correctly handling ties
+        let rank = 1;
+        for (let i = 0; i < data.results.length; i++) {
+            if (i > 0 && data.results[i].score < data.results[i-1].score) {
+                rank = i + 1;
             }
+            data.results[i].rank = rank;
+        }
+
+        // Filter for Podium (Max 3 players)
+        const podiumPlayers = data.results.slice(0, 3);
+        
+        // Determine display order for podium effect (2nd, 1st, 3rd)
+        let displayOrder = [];
+        if (podiumPlayers.length === 1) {
+            displayOrder = [podiumPlayers[0]];
+        } else if (podiumPlayers.length === 2) {
+            // If ranks are different: 2nd then 1st. If same: 1st then 1st.
+            // podiumPlayers is sorted by score desc.
+            // [0] is #1. [1] is #2 (or #1).
+            displayOrder = [podiumPlayers[1], podiumPlayers[0]];
+        } else if (podiumPlayers.length >= 3) {
+            // [0]=#1, [1]=#2, [2]=#3
+            // Order: #2, #1, #3
+            displayOrder = [podiumPlayers[1], podiumPlayers[0], podiumPlayers[2]];
+        }
+        
+        displayOrder.forEach(res => {
+            const item = document.createElement('div');
+            item.className = `podium-item rank-${res.rank}`;
+            item.style.display = 'flex';
+            item.style.flexDirection = 'column';
+            item.style.alignItems = 'center';
+            item.style.gap = '10px';
+            item.style.position = 'relative';
+            item.style.margin = '0 5px';
+            
+            // Scale based on rank
+            let scale = 1;
+            let zIndex = 0;
+            let borderColor = '#cd7f32'; // Bronze
+            
+            if (res.rank === 1) {
+                scale = 1.1;
+                zIndex = 10;
+                borderColor = '#ffd700'; // Gold
+            } else if (res.rank === 2) {
+                scale = 0.9;
+                zIndex = 5;
+                borderColor = '#c0c0c0'; // Silver
+            } else {
+                scale = 0.8;
+                zIndex = 1;
+                borderColor = '#cd7f32'; // Bronze
+            }
+            
+            item.style.zIndex = zIndex;
+            
+            // Thumbnail
+            const thumbWrapper = document.createElement('div');
+            const baseW = 140;
+            const baseH = 105;
+            
+            thumbWrapper.style.width = `${baseW * scale}px`;
+            thumbWrapper.style.height = `${baseH * scale}px`;
+            thumbWrapper.style.background = 'white';
+            thumbWrapper.style.borderRadius = '8px';
+            thumbWrapper.style.overflow = 'hidden';
+            thumbWrapper.style.border = `3px solid ${borderColor}`;
+            thumbWrapper.style.boxShadow = '0 4px 10px rgba(0,0,0,0.3)';
+            
+            const cvs = document.createElement('canvas');
+            cvs.width = CANVAS_CONFIG.width;
+            cvs.height = CANVAS_CONFIG.height;
+            cvs.style.width = '100%';
+            cvs.style.height = '100%';
+            
+            const ctx = cvs.getContext('2d');
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, cvs.width, cvs.height);
+            this.replayDrawing(ctx, res.drawing);
+            
+            thumbWrapper.appendChild(cvs);
+            item.appendChild(thumbWrapper);
+
+            // Info
+            const info = document.createElement('div');
+            info.style.textAlign = 'center';
+            info.innerHTML = `
+                <div style="font-weight:bold; color:var(--text-main); font-size:${0.9 * scale}rem">${res.username}</div>
+                <div style="color:var(--primary); font-weight:bold;">+${res.score} <span style="font-size:0.8em">(${res.average}★)</span></div>
+            `;
+            item.appendChild(info);
+
+            // Rank Badge
+            const badge = document.createElement('div');
+            badge.textContent = `#${res.rank}`;
+            badge.style.position = 'absolute';
+            badge.style.top = '-10px';
+            badge.style.left = '50%';
+            badge.style.transform = 'translateX(-50%)';
+            badge.style.zIndex = '10';
+            badge.style.background = borderColor;
+            badge.style.color = 'black';
+            badge.style.fontWeight = 'bold';
+            badge.style.width = '30px';
+            badge.style.height = '30px';
+            badge.style.borderRadius = '50%';
+            badge.style.display = 'flex';
+            badge.style.alignItems = 'center';
+            badge.style.justifyContent = 'center';
+            badge.style.boxShadow = '0 2px 5px rgba(0,0,0,0.3)';
+            item.appendChild(badge);
+
+            podiumContainer.appendChild(item);
         });
 
         roundResultScores.appendChild(podiumContainer);
 
-        // List remaining players if any
-        if (data.results.length > 3) {
+        // List remaining players (Index >= 3)
+        const remainingPlayers = data.results.slice(3);
+        if (remainingPlayers.length > 0) {
             const othersContainer = document.createElement('div');
             othersContainer.style.marginTop = '20px';
             othersContainer.style.borderTop = '1px solid rgba(255,255,255,0.1)';
             othersContainer.style.paddingTop = '10px';
             othersContainer.style.width = '100%';
 
-            data.results.slice(3).forEach((res, idx) => {
+            remainingPlayers.forEach((res) => {
                 const row = document.createElement('div');
                 row.className = 'score-row';
                 row.innerHTML = `
-                    <span class="score-rank" style="color:var(--text-dim)">#${idx + 4}</span>
+                    <span class="score-rank" style="color:var(--text-dim)">#${res.rank}</span>
                     <span class="score-name">${res.username}</span>
                     <span class="score-points">+${res.score} (${res.average} <i class="fas fa-star"></i>)</span>
                 `;

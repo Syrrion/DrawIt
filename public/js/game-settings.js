@@ -45,6 +45,8 @@ export class GameSettingsManager {
         // Creative Settings
         this.creativeDrawTimeInput = document.getElementById('setting-creative-drawtime');
         this.creativeRoundsInput = document.getElementById('setting-creative-rounds');
+        this.creativePresentationTimeInput = document.getElementById('setting-creative-presentationtime');
+        this.creativeVoteTimeInput = document.getElementById('setting-creative-votetime');
         this.anonymousVotingInput = document.getElementById('setting-anonymous-voting');
 
         // Telephone Settings
@@ -114,6 +116,8 @@ export class GameSettingsManager {
         // Creative Listeners
         if (this.creativeDrawTimeInput) this.creativeDrawTimeInput.addEventListener('change', () => this.emitSettingsUpdate());
         if (this.creativeRoundsInput) this.creativeRoundsInput.addEventListener('change', () => this.emitSettingsUpdate());
+        if (this.creativePresentationTimeInput) this.creativePresentationTimeInput.addEventListener('change', () => this.emitSettingsUpdate());
+        if (this.creativeVoteTimeInput) this.creativeVoteTimeInput.addEventListener('change', () => this.emitSettingsUpdate());
         if (this.anonymousVotingInput) this.anonymousVotingInput.addEventListener('change', () => this.emitSettingsUpdate());
 
         // Telephone Listeners
@@ -152,6 +156,8 @@ export class GameSettingsManager {
                 if (s.mode === 'creative') {
                     if (this.creativeDrawTimeInput) this.creativeDrawTimeInput.value = s.drawTime;
                     if (this.creativeRoundsInput) this.creativeRoundsInput.value = s.rounds;
+                    if (this.creativePresentationTimeInput) this.creativePresentationTimeInput.value = s.presentationTime || 10;
+                    if (this.creativeVoteTimeInput) this.creativeVoteTimeInput.value = s.voteTime || 60;
                 } else if (s.mode === 'telephone') {
                     if (this.telephoneWriteTimeInput) this.telephoneWriteTimeInput.value = s.writeTime || 30;
                     if (this.telephoneDrawTimeInput) this.telephoneDrawTimeInput.value = s.drawTime || 60;
@@ -192,6 +198,8 @@ export class GameSettingsManager {
             if (settings.mode === 'creative') {
                 if (this.creativeDrawTimeInput && this.creativeDrawTimeInput.value != settings.drawTime) this.creativeDrawTimeInput.value = settings.drawTime;
                 if (this.creativeRoundsInput && this.creativeRoundsInput.value != settings.rounds) this.creativeRoundsInput.value = settings.rounds;
+                if (this.creativePresentationTimeInput && this.creativePresentationTimeInput.value != settings.presentationTime) this.creativePresentationTimeInput.value = settings.presentationTime;
+                if (this.creativeVoteTimeInput && this.creativeVoteTimeInput.value != settings.voteTime) this.creativeVoteTimeInput.value = settings.voteTime;
             } else if (settings.mode === 'telephone') {
                 if (this.telephoneWriteTimeInput && this.telephoneWriteTimeInput.value != settings.writeTime) this.telephoneWriteTimeInput.value = settings.writeTime;
                 if (this.telephoneDrawTimeInput && this.telephoneDrawTimeInput.value != settings.drawTime) this.telephoneDrawTimeInput.value = settings.drawTime;
@@ -317,6 +325,8 @@ export class GameSettingsManager {
         if (this.personalHintsInput) this.personalHintsInput.disabled = disabled;
         if (this.creativeDrawTimeInput) this.creativeDrawTimeInput.disabled = disabled;
         if (this.creativeRoundsInput) this.creativeRoundsInput.disabled = disabled;
+        if (this.creativePresentationTimeInput) this.creativePresentationTimeInput.disabled = disabled;
+        if (this.creativeVoteTimeInput) this.creativeVoteTimeInput.disabled = disabled;
         if (this.anonymousVotingInput) this.anonymousVotingInput.disabled = disabled;
         if (this.telephoneWriteTimeInput) this.telephoneWriteTimeInput.disabled = disabled;
         if (this.telephoneDrawTimeInput) this.telephoneDrawTimeInput.disabled = disabled;
@@ -365,6 +375,8 @@ export class GameSettingsManager {
             maxWordLength: this.maxWordLengthInput ? parseInt(this.maxWordLengthInput.value) : 20,
             personalHints: this.personalHintsInput ? parseInt(this.personalHintsInput.value) : 3,
             anonymousVoting: this.anonymousVotingInput ? this.anonymousVotingInput.checked : true,
+            presentationTime: this.creativePresentationTimeInput ? parseInt(this.creativePresentationTimeInput.value) : 10,
+            voteTime: this.creativeVoteTimeInput ? parseInt(this.creativeVoteTimeInput.value) : 60,
             writeTime: this.telephoneWriteTimeInput ? parseInt(this.telephoneWriteTimeInput.value) : 30
         };
 
