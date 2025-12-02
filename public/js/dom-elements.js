@@ -52,7 +52,6 @@ export const toolCircleBtn = document.getElementById('tool-circle');
 export const toolTriangleBtn = document.getElementById('tool-triangle');
 export const toolLineBtn = document.getElementById('tool-line');
 export const toolModelBtn = document.getElementById('tool-model');
-export const clearBtn = document.getElementById('clear-btn');
 export const btnUndo = document.getElementById('btn-undo');
 export const btnRedo = document.getElementById('btn-redo');
 export const btnHelp = document.getElementById('btn-help');
@@ -164,12 +163,6 @@ export const chatInput = document.getElementById('chat-input');
 export const localCursor = document.getElementById('local-cursor');
 export const cursorBrushPreview = document.getElementById('cursor-brush-preview');
 export const cursorIcon = document.getElementById('cursor-icon');
-
-// Clear Options Modal
-export const clearOptionsModal = document.getElementById('clear-options-modal');
-export const btnClearLayer = document.getElementById('btn-clear-layer');
-export const btnClearAll = document.getElementById('btn-clear-all');
-export const btnCancelClear = document.getElementById('btn-cancel-clear');
 
 export const btnBrowserPin = document.getElementById('btn-browser-pin');
 export const globalPinControls = document.getElementById('global-pin-controls');

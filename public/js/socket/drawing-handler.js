@@ -138,6 +138,15 @@ export class DrawingHandler {
     }
 
     applyAction(action) {
+        if (action.tool === 'clear-all') {
+            this.handleClearCanvas();
+            return;
+        }
+        if (action.tool === 'clear-layer') {
+            this.handleClearLayer(action.layerId);
+            return;
+        }
+
         let targetLayerId = action.layerId;
 
         // Special handling for Telephone Mode Spectating
@@ -358,10 +367,9 @@ export class DrawingHandler {
             ctx.strokeStyle = 'rgba(0,0,0,1)';
         } else {
             ctx.strokeStyle = lastAction.color;
-            if (lastAction.tool === 'pen') {
-                ctx.shadowBlur = 2.5;
-                ctx.shadowColor = lastAction.color;
-            }
+            // Removed shadowBlur to match performDraw and avoid blur on undo
+            ctx.shadowBlur = 0;
+            ctx.shadowColor = 'transparent';
         }
         
         if (actions.length > 0) {
@@ -484,10 +492,9 @@ export class DrawingHandler {
              ctx.strokeStyle = 'rgba(0,0,0,1)';
         } else {
              ctx.strokeStyle = buffer.color;
-             if (buffer.tool === 'pen') {
-                 ctx.shadowBlur = 2.5;
-                 ctx.shadowColor = buffer.color;
-             }
+             // Removed shadowBlur to match performDraw
+             ctx.shadowBlur = 0;
+             ctx.shadowColor = 'transparent';
         }
         
         if (buffer.actions.length > 0) {

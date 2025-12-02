@@ -9,7 +9,6 @@ import {
     socket, spectatorCheckbox, btnJoinRandom, activeGamesCount, privateRoomCheckbox, allowSpectatorsCheckbox,
     btnUserSettings, userSettingsModal, btnCloseUserSettings, settingShowCursors, settingShowLayerAvatars, settingMuteSound,
     maxPlayersInput, btnSubmitCustomWord, customWordInput, customWordModal, waitingMessage,
-    clearOptionsModal, btnClearLayer, btnClearAll, btnCancelClear,
     toolbarDragHandle, gameToolbar, sidebarCol2, sidebarGroup, chatSidebar, btnToggleSidebarPos,
     toolModelBtn, referenceBrowser, btnBrowserClose, browserUrlInput, btnBrowserGo, browserHeader, imageResultsGrid,
     btnBrowserPin, globalPinControls, browserOpacity, btnBrowserUnpin, layersList, canvasWrapper,
@@ -432,34 +431,6 @@ export class UIManager {
             });
 
         }
-
-        // Clear Options Modal
-        this.clearOptionsModalInstance = new Modal(clearOptionsModal, {
-            closeBtn: btnCancelClear
-        });
-
-        window.showClearOptionsModal = (onClearLayer, onClearAll) => {
-            const btnLayer = document.getElementById('btn-clear-layer');
-            const btnAll = document.getElementById('btn-clear-all');
-
-            if (!btnLayer || !btnAll) {
-                console.error('Clear buttons not found in DOM');
-                return;
-            }
-
-            // Use onclick to automatically replace previous listeners
-            btnLayer.onclick = () => {
-                this.clearOptionsModalInstance.close();
-                if (onClearLayer) onClearLayer();
-            };
-
-            btnAll.onclick = () => {
-                this.clearOptionsModalInstance.close();
-                if (onClearAll) onClearAll();
-            };
-
-            this.clearOptionsModalInstance.open();
-        };
 
         this.initLayout();
         this.initBrowser();

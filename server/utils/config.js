@@ -21,7 +21,7 @@ try {
     console.error('Error loading shared config:', err);
     // Fallback values if loading fails
     m.exports = {
-        CANVAS_CONFIG: { width: 1600, height: 1200 },
+        CANVAS_CONFIG: { width: 800, height: 600 },
         BASE_DIMENSIONS: { width: 800, height: 600 },
         UNDO_HISTORY_SIZE: 20
     };

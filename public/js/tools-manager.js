@@ -2,7 +2,7 @@ import {
     toolPenBtn, toolEraserBtn, toolFillBtn, toolSmudgeBtn, toolAirbrushBtn,
     toolPipetteBtn, toolSelectionBtn,
     toolRectBtn, toolCircleBtn, toolTriangleBtn, toolLineBtn,
-    btnUndo, btnRedo, btnHelp, clearBtn,
+    btnUndo, btnRedo, btnHelp,
     helpModal, btnCloseHelp,
     canvas, socket, penColorInput, currentColorPreview,
     localCursor, cursorBrushPreview, cursorIcon, penSizeInput, penOpacityInput
@@ -305,38 +305,6 @@ export class ToolsManager {
 
         btnHelp.addEventListener('click', () => {
             this.helpModalInstance.open();
-        });
-
-        clearBtn.addEventListener('click', () => {
-            window.showClearOptionsModal(
-                // On Clear Layer
-                () => {
-                    if (state.activeLayerId && state.layerCanvases[state.activeLayerId]) {
-                        const ctx = state.layerCanvases[state.activeLayerId].ctx;
-                        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-                        socket.emit('clearLayer', {
-                            roomCode: state.currentRoom,
-                            layerId: state.activeLayerId
-                        });
-
-                        canvas.dispatchEvent(new CustomEvent('request-render'));
-                        showToast('Calque effacé !', 'success');
-                    } else {
-                        showToast('Aucun calque actif', 'error');
-                    }
-                },
-                // On Clear All
-                () => {
-                    Object.values(state.layerCanvases).forEach(l => {
-                        l.ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    });
-
-                    socket.emit('clearCanvas', state.currentRoom);
-                    canvas.dispatchEvent(new CustomEvent('request-render'));
-                    showToast('Tout effacé !', 'success');
-                }
-            );
         });
 
         // Initialize default tool state
