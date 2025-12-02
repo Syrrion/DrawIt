@@ -42,6 +42,7 @@ export class GameHandler {
         socket.on('wordSelectionStarted', this.handleWordSelectionStarted.bind(this));
         socket.on('spectatorWord', this.handleSpectatorWord.bind(this));
         socket.on('userLeft', this.handleUserLeft.bind(this));
+        socket.on('aiGenerating', this.handleAiGenerating.bind(this));
 
         // Creative Mode Events
         socket.on('creativeRoundStart', this.handleCreativeRoundStart.bind(this));
@@ -262,6 +263,21 @@ export class GameHandler {
         this.currentTimerInterval = this.startSmartTimer(timeLeft, (remaining) => {
             if (timerValue) timerValue.textContent = remaining;
         });
+    }
+
+    handleAiGenerating(isGenerating) {
+        if (isGenerating) {
+            if (wordDisplay) {
+                wordDisplay.textContent = '🤖 IA génère des mots...';
+                wordDisplay.classList.add('choosing-word');
+                wordDisplay.style.color = 'var(--secondary)';
+            }
+            showToast('L\'IA génère des mots selon le thème...', 'info');
+        } else {
+            if (wordDisplay) {
+                wordDisplay.style.color = '';
+            }
+        }
     }
 
     handleSpectatorWord(word) {
@@ -618,41 +634,42 @@ export class GameHandler {
         }, 2000);
     }
 
-    formatSettings(settings) {
+    getSettingsList(settings) {
         const labels = {
-            drawTime: (v) => `${v}s Dessin`,
-            wordChoiceTime: (v) => `${v}s Choix`,
-            wordChoices: (v) => `${v} Choix de mots`,
-            rounds: (v) => `${v} Tours`,
-            allowFuzzy: (v) => v ? 'Accents Cool' : 'Accents Stricts',
-            hintsEnabled: (v) => v ? 'Indices Auto' : 'Sans Indices Auto',
-            maxWordLength: (v) => `Max ${v} lettres`,
-            personalHints: (v) => `${v} Indices Perso`,
-            writeTime: (v) => `${v}s Écriture`,
-            allowTracing: (v) => v ? 'Modèles autorisés' : 'Modèles interdits',
-            anonymousVoting: (v) => v ? 'Votes cachés' : 'Votes publics',
-            presentationTime: (v) => `${v}s Présentation`,
-            voteTime: (v) => `${v}s Vote`
+            drawTime: (v) => ({ icon: 'fa-clock', text: `${v}s Dessin` }),
+            wordChoiceTime: (v) => ({ icon: 'fa-hourglass-half', text: `${v}s Choix` }),
+            wordChoices: (v) => ({ icon: 'fa-list-ol', text: `${v} Choix de mots` }),
+            rounds: (v) => ({ icon: 'fa-sync', text: `${v} Tours` }),
+            allowFuzzy: (v) => ({ icon: 'fa-spell-check', text: v ? 'Accents Cool' : 'Accents Stricts' }),
+            hintsEnabled: (v) => ({ icon: 'fa-lightbulb', text: v ? 'Indices Auto' : 'Sans Indices Auto' }),
+            maxWordLength: (v) => ({ icon: 'fa-text-width', text: `Max ${v} lettres` }),
+            personalHints: (v) => ({ icon: 'fa-search', text: `${v} Indices Perso` }),
+            writeTime: (v) => ({ icon: 'fa-pen', text: `${v}s Écriture` }),
+            allowTracing: (v) => ({ icon: 'fa-image', text: v ? 'Modèles autorisés' : 'Modèles interdits' }),
+            anonymousVoting: (v) => ({ icon: 'fa-user-secret', text: v ? 'Votes cachés' : 'Votes publics' }),
+            presentationTime: (v) => ({ icon: 'fa-chalkboard-teacher', text: `${v}s Présentation` }),
+            voteTime: (v) => ({ icon: 'fa-vote-yea', text: `${v}s Vote` })
         };
 
-        const ignoredKeys = ['mode'];
-        
-        if (settings.mode === 'guess-word') {
-            ignoredKeys.push('maxWordLength', 'writeTime', 'anonymousVoting');
-        } else if (settings.mode === 'custom-word') {
-            ignoredKeys.push('wordChoices', 'writeTime', 'anonymousVoting');
-        } else if (settings.mode === 'creative') {
-            ignoredKeys.push('wordChoiceTime', 'wordChoices', 'allowFuzzy', 'hintsEnabled', 'personalHints', 'maxWordLength', 'writeTime');
-        } else if (settings.mode === 'telephone') {
-            ignoredKeys.push('wordChoiceTime', 'wordChoices', 'allowFuzzy', 'hintsEnabled', 'personalHints', 'maxWordLength', 'rounds', 'anonymousVoting');
-        }
-        
-        if (settings.hintsEnabled) ignoredKeys.push('personalHints');
+        // Whitelist per mode to ensure only relevant settings are shown
+        const modeSettings = {
+            'guess-word': ['drawTime', 'wordChoiceTime', 'wordChoices', 'rounds', 'allowFuzzy', 'hintsEnabled', 'personalHints', 'allowTracing'],
+            'custom-word': ['drawTime', 'wordChoiceTime', 'rounds', 'allowFuzzy', 'hintsEnabled', 'personalHints', 'allowTracing', 'maxWordLength'],
+            'ai-theme': ['drawTime', 'wordChoiceTime', 'wordChoices', 'rounds', 'allowFuzzy', 'hintsEnabled', 'personalHints', 'allowTracing'],
+            'creative': ['drawTime', 'presentationTime', 'voteTime', 'rounds', 'allowTracing', 'anonymousVoting'],
+            'telephone': ['writeTime', 'drawTime', 'allowTracing']
+        };
 
-        return Object.entries(settings)
-            .filter(([key, _]) => !ignoredKeys.includes(key) && labels[key])
-            .map(([key, value]) => labels[key](value))
-            .join(' • ');
+        let allowedKeys = modeSettings[settings.mode] || [];
+        
+        // If Auto Hints are enabled, Personal Hints are disabled/hidden in game logic, so hide them here too
+        if (settings.hintsEnabled) {
+            allowedKeys = allowedKeys.filter(k => k !== 'personalHints');
+        }
+
+        return allowedKeys
+            .filter(key => labels[key] && settings[key] !== undefined)
+            .map(key => labels[key](settings[key]));
     }
 
     handleReadyCheckStarted(data) {
@@ -660,11 +677,13 @@ export class GameHandler {
 
         // Display Settings
         const modeDisplay = document.getElementById('ready-mode-display');
-        const settingsDisplay = document.getElementById('ready-settings-display');
+        const themeDisplay = document.getElementById('ready-theme-display');
+        const settingsList = document.getElementById('ready-settings-list');
 
         const modeLabels = {
             'guess-word': 'Devine le dessin',
             'custom-word': 'Mot personnalisé',
+            'ai-theme': 'Thématique (IA)',
             'creative': 'Mode Créatif',
             'telephone': 'Téléphone Dessiné'
         };
@@ -672,19 +691,46 @@ export class GameHandler {
         const modeLabel = modeLabels[data.settings.mode] || data.settings.mode;
 
         if (modeDisplay) {
-            modeDisplay.textContent = `${modeLabel}`;
+            modeDisplay.innerHTML = `<i class="fas fa-gamepad"></i> ${modeLabel}`;
         }
 
-        if (settingsDisplay) {
-            settingsDisplay.textContent = this.formatSettings(data.settings);
+        // Handle AI Theme Display
+        if (themeDisplay) {
+            if (data.settings.mode === 'ai-theme' && data.settings.aiTheme) {
+                themeDisplay.textContent = `Thème : ${data.settings.aiTheme.toUpperCase()}`;
+                themeDisplay.classList.remove('hidden');
+            } else {
+                themeDisplay.classList.add('hidden');
+            }
+        }
+
+        if (settingsList) {
+            settingsList.innerHTML = '';
+            const settingsItems = this.getSettingsList(data.settings);
+            
+            settingsItems.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'ready-setting-item';
+                div.innerHTML = `<i class="fas ${item.icon}"></i> ${item.text}`;
+                settingsList.appendChild(div);
+            });
         }
 
         const readyStatus = document.querySelector('.ready-status');
         if (readyStatus) {
             readyStatus.innerHTML = `
-                <div class="ready-count"><span id="ready-count-val">0</span>/<span id="ready-total-val">${data.totalPlayers}</span></div>
-                <div>joueurs prêts</div>
+                <div class="ready-count-container">
+                    <div class="ready-count"><span id="ready-count-val">0</span>/<span id="ready-total-val">${data.totalPlayers}</span></div>
+                    <div>joueurs prêts</div>
+                </div>
+                <div class="ready-timer-inline">
+                    <i class="fas fa-clock"></i> <span id="ready-timer-val">${data.timeout}</span>s
+                </div>
             `;
+            // Reset flex style in case it was overwritten by game start
+            readyStatus.style.display = 'flex';
+            readyStatus.style.flexDirection = 'row';
+            readyStatus.style.justifyContent = 'space-between';
         }
 
         const readyTitle = document.querySelector('.ready-check-content h2');
@@ -709,7 +755,16 @@ export class GameHandler {
                     avatarHtml = `<div class="player-avatar-small" style="background-color: ${color}; display: flex; align-items: center; justify-content: center; font-size: 14px;">${emoji}</div>`;
                 }
 
-                chip.innerHTML = `${avatarHtml}<span>${user.username}</span>`;
+                chip.innerHTML = `
+                    <div class="ready-player-info">
+                        ${avatarHtml}
+                        <span class="ready-player-name">${user.username}</span>
+                    </div>
+                    <div class="ready-player-status">
+                        <i class="fas fa-spinner fa-spin status-waiting"></i>
+                        <i class="fas fa-check status-ready"></i>
+                    </div>
+                `;
                 readyPlayersList.appendChild(chip);
             });
         }
@@ -754,6 +809,8 @@ export class GameHandler {
         if (readyTitle) readyTitle.innerHTML = '<i class="fas fa-rocket"></i> Lancement imminent&nbsp;!';
 
         if (readyStatus) {
+            readyStatus.style.flexDirection = 'column';
+            readyStatus.style.justifyContent = 'center';
             readyStatus.innerHTML = `
                 <div style="font-size: 4rem; color: var(--primary); font-weight: bold; text-shadow: 0 0 20px var(--primary-glow); animation: pulse 1s infinite;">${count}</div>
                 <div style="font-size: 1.2rem; margin-top: 10px; color: var(--text-dim);">La partie commence dans...</div>

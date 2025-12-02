@@ -15,8 +15,24 @@ export class CanvasManager {
         this.toolsManager = toolsManager;
 
         this.lastForbiddenTime = 0;
+        
+        // Optimization: Draw Buffer
+        this.drawBuffer = [];
+        this.flushInterval = setInterval(this.flushDrawBuffer.bind(this), 50); // Flush every 50ms
 
         this.init();
+    }
+
+    flushDrawBuffer() {
+        if (this.drawBuffer.length === 0) return;
+
+        const batch = [...this.drawBuffer];
+        this.drawBuffer = [];
+
+        socket.emit('drawBatch', {
+            roomCode: state.currentRoom,
+            actions: batch
+        });
     }
 
     render() {
@@ -84,6 +100,16 @@ export class CanvasManager {
         this.previewCtx = this.previewCanvas.getContext('2d');
         this.isBuffering = false;
         this.currentPath = [];
+
+        // Cursor optimization
+        this.cursorX = 0;
+        this.cursorY = 0;
+        this.cursorRafId = null;
+        if (localCursor) {
+            localCursor.style.top = '0px';
+            localCursor.style.left = '0px';
+            localCursor.style.willChange = 'transform';
+        }
 
         canvas.addEventListener('wheel', this.handleWheel.bind(this));
         canvas.addEventListener('mousedown', this.handleMouseDown.bind(this));
@@ -166,12 +192,11 @@ export class CanvasManager {
         if (!skipLocalDraw) {
             const targetCtx = state.layerCanvases[state.activeLayerId].ctx;
             performDraw(targetCtx, x0, y0, x1, y1, color, size, opacity, tool);
-            this.render();
+            this.renderAsync();
         }
 
         if (emit) {
-            socket.emit('draw', {
-                roomCode: state.currentRoom,
+            this.drawBuffer.push({
                 x0, y0, x1, y1,
                 color, size, opacity, tool,
                 strokeId: state.currentStrokeId,
@@ -360,13 +385,24 @@ export class CanvasManager {
         }
     }
 
+    updateCursorVisual() {
+        if (localCursor) {
+            // Use transform for better performance than top/left
+            // We need to maintain the translate(-50%, -50%) for centering
+            localCursor.style.transform = `translate3d(${this.cursorX}px, ${this.cursorY}px, 0) translate(-50%, -50%)`;
+        }
+        this.cursorRafId = null;
+    }
+
     handleMouseMove(e) {
         const { x, y } = this.getMousePos(e);
 
-        // Update local cursor position
-        if (localCursor) {
-            localCursor.style.left = `${e.clientX}px`;
-            localCursor.style.top = `${e.clientY}px`;
+        // Update local cursor position optimized
+        this.cursorX = e.clientX;
+        this.cursorY = e.clientY;
+        
+        if (!this.cursorRafId) {
+            this.cursorRafId = requestAnimationFrame(this.updateCursorVisual.bind(this));
         }
 
         // Cursor Tracking
@@ -459,12 +495,6 @@ export class CanvasManager {
                         targetCtx.globalCompositeOperation = prevGCO; 
                     }
                 }
-
-                // Emit endStroke to notify others to commit their buffers
-                socket.emit('endStroke', {
-                    roomCode: state.currentRoom,
-                    strokeId: state.currentStrokeId
-                });
                 
                 this.previewCtx.clearRect(0, 0, CANVAS_CONFIG.width, CANVAS_CONFIG.height);
                 this.isBuffering = false;
@@ -474,6 +504,15 @@ export class CanvasManager {
                 // Dot for tools that didn't draw on mousedown (e.g. airbrush)
                 this.drawOnCanvas(state.lastX, state.lastY, state.lastX, state.lastY, color, size, opacity, state.currentTool, true);
             }
+
+            // Flush any pending draw actions
+            this.flushDrawBuffer();
+
+            // Always emit endStroke to ensure consistency
+            socket.emit('endStroke', {
+                roomCode: state.currentRoom,
+                strokeId: state.currentStrokeId
+            });
         }
         state.isDrawing = false;
         state.canvasSnapshot = null;

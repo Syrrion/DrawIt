@@ -215,10 +215,7 @@
 .layer-avatars > div {
  transition: transform 0.2s;
  position: relative;
+ z-index: 1;
 }
-
-.layer-avatars > div:hover {
- transform: translateY(-3px) scale(1.2);
- z-index: 100 !important;
-}
+/* Hover effect handled by JS AvatarZoomManager */
 

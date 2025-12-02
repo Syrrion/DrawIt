@@ -11,6 +11,7 @@ import { CameraManager } from './js/camera.js';
 import { GameSettingsManager } from './js/game-settings.js';
 import { AnimationSystem } from './js/animations.js';
 import { TooltipManager } from './js/components/tooltip.js';
+import { AvatarZoomManager } from './js/components/avatar-zoom.js';
 
 import { ToolsManager } from './js/tools-manager.js';
 import { CanvasManager } from './js/canvas-manager.js';
@@ -20,6 +21,7 @@ import { NetworkMonitor } from './js/network-monitor.js';
 
 const animationSystem = new AnimationSystem();
 const tooltipManager = new TooltipManager();
+const avatarZoomManager = new AvatarZoomManager();
 
 // Avatar Manager
 const avatarManager = new AvatarManager();

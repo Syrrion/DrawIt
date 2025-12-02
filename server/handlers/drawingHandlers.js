@@ -56,13 +56,53 @@ module.exports = (io, socket) => {
             }
 
             // Restriction: Only drawer can draw during game
-            if (room.gameState === 'PLAYING' && (room.settings.mode === 'guess-word' || room.settings.mode === 'custom-word')) {
+            if (room.gameState === 'PLAYING' && (room.settings.mode === 'guess-word' || room.settings.mode === 'custom-word' || room.settings.mode === 'ai-theme')) {
                 const drawerId = room.game.turnOrder[room.game.currentDrawerIndex];
                 if (socket.id !== drawerId) return;
             }
 
             room.recordDrawAction(data);
             socket.to(data.roomCode).emit('draw', data);
+        }
+    });
+
+    socket.on('drawBatch', (data) => {
+        const room = rooms[data.roomCode];
+        if (room) {
+            // Check if user is spectator
+            const user = room.getUser(socket.id);
+            if (user && user.isSpectator) return;
+
+            const actions = data.actions;
+            if (!actions || actions.length === 0) return;
+
+            // Add userId to all actions
+            actions.forEach(action => action.userId = socket.id);
+
+            if (room.gameState === 'PLAYING' && room.settings.mode === 'creative') {
+                if (room.game && room.game.handleCreativeDraw) {
+                    // Handle each action or batch?
+                    // For simplicity, loop
+                    actions.forEach(action => room.game.handleCreativeDraw(action));
+                }
+                return;
+            }
+
+            if (room.gameState === 'PLAYING' && room.settings.mode === 'telephone') {
+                if (room.game && room.game.handleTelephoneDraw) {
+                    actions.forEach(action => room.game.handleTelephoneDraw(action));
+                }
+                return;
+            }
+
+            // Restriction: Only drawer can draw during game
+            if (room.gameState === 'PLAYING' && (room.settings.mode === 'guess-word' || room.settings.mode === 'custom-word' || room.settings.mode === 'ai-theme')) {
+                const drawerId = room.game.turnOrder[room.game.currentDrawerIndex];
+                if (socket.id !== drawerId) return;
+            }
+
+            actions.forEach(action => room.recordDrawAction(action));
+            socket.to(data.roomCode).emit('drawBatch', { actions });
         }
     });
 
@@ -78,7 +118,7 @@ module.exports = (io, socket) => {
             }
 
             // Restriction: Only drawer can draw during game
-            if (room.gameState === 'PLAYING' && (room.settings.mode === 'guess-word' || room.settings.mode === 'custom-word')) {
+            if (room.gameState === 'PLAYING' && (room.settings.mode === 'guess-word' || room.settings.mode === 'custom-word' || room.settings.mode === 'ai-theme')) {
                 const drawerId = room.game.turnOrder[room.game.currentDrawerIndex];
                 if (socket.id !== drawerId) return;
             }
@@ -150,7 +190,7 @@ module.exports = (io, socket) => {
             if (room.gameState === 'PLAYING' && room.settings.mode === 'creative') return;
 
             // Restriction: Only drawer can show cursor during game
-            if (room.gameState === 'PLAYING' && (room.settings.mode === 'guess-word' || room.settings.mode === 'custom-word')) {
+            if (room.gameState === 'PLAYING' && (room.settings.mode === 'guess-word' || room.settings.mode === 'custom-word' || room.settings.mode === 'ai-theme')) {
                 const drawerId = room.game.turnOrder[room.game.currentDrawerIndex];
                 if (socket.id !== drawerId) return;
             }

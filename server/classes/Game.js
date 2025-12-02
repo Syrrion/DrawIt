@@ -1,5 +1,6 @@
 const { getRandomWords, getRandomWord } = require('../utils/dictionary');
 const { generateHint, shuffle } = require('../utils/helpers');
+const geminiService = require('../utils/gemini');
 
 class Game {
     constructor(room, io) {
@@ -27,11 +28,13 @@ class Game {
         this.timeLeft = 0;
         this.roundEnded = false;
         
+        this.wordPool = []; // Pool of words for AI mode
+
         this.undoStacks = new Map();
         this.redoStacks = new Map();
     }
 
-    init(settings) {
+    async init(settings) {
         this.mode = settings.mode || 'guess-word';
         
         // Shuffle players for turn order (exclude spectators)
@@ -48,6 +51,33 @@ class Game {
         this.hintCooldowns = {};
         this.userRevealedIndices = {};
         this.disconnectedPlayers = [];
+
+        // Pre-generate words for AI Theme mode
+        if (this.mode === 'ai-theme') {
+            this.io.to(this.room.code).emit('aiGenerating', true);
+            try {
+                const theme = settings.aiTheme || 'Animaux';
+                // Calculate total words needed: players * rounds * choices * 5 (buffer)
+                // Actually, we need (players * rounds) turns. Each turn needs 'wordChoices' options.
+                // So minimum needed is (players * rounds * wordChoices).
+                // We multiply by 5 for variety as requested.
+                const totalTurns = activePlayers.length * this.totalRounds;
+                const wordsPerTurn = settings.wordChoices || 3;
+                const totalWordsNeeded = totalTurns * wordsPerTurn * 5;
+                
+                console.log(`Generating ${totalWordsNeeded} words for theme ${theme}`);
+                this.wordPool = await geminiService.generateWords(theme, totalWordsNeeded);
+                
+                // Shuffle the pool
+                this.wordPool = shuffle(this.wordPool);
+                
+                this.io.to(this.room.code).emit('aiGenerating', false);
+            } catch (error) {
+                console.error('Error generating initial word pool:', error);
+                this.io.to(this.room.code).emit('aiGenerating', false);
+                this.wordPool = []; // Fallback will be handled in handleWordSelection
+            }
+        }
 
         // Creative Mode Data
         this.playerDrawings = {};
@@ -798,7 +828,7 @@ class Game {
         this.handleWordSelection(drawerId);
     }
 
-    handleWordSelection(drawerId) {
+    async handleWordSelection(drawerId) {
         const settings = this.room.settings;
 
         // Notify everyone that word selection started
@@ -815,6 +845,34 @@ class Game {
 
             this.wordChoiceTimer = setTimeout(() => {
                 const randomWord = getRandomWord();
+                this.handleWordChosen(randomWord, drawerId);
+            }, settings.wordChoiceTime * 1000);
+        } else if (settings.mode === 'ai-theme') {
+            // AI Theme Mode: Use pre-generated pool
+            let words = [];
+            
+            // Try to get words from pool
+            if (this.wordPool && this.wordPool.length >= settings.wordChoices) {
+                // Take first N words
+                words = this.wordPool.splice(0, settings.wordChoices);
+            } else {
+                // Fallback if pool is empty or insufficient
+                console.warn('Word pool exhausted or empty, using fallback/generation');
+                try {
+                    const theme = settings.aiTheme || 'Animaux';
+                    words = await geminiService.generateWords(theme, settings.wordChoices);
+                } catch (e) {
+                    words = getRandomWords(settings.wordChoices);
+                }
+            }
+            
+            this.io.to(drawerId).emit('chooseWord', {
+                words,
+                timeout: settings.wordChoiceTime
+            });
+
+            this.wordChoiceTimer = setTimeout(() => {
+                const randomWord = words[Math.floor(Math.random() * words.length)];
                 this.handleWordChosen(randomWord, drawerId);
             }, settings.wordChoiceTime * 1000);
         } else {

@@ -32,6 +32,7 @@ class Room {
             personalHints: 3,
             allowTracing: true,
             writeTime: 30,
+            aiTheme: 'Animaux',
             ...settings
         };
 
@@ -291,9 +292,9 @@ class Room {
         });
     }
 
-    startGame() {
+    async startGame() {
         this.setGameState('PLAYING');
-        this.game.init(this.settings);
+        await this.game.init(this.settings);
     }
 
     cancelGame(reason) {

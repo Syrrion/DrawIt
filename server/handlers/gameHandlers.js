@@ -35,7 +35,7 @@ module.exports = (io, socket) => {
         if (user && user.isSpectator) return;
 
         // Game Logic for Guess Word
-        if (room.gameState === 'PLAYING' && (room.settings.mode === 'guess-word' || room.settings.mode === 'custom-word') && room.game.currentWord && !room.game.roundEnded) {
+        if (room.gameState === 'PLAYING' && (room.settings.mode === 'guess-word' || room.settings.mode === 'custom-word' || room.settings.mode === 'ai-theme') && room.game.currentWord && !room.game.roundEnded) {
             const drawerId = room.game.turnOrder[room.game.currentDrawerIndex];
 
             // If sender is drawer, they can't guess

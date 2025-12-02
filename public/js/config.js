@@ -1,6 +1,6 @@
 export const CANVAS_CONFIG = {
-    width: 1600,
-    height: 1200
+    width: 800,
+    height: 600
 };
 
 export const BASE_DIMENSIONS = {

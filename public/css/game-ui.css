@@ -161,7 +161,10 @@
     align-items: center;
     font-size: 1.5rem;
     background: white;
+    position: relative;
+    z-index: 1;
 }
+/* Hover effect handled by JS AvatarZoomManager */
 
 .player-score {
     font-size: 0.8rem;

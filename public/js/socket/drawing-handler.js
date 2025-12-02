@@ -28,6 +28,7 @@ export class DrawingHandler {
         socket.on('playerLayerChanged', this.handlePlayerLayerChanged.bind(this));
         socket.on('canvasState', this.handleCanvasState.bind(this));
         socket.on('draw', this.handleDraw.bind(this));
+        socket.on('drawBatch', this.handleDrawBatch.bind(this));
         socket.on('endStroke', this.handleEndStroke.bind(this));
         socket.on('clearCanvas', this.handleClearCanvas.bind(this));
         socket.on('clearLayer', this.handleClearLayer.bind(this));
@@ -406,6 +407,18 @@ export class DrawingHandler {
     }
 
     handleDraw(data) {
+        this.processDrawAction(data);
+        if (this.render) this.render();
+    }
+
+    handleDrawBatch(data) {
+        if (data.actions && Array.isArray(data.actions)) {
+            data.actions.forEach(action => this.processDrawAction(action));
+        }
+        if (this.render) this.render();
+    }
+
+    processDrawAction(data) {
         // Check if buffering is needed
         const isTransparent = data.opacity < 1;
         const isStrokeTool = data.tool === 'pen' || data.tool === 'eraser';
@@ -415,7 +428,6 @@ export class DrawingHandler {
         } else {
             this.applyAction(data);
         }
-        if (this.render) this.render();
     }
 
     bufferRemoteStroke(action) {

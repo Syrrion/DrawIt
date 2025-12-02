@@ -21,6 +21,13 @@
                             <h4>Mot personnalisé</h4>
                         </div>
                     </div>
+                    <div class="gamemode-card" data-mode="ai-theme" data-tooltip="Mots générés par IA selon un thème choisi. Idéal pour des parties thématiques !">
+                        <span class="ai-badge">IA</span>
+                        <div class="card-icon"><i class="fas fa-shapes"></i></div>
+                        <div class="card-info">
+                            <h4>Thématique</h4>
+                        </div>
+                    </div>
                     <div class="gamemode-card" data-mode="creative" data-tooltip="Tout le monde dessine le même thème, puis vote pour le meilleur dessin.">
                         <div class="card-icon"><i class="fas fa-palette"></i></div>
                         <div class="card-info">
@@ -43,31 +50,45 @@
 
                 <div id="settings-guess-word" class="mode-settings">
                     <div class="settings-grid compact-grid">
-                        <div class="setting-group">
-                            <label>Temps de dessin <i class="fas fa-info-circle setting-info" data-tooltip="La durée (en secondes) dont dispose le joueur pour réaliser son dessin."></i></label>
-                            <input type="number" id="setting-drawtime" value="80" min="30" max="300">
+                        <div class="setting-group full-width hidden" id="setting-group-ai-theme">
+                            <label>Thème <i class="fas fa-info-circle setting-info" data-tooltip="Le thème utilisé par l'IA pour générer les mots."></i></label>
+                            <input type="text" id="setting-ai-theme" value="Animaux" placeholder="Ex: Animaux, sports, cuisine..." maxlength="50">
                         </div>
                         <div class="setting-group">
-                            <label>Temps de choix <i class="fas fa-info-circle setting-info" data-tooltip="Le temps accordé au dessinateur pour choisir un mot."></i></label>
-                            <input type="number" id="setting-wordchoicetime" value="20" min="10" max="60">
+                            <label for="setting-drawtime">Temps de dessin: <span id="setting-drawtime-val" style="color: var(--primary); font-weight: bold;">80</span>s <i class="fas fa-info-circle setting-info" data-tooltip="La durée (en secondes) dont dispose le joueur pour réaliser son dessin."></i></label>
+                            <div class="slider-container" style="margin-top: 5px;">
+                                <input type="range" id="setting-drawtime" value="80" min="30" max="300" class="slider" style="width: 100%;">
+                            </div>
                         </div>
                         <div class="setting-group">
-                            <label>Choix de mots <i class="fas fa-info-circle setting-info" data-tooltip="Le nombre de mots différents proposés au dessinateur."></i></label>
-                            <input type="number" id="setting-wordchoices" value="3" min="1" max="5">
+                            <label for="setting-wordchoicetime">Temps de choix: <span id="setting-wordchoicetime-val" style="color: var(--primary); font-weight: bold;">20</span>s <i class="fas fa-info-circle setting-info" data-tooltip="Le temps accordé au dessinateur pour choisir un mot."></i></label>
+                            <div class="slider-container" style="margin-top: 5px;">
+                                <input type="range" id="setting-wordchoicetime" value="20" min="10" max="60" class="slider" style="width: 100%;">
+                            </div>
+                        </div>
+                        <div class="setting-group">
+                            <label for="setting-wordchoices">Choix de mots: <span id="setting-wordchoices-val" style="color: var(--primary); font-weight: bold;">3</span> <i class="fas fa-info-circle setting-info" data-tooltip="Le nombre de mots différents proposés au dessinateur."></i></label>
+                            <div class="slider-container" style="margin-top: 5px;">
+                                <input type="range" id="setting-wordchoices" value="3" min="1" max="5" class="slider" style="width: 100%;">
+                            </div>
                         </div>
                         <div class="setting-group hidden" id="setting-group-max-word-length">
-                            <label>Longueur max <i class="fas fa-info-circle setting-info" data-tooltip="Le nombre maximum de caractères autorisés pour un mot personnalisé."></i></label>
-                            <input type="number" id="setting-max-word-length" value="20" min="5" max="30">
+                            <label for="setting-max-word-length">Longueur max: <span id="setting-max-word-length-val" style="color: var(--primary); font-weight: bold;">20</span> <i class="fas fa-info-circle setting-info" data-tooltip="Le nombre maximum de caractères autorisés pour un mot personnalisé."></i></label>
+                            <div class="slider-container" style="margin-top: 5px;">
+                                <input type="range" id="setting-max-word-length" value="20" min="5" max="30" class="slider" style="width: 100%;">
+                            </div>
                         </div>
                         <div class="setting-group">
-                            <label>Tours <i class="fas fa-info-circle setting-info" data-tooltip="Le nombre de fois que chaque joueur passera au dessin."></i></label>
-                            <input type="number" id="setting-rounds" value="3" min="1" max="10">
+                            <label for="setting-rounds">Tours: <span id="setting-rounds-val" style="color: var(--primary); font-weight: bold;">3</span> <i class="fas fa-info-circle setting-info" data-tooltip="Le nombre de fois que chaque joueur passera au dessin."></i></label>
+                            <div class="slider-container" style="margin-top: 5px;">
+                                <input type="range" id="setting-rounds" value="3" min="1" max="10" class="slider" style="width: 100%;">
+                            </div>
                         </div>
-                    </div>
-                    <div class="setting-group" style="margin-top: 5px;">
-                        <label for="setting-personal-hints" style="text-align: center; display: block; margin-bottom: 2px; font-size: 0.8rem;">Indices personnels: <span id="setting-personal-hints-val" style="color: var(--primary); font-weight: bold;">3</span> <i class="fas fa-info-circle setting-info" data-tooltip="Nombre d'indices supplémentaires que chaque joueur peut demander manuellement."></i></label>
-                        <div class="slider-container">
-                            <input type="range" id="setting-personal-hints" min="0" max="10" value="3" class="slider">
+                        <div class="setting-group">
+                            <label for="setting-personal-hints">Indices personnels: <span id="setting-personal-hints-val" style="color: var(--primary); font-weight: bold;">3</span> <i class="fas fa-info-circle setting-info" data-tooltip="Nombre d'indices supplémentaires que chaque joueur peut demander manuellement."></i></label>
+                            <div class="slider-container" style="margin-top: 5px;">
+                                <input type="range" id="setting-personal-hints" min="0" max="10" value="3" class="slider" style="width: 100%;">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -75,20 +96,28 @@
                 <div id="settings-creative" class="mode-settings hidden">
                     <div class="settings-grid compact-grid">
                         <div class="setting-group">
-                            <label>Temps de dessin <i class="fas fa-info-circle setting-info" data-tooltip="La durée (en secondes) pour réaliser le dessin."></i></label>
-                            <input type="number" id="setting-creative-drawtime" value="180" min="60" max="600">
+                            <label for="setting-creative-drawtime">Temps de dessin: <span id="setting-creative-drawtime-val" style="color: var(--primary); font-weight: bold;">180</span>s <i class="fas fa-info-circle setting-info" data-tooltip="La durée (en secondes) pour réaliser le dessin."></i></label>
+                            <div class="slider-container" style="margin-top: 5px;">
+                                <input type="range" id="setting-creative-drawtime" value="180" min="60" max="600" class="slider" style="width: 100%;">
+                            </div>
                         </div>
                         <div class="setting-group">
-                            <label>Tours <i class="fas fa-info-circle setting-info" data-tooltip="Le nombre de manches jouées."></i></label>
-                            <input type="number" id="setting-creative-rounds" value="3" min="1" max="10">
+                            <label for="setting-creative-rounds">Tours: <span id="setting-creative-rounds-val" style="color: var(--primary); font-weight: bold;">3</span> <i class="fas fa-info-circle setting-info" data-tooltip="Le nombre de manches jouées."></i></label>
+                            <div class="slider-container" style="margin-top: 5px;">
+                                <input type="range" id="setting-creative-rounds" value="3" min="1" max="10" class="slider" style="width: 100%;">
+                            </div>
                         </div>
                         <div class="setting-group">
-                            <label>Temps de présentation <i class="fas fa-info-circle setting-info" data-tooltip="La durée (en secondes) d'affichage de chaque dessin lors de la présentation."></i></label>
-                            <input type="number" id="setting-creative-presentationtime" value="10" min="5" max="60">
+                            <label for="setting-creative-presentationtime">Temps de présentation: <span id="setting-creative-presentationtime-val" style="color: var(--primary); font-weight: bold;">10</span>s <i class="fas fa-info-circle setting-info" data-tooltip="La durée (en secondes) d'affichage de chaque dessin lors de la présentation."></i></label>
+                            <div class="slider-container" style="margin-top: 5px;">
+                                <input type="range" id="setting-creative-presentationtime" value="10" min="5" max="60" class="slider" style="width: 100%;">
+                            </div>
                         </div>
                         <div class="setting-group">
-                            <label>Temps de vote <i class="fas fa-info-circle setting-info" data-tooltip="La durée (en secondes) pour voter pour les meilleurs dessins."></i></label>
-                            <input type="number" id="setting-creative-votetime" value="60" min="10" max="180">
+                            <label for="setting-creative-votetime">Temps de vote: <span id="setting-creative-votetime-val" style="color: var(--primary); font-weight: bold;">60</span>s <i class="fas fa-info-circle setting-info" data-tooltip="La durée (en secondes) pour voter pour les meilleurs dessins."></i></label>
+                            <div class="slider-container" style="margin-top: 5px;">
+                                <input type="range" id="setting-creative-votetime" value="60" min="10" max="180" class="slider" style="width: 100%;">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -96,12 +125,16 @@
                 <div id="settings-telephone" class="mode-settings hidden">
                     <div class="settings-grid compact-grid">
                         <div class="setting-group">
-                            <label>Temps d'écriture <i class="fas fa-info-circle setting-info" data-tooltip="La durée (en secondes) pour écrire une phrase ou deviner."></i></label>
-                            <input type="number" id="setting-telephone-writetime" value="30" min="15" max="120">
+                            <label for="setting-telephone-writetime">Temps d'écriture: <span id="setting-telephone-writetime-val" style="color: var(--primary); font-weight: bold;">30</span>s <i class="fas fa-info-circle setting-info" data-tooltip="La durée (en secondes) pour écrire une phrase ou deviner."></i></label>
+                            <div class="slider-container" style="margin-top: 5px;">
+                                <input type="range" id="setting-telephone-writetime" value="30" min="15" max="120" class="slider" style="width: 100%;">
+                            </div>
                         </div>
                         <div class="setting-group">
-                            <label>Temps de dessin <i class="fas fa-info-circle setting-info" data-tooltip="La durée (en secondes) pour réaliser le dessin."></i></label>
-                            <input type="number" id="setting-telephone-drawtime" value="60" min="30" max="300">
+                            <label for="setting-telephone-drawtime">Temps de dessin: <span id="setting-telephone-drawtime-val" style="color: var(--primary); font-weight: bold;">60</span>s <i class="fas fa-info-circle setting-info" data-tooltip="La durée (en secondes) pour réaliser le dessin."></i></label>
+                            <div class="slider-container" style="margin-top: 5px;">
+                                <input type="range" id="setting-telephone-drawtime" value="60" min="30" max="300" class="slider" style="width: 100%;">
+                            </div>
                         </div>
                     </div>
                 </div>

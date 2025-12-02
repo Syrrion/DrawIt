@@ -261,38 +261,6 @@ export class PlayerListManager {
                 }
             }
 
-            // Avatar Hover Logic
-            const avatarEl = div.querySelector('.player-avatar') || div.querySelector('.player-avatar-img');
-            if (avatarEl) {
-                avatarEl.addEventListener('mouseenter', (e) => {
-                    const tooltip = document.getElementById('avatar-tooltip');
-                    if (!tooltip) return;
-
-                    // Set content
-                    if (u.avatar && u.avatar.type === 'image') {
-                        tooltip.innerHTML = `<img src="${u.avatar.value}">`;
-                        tooltip.style.backgroundColor = 'transparent';
-                    } else {
-                        const color = (u.avatar && u.avatar.color) || '#3498db';
-                        const emoji = (u.avatar && u.avatar.emoji) || '🎨';
-                        tooltip.innerHTML = emoji;
-                        tooltip.style.backgroundColor = color;
-                    }
-
-                    // Position
-                    const rect = avatarEl.getBoundingClientRect();
-                    tooltip.style.top = (rect.top + rect.height / 2) + 'px';
-                    tooltip.style.left = (rect.right + 10) + 'px';
-                    
-                    tooltip.classList.remove('hidden');
-                });
-
-                avatarEl.addEventListener('mouseleave', () => {
-                    const tooltip = document.getElementById('avatar-tooltip');
-                    if (tooltip) tooltip.classList.add('hidden');
-                });
-            }
-
             this.playersListElement.appendChild(div);
         });
     }

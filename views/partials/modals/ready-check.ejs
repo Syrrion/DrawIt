@@ -2,23 +2,33 @@
     <div class="modal-content ready-check-content">
         <h2><i class="fas fa-check-circle"></i> Êtes-vous prêt ?</h2>
         
-        <div class="ready-game-info">
-            <div id="ready-mode-display" class="ready-mode">Mode: Devine le dessin</div>
-            <div id="ready-settings-display" class="ready-settings"></div>
-        </div>
+        <div class="ready-check-body">
+            <!-- Left Column: Settings -->
+            <div class="ready-check-settings-column">
+                <div id="ready-mode-display" class="ready-mode">Mode: Devine le dessin</div>
+                <div id="ready-theme-display" class="ready-theme hidden"></div>
+                <div id="ready-settings-list" class="ready-settings-list"></div>
+            </div>
 
-        <div class="ready-status">
-            <div class="ready-count"><span id="ready-count-val">0</span>/<span id="ready-total-val">0</span></div>
-            <div>joueurs prêts</div>
+            <!-- Right Column: Status & Players -->
+            <div class="ready-check-status-column">
+                <div class="ready-status">
+                    <div class="ready-count-container">
+                        <div class="ready-count"><span id="ready-count-val">0</span>/<span id="ready-total-val">0</span></div>
+                        <div>joueurs prêts</div>
+                    </div>
+                    <div class="ready-timer-inline">
+                        <i class="fas fa-clock"></i> <span id="ready-timer-val">60</span>s
+                    </div>
+                </div>
+                <div id="ready-players-list" class="ready-players-list"></div>
+            </div>
         </div>
-        <div id="ready-players-list" class="ready-players-list"></div>
         
         <div class="ready-actions">
             <button id="btn-refuse-game" class="btn-danger-outline">REFUSER</button>
             <button id="btn-i-am-ready" class="btn-ready">JE SUIS PRÊT !</button>
         </div>
-        
-        <div class="ready-timer">Annulation dans <span id="ready-timer-val">60</span>s</div>
     </div>
 </div>
 <style>
