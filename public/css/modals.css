@@ -1370,3 +1370,24 @@
     width: 100%;
     box-sizing: border-box;
 }
+
+/* Wide Results for Podium */
+.modal-content.wide-results {
+    max-width: 1000px;
+    width: 95%;
+}
+
+
+/* Reveal Animation */
+.reveal-animation {
+ animation: revealPulse 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+ color: var(--accent);
+ text-shadow: 0 0 15px var(--accent);
+}
+
+@keyframes revealPulse {
+ 0% { transform: scale(1); }
+ 50% { transform: scale(1.2); }
+ 100% { transform: scale(1); }
+}
+

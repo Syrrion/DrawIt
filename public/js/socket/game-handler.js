@@ -1,4 +1,4 @@
-import { socket, gameTopBar, wordChoiceModal, wordChoicesContainer, timerValue, wordDisplay, roundCurrent, roundTotal, roundResultOverlay, roundResultTitle, roundResultWord, roundResultWordLabel, roundResultScores, gameEndModal, gameEndScores, readyCheckModal, btnIamReady, btnRefuseGame, readyCountVal, readyTotalVal, readyTimerVal, readyPlayersList, helpModal, lobbySettingsModal, confirmationModal, kickModal, alertModal, btnUseHint, hintsCount, customWordModal, customWordInput, btnSubmitCustomWord, customWordTimerVal, btnRandomCustomWord, drawerNameDisplay } from '../dom-elements.js';
+import { socket, gameTopBar, wordChoiceModal, wordChoicesContainer, timerValue, wordDisplay, roundCurrent, roundTotal, roundResultOverlay, roundResultTitle, roundResultWord, roundResultWordLabel, roundResultScores, gameEndModal, gameEndScores, readyCheckModal, btnIamReady, btnRefuseGame, readyCountVal, readyTotalVal, readyTimerVal, readyPlayersList, helpModal, lobbySettingsModal, confirmationModal, kickModal, alertModal, btnUseHint, hintsCount, customWordModal, customWordInput, btnSubmitCustomWord, customWordTimerVal, btnRandomCustomWord, drawerNameDisplay, loadingModal } from '../dom-elements.js';
 import { state } from '../state.js';
 import { showToast, playTickSound } from '../utils.js';
 import { performDraw, performFloodFill, performClearRect, performMoveSelection } from '../draw.js';
@@ -50,6 +50,7 @@ export class GameHandler {
         socket.on('creativePresentation', this.handleCreativePresentation.bind(this));
         socket.on('creativeVotingStart', this.handleCreativeVotingStart.bind(this));
         socket.on('votingAllDone', this.handleVotingAllDone.bind(this));
+        socket.on('creativeReveal', this.handleCreativeReveal.bind(this));
         socket.on('creativeRoundEnd', this.handleCreativeRoundEnd.bind(this));
         socket.on('creativeHistory', this.handleCreativeHistory.bind(this));
 
@@ -267,15 +268,16 @@ export class GameHandler {
 
     handleAiGenerating(isGenerating) {
         if (isGenerating) {
-            if (wordDisplay) {
-                wordDisplay.textContent = '🤖 IA génère des mots...';
-                wordDisplay.classList.add('choosing-word');
-                wordDisplay.style.color = 'var(--secondary)';
+            if (loadingModal) {
+                loadingModal.classList.remove('hidden');
+                const title = loadingModal.querySelector('h2');
+                const text = loadingModal.querySelector('p');
+                if (title) title.textContent = 'L\'IA réfléchit...';
+                if (text) text.textContent = 'Génération des mots en cours...';
             }
-            showToast('L\'IA génère des mots selon le thème...', 'info');
         } else {
-            if (wordDisplay) {
-                wordDisplay.style.color = '';
+            if (loadingModal) {
+                loadingModal.classList.add('hidden');
             }
         }
     }
@@ -442,10 +444,21 @@ export class GameHandler {
             drawerNameDisplay.classList.remove('hidden');
             drawerNameDisplay.innerHTML = `C'est au tour de <strong>${data.drawerName}</strong>`;
         }
-
         this.chatManager.addSeparator(`Round ${data.roundIndex} - Tour ${data.turnIndex}/${data.totalTurns}`);
         this.cursorManager.clearCursors();
 
+        // Clear all layers to ensure clean slate for new turn
+        if (this.layerManager) {
+            const canvases = this.layerManager.getLayerCanvases();
+            Object.values(canvases).forEach(c => {
+                c.ctx.clearRect(0, 0, c.canvas.width, c.canvas.height);
+            });
+            if (this.layerManager.renderCallback) {
+                this.layerManager.renderCallback();
+            }
+        }
+
+        roundResultOverlay.classList.add('hidden');
         roundResultOverlay.classList.add('hidden');
         if (this.currentTimerInterval) clearInterval(this.currentTimerInterval);
         timerValue.textContent = '0';
@@ -458,6 +471,10 @@ export class GameHandler {
 
     handleRoundEnd(data) {
         if (this.currentTimerInterval) clearInterval(this.currentTimerInterval);
+
+        // Ensure wide class is removed
+        const content = roundResultOverlay.querySelector('.modal-content');
+        if (content) content.classList.remove('wide-results');
 
         roundResultTitle.textContent = data.reason;
         roundResultWord.textContent = data.word;
@@ -928,6 +945,10 @@ export class GameHandler {
     }
 
     handleCreativeIntermission(data) {
+        // Capture and submit the drawing
+        const compositeImage = this.layerManager.getCompositeDataURL();
+        socket.emit('submitCreativeDrawing', { roomCode: state.currentRoom, image: compositeImage });
+
         const modal = document.getElementById('intermission-modal');
         const timer = document.getElementById('intermission-timer');
         
@@ -982,7 +1003,15 @@ export class GameHandler {
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        this.replayDrawing(ctx, data.drawing);
+        if (data.image) {
+            const img = new Image();
+            img.onload = () => {
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            };
+            img.src = data.image;
+        } else {
+            this.replayDrawing(ctx, data.drawing);
+        }
 
         let timeLeft = data.duration;
         timer.textContent = timeLeft;
@@ -1048,6 +1077,14 @@ export class GameHandler {
     handleCreativeVotingStart(data) {
         document.getElementById('creative-presentation-modal').classList.add('hidden');
         const modal = document.getElementById('creative-voting-modal');
+        
+        // Reset Title
+        const modalTitle = document.getElementById('voting-modal-title');
+        if (modalTitle) {
+            modalTitle.innerHTML = '<i class="fas fa-star"></i> Votez pour vos dessins préférés !';
+            modalTitle.classList.remove('reveal-animation');
+        }
+
         const grid = document.getElementById('voting-grid');
         const timer = document.getElementById('voting-timer-val');
 
@@ -1065,6 +1102,7 @@ export class GameHandler {
         data.drawings.forEach(item => {
             const card = document.createElement('div');
             card.className = 'voting-card';
+            card.dataset.userId = item.userId; // Store ID for reveal
             card.style.border = '1px solid #ccc';
             card.style.padding = '10px';
             card.style.borderRadius = '8px';
@@ -1089,23 +1127,37 @@ export class GameHandler {
             
             const ctx = cvs.getContext('2d');
             // No scaling needed as we use full resolution
-            this.replayDrawing(ctx, item.drawing);
+            if (item.image) {
+                const img = new Image();
+                img.onload = () => {
+                    ctx.drawImage(img, 0, 0, cvs.width, cvs.height);
+                };
+                img.src = item.image;
+            } else {
+                this.replayDrawing(ctx, item.drawing);
+            }
 
             const info = document.createElement('div');
+            info.className = 'voting-info'; // Add class for easy selection
             info.style.display = 'flex';
             info.style.justifyContent = 'space-between';
             info.style.alignItems = 'center';
             
             // Get Avatar
             let avatarHtml = '';
-            const player = this.playerListManager.getPlayer(item.userId);
-            if (player) {
-                if (player.avatar && player.avatar.type === 'image') {
-                    avatarHtml = `<img src="${player.avatar.value}" class="player-avatar-small" style="width: 24px; height: 24px; margin-right: 8px; border-radius: 50%; object-fit: cover;">`;
-                } else {
-                    const color = (player.avatar && player.avatar.color) || '#3498db';
-                    const emoji = (player.avatar && player.avatar.emoji) || '🎨';
-                    avatarHtml = `<div class="player-avatar-small" style="background-color: ${color}; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; margin-right: 8px; font-size: 14px;">${emoji}</div>`;
+            if (data.anonymous && item.userId !== socket.id) {
+                // Anonymous Avatar
+                avatarHtml = `<div class="player-avatar-small" style="background-color: #555; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; margin-right: 8px; font-size: 14px;">?</div>`;
+            } else {
+                const player = this.playerListManager.getPlayer(item.userId);
+                if (player) {
+                    if (player.avatar && player.avatar.type === 'image') {
+                        avatarHtml = `<img src="${player.avatar.value}" class="player-avatar-small" style="width: 24px; height: 24px; margin-right: 8px; border-radius: 50%; object-fit: cover;">`;
+                    } else {
+                        const color = (player.avatar && player.avatar.color) || '#3498db';
+                        const emoji = (player.avatar && player.avatar.emoji) || '🎨';
+                        avatarHtml = `<div class="player-avatar-small" style="background-color: ${color}; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; margin-right: 8px; font-size: 14px;">${emoji}</div>`;
+                    }
                 }
             }
             
@@ -1181,6 +1233,73 @@ export class GameHandler {
         });
     }
 
+    handleCreativeReveal(data) {
+        // Update Modal Title instead of Toast
+        const modalTitle = document.getElementById('voting-modal-title');
+        if (modalTitle) {
+            modalTitle.innerHTML = '<i class="fas fa-magic"></i> Révélation des artistes !';
+            modalTitle.classList.add('reveal-animation');
+            setTimeout(() => modalTitle.classList.remove('reveal-animation'), 1000);
+        }
+
+        const timer = document.getElementById('voting-timer-val');
+        
+        if (this.votingTimerInterval) clearInterval(this.votingTimerInterval);
+        
+        let timeLeft = data.duration;
+        if (timer) timer.textContent = timeLeft;
+        
+        this.votingTimerInterval = this.startSmartTimer(timeLeft, (remaining) => {
+            if (timer) timer.textContent = remaining;
+        });
+
+        // Reveal logic
+        const cards = document.querySelectorAll('.voting-card');
+        cards.forEach((card, index) => {
+            // Hide stars and "Your drawing" label
+            const starsInput = card.querySelector('.stars-input');
+            if (starsInput) {
+                starsInput.style.display = 'none';
+            }
+
+            const userId = card.dataset.userId;
+            if (!userId) return;
+
+            const player = this.playerListManager.getPlayer(userId);
+            if (!player) return;
+
+            const infoDiv = card.querySelector('.voting-info');
+            if (infoDiv) {
+                let avatarHtml = '';
+                if (player.avatar && player.avatar.type === 'image') {
+                    avatarHtml = `<img src="${player.avatar.value}" class="player-avatar-small" style="width: 24px; height: 24px; margin-right: 8px; border-radius: 50%; object-fit: cover;">`;
+                } else {
+                    const color = (player.avatar && player.avatar.color) || '#3498db';
+                    const emoji = (player.avatar && player.avatar.emoji) || '🎨';
+                    avatarHtml = `<div class="player-avatar-small" style="background-color: ${color}; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; margin-right: 8px; font-size: 14px;">${emoji}</div>`;
+                }
+
+                // Staggered Reveal Animation
+                setTimeout(() => {
+                    infoDiv.style.opacity = '0';
+                    infoDiv.style.transform = 'scale(0.8)';
+                    
+                    setTimeout(() => {
+                        infoDiv.innerHTML = `<div style="display:flex; align-items:center;">${avatarHtml}<span style="font-weight:bold; font-size:0.9rem;">${player.username}</span></div>`;
+                        infoDiv.style.transition = 'all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+                        infoDiv.style.opacity = '1';
+                        infoDiv.style.transform = 'scale(1)';
+                        
+                        // Add a highlight effect
+                        infoDiv.style.textShadow = '0 0 10px var(--primary-glow)';
+                        setTimeout(() => infoDiv.style.textShadow = 'none', 1000);
+                        
+                    }, 300);
+                }, index * 100); // Stagger by 100ms
+            }
+        });
+    }
+
     handleVotingAllDone() {
         showToast('Tout le monde a voté ! Résultats imminents...', 'success');
         const timer = document.getElementById('voting-timer-val');
@@ -1205,6 +1324,10 @@ export class GameHandler {
         // Hide label and word for creative mode
         if (roundResultWordLabel) roundResultWordLabel.style.display = 'none';
         roundResultWord.style.display = 'none';
+
+        // Add wide class for podium
+        const content = roundResultOverlay.querySelector('.modal-content');
+        if (content) content.classList.add('wide-results');
 
         roundResultScores.innerHTML = '';
         
@@ -1300,7 +1423,16 @@ export class GameHandler {
             const ctx = cvs.getContext('2d');
             ctx.fillStyle = 'white';
             ctx.fillRect(0, 0, cvs.width, cvs.height);
-            this.replayDrawing(ctx, res.drawing);
+            
+            if (res.image) {
+                const img = new Image();
+                img.onload = () => {
+                    ctx.drawImage(img, 0, 0, cvs.width, cvs.height);
+                };
+                img.src = res.image;
+            } else {
+                this.replayDrawing(ctx, res.drawing);
+            }
             
             thumbWrapper.appendChild(cvs);
             item.appendChild(thumbWrapper);
@@ -1364,6 +1496,8 @@ export class GameHandler {
         roundResultOverlay.classList.remove('hidden');
         setTimeout(() => {
             roundResultOverlay.classList.add('hidden');
+            const content = roundResultOverlay.querySelector('.modal-content');
+            if (content) content.classList.remove('wide-results');
         }, 20000);
     }
 

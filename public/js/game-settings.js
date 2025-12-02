@@ -219,7 +219,7 @@ export class GameSettingsManager {
                     if (this.creativeVoteTimeInput) this.creativeVoteTimeInput.value = s.voteTime || 60;
                 } else if (s.mode === 'telephone') {
                     if (this.telephoneWriteTimeInput) this.telephoneWriteTimeInput.value = s.writeTime || 30;
-                    if (this.telephoneDrawTimeInput) this.telephoneDrawTimeInput.value = s.drawTime || 60;
+                    if (this.telephoneDrawTimeInput) this.telephoneDrawTimeInput.value = s.drawTime || 180;
                 } else {
                     if (this.timeInput) this.timeInput.value = s.drawTime;
                     if (this.roundsInput) this.roundsInput.value = s.rounds;
@@ -530,7 +530,7 @@ export class GameSettingsManager {
         };
 
         if (this.currentMode === 'telephone') {
-            settings.drawTime = this.telephoneDrawTimeInput ? parseInt(this.telephoneDrawTimeInput.value) : 60;
+            settings.drawTime = this.telephoneDrawTimeInput ? parseInt(this.telephoneDrawTimeInput.value) : 180;
         }
 
         this.socket.emit('updateSettings', {

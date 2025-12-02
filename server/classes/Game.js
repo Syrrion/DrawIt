@@ -75,7 +75,14 @@ class Game {
             } catch (error) {
                 console.error('Error generating initial word pool:', error);
                 this.io.to(this.room.code).emit('aiGenerating', false);
-                this.wordPool = []; // Fallback will be handled in handleWordSelection
+                
+                // Notify players and cancel game
+                const errorMessage = error.message || "L'IA n'a pas pu générer les mots pour ce thème.";
+                this.io.to(this.room.code).emit('gameCancelled', `Erreur IA : ${errorMessage}`);
+                
+                this.room.setGameState('LOBBY');
+                this.io.to(this.room.code).emit('gameStateChanged', 'LOBBY');
+                return; // Stop initialization
             }
         }
 
@@ -456,12 +463,14 @@ class Game {
     startCreativeRound() {
         this.phase = 'DRAWING';
         this.playerDrawings = {};
+        this.playerImages = {}; // Store composite images
         this.votes = {};
         this.spectatorSubscriptions = {};
         this.currentWord = getRandomWord().toUpperCase();
         
         this.room.getPlayers().forEach(p => {
             this.playerDrawings[p.id] = [];
+            this.playerImages[p.id] = null;
             this.votes[p.id] = {};
         });
         
@@ -479,6 +488,11 @@ class Game {
         });
 
         this.startTimer(this.room.settings.drawTime, () => this.endDrawingPhase());
+    }
+
+    handleCreativeSubmission(userId, image) {
+        if (this.phase !== 'INTERMISSION' && this.phase !== 'DRAWING') return;
+        this.playerImages[userId] = image;
     }
 
     handleCreativeDraw(action) {
@@ -658,13 +672,15 @@ class Game {
         const playerId = this.presentationOrder[this.presentationIndex];
         const player = this.room.getUser(playerId);
         const drawing = this.playerDrawings[playerId];
+        const image = this.playerImages[playerId];
 
         // Clear canvas before showing next drawing
         this.io.to(this.room.code).emit('clearCanvas');
 
         this.io.to(this.room.code).emit('creativePresentation', {
             artist: this.room.settings.anonymousVoting ? 'Anonyme' : (player ? player.username : 'Inconnu'),
-            drawing: drawing,
+            drawing: drawing, // Keep for backward compatibility or fallback
+            image: image, // Send the composite image
             duration: this.room.settings.presentationTime || 10
         });
 
@@ -680,12 +696,14 @@ class Game {
         const mosaicData = this.presentationOrder.map(id => ({
             userId: id,
             username: this.room.settings.anonymousVoting ? '???' : (this.room.getUser(id)?.username || 'Inconnu'),
-            drawing: this.playerDrawings[id]
+            drawing: this.playerDrawings[id],
+            image: this.playerImages[id]
         }));
 
         this.io.to(this.room.code).emit('creativeVotingStart', {
             drawings: mosaicData,
-            duration: this.room.settings.voteTime || 60
+            duration: this.room.settings.voteTime || 60,
+            anonymous: this.room.settings.anonymousVoting
         });
 
         this.startTimer(this.room.settings.voteTime || 60, () => this.endVoting());
@@ -719,9 +737,23 @@ class Game {
         }
 
         if (allVoted) {
-            this.startTimer(5, () => this.endVoting());
-            this.io.to(this.room.code).emit('votingAllDone');
+            if (this.room.settings.anonymousVoting) {
+                this.startTimer(5, () => this.startRevealPhase());
+                this.io.to(this.room.code).emit('votingAllDone');
+            } else {
+                this.startTimer(5, () => this.endVoting());
+                this.io.to(this.room.code).emit('votingAllDone');
+            }
         }
+    }
+
+    startRevealPhase() {
+        this.phase = 'REVEAL';
+        this.io.to(this.room.code).emit('creativeReveal', {
+            duration: 15
+        });
+        
+        this.startTimer(15, () => this.endVoting());
     }
 
     endVoting() {
@@ -753,6 +785,7 @@ class Game {
         const top3 = roundResults.slice(0, 3);
         top3.forEach(res => {
             res.drawing = this.playerDrawings[res.userId];
+            res.image = this.playerImages[res.userId];
         });
 
         this.io.to(this.room.code).emit('creativeRoundEnd', {

@@ -145,4 +145,13 @@ module.exports = (io, socket) => {
             io.to(roomCode).emit('telephoneRecapUpdate', { direction });
         }
     });
+
+    socket.on('submitCreativeDrawing', ({ roomCode, image }) => {
+        const room = rooms[roomCode];
+        if (room && room.gameState === 'PLAYING' && room.settings.mode === 'creative') {
+            if (room.game && room.game.handleCreativeSubmission) {
+                room.game.handleCreativeSubmission(socket.id, image);
+            }
+        }
+    });
 };

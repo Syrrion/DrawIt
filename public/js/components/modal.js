@@ -9,7 +9,7 @@ export class Modal {
         this.options = {
             onOpen: null,
             onClose: null,
-            closeOnClickOutside: true,
+            closeOnClickOutside: false,
             closeBtnSelector: '.close-modal', // Default selector for close buttons inside the modal
             ...options
         };

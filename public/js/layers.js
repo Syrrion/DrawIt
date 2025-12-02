@@ -474,6 +474,27 @@ export class LayerManager {
     getActiveLayerId() { return this.activeLayerId; }
     getLayerCanvases() { return this.layerCanvases; }
     deleteLayerCanvas(id) { delete this.layerCanvases[id]; }
+    getCompositeDataURL() {
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = CANVAS_CONFIG.width;
+        tempCanvas.height = CANVAS_CONFIG.height;
+        const ctx = tempCanvas.getContext('2d');
+        
+        // Fill white background
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+        // Draw layers in order (bottom to top)
+        this.layers.forEach(layer => {
+            const layerObj = this.layerCanvases[layer.id];
+            if (layerObj && layerObj.visible) {
+                ctx.drawImage(layerObj.canvas, 0, 0);
+            }
+        });
+        
+        return tempCanvas.toDataURL('image/jpeg', 0.8);
+    }
+
     updatePlayerLayer(userId, layerId) {
         this.playerLayers[userId] = layerId;
         this.updateLayersUI();

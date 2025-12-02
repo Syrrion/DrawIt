@@ -19,25 +19,28 @@ class GeminiService {
         try {
             console.log(`🤖 Calling Gemini API for theme: "${theme}" (${count} words)`);
             
-            const prompt = `Génère exactement ${count} mots en français liés au thème "${theme}". 
-Les mots doivent être :
-- Des noms communs (pas de verbes, pas d'adjectifs)
-- En minuscules
-- Avec les accents corrects (ex: "éléphant" et non "elephant")
-- De difficulté variée (mélange de mots courants et originaux)
-- Adaptés pour être dessinés dans un jeu de type Pictionary
-- Différents des propositions précédentes si possible
+            const prompt = `Tu es un générateur de mots pour un jeu de Pictionary.
+Ton objectif est de générer une liste de mots STRICTEMENT liés au thème : "${theme}".
 
-Réponds UNIQUEMENT avec les mots séparés par des virgules, sans numérotation ni explication.
-Exemple de format attendu: chat,chien,oiseau
-Seed: ${Math.random()}`; // Ajout d'un seed aléatoire pour varier les réponses
+Règles impératives :
+1. Génère exactement ${count} mots.
+2. Les mots doivent être des NOMS COMMUNS (pas de verbes, pas d'adjectifs).
+3. Les mots doivent être CONCRETS et VISUELS (dessinables).
+4. Les mots doivent être en FRANÇAIS, en minuscules, avec les accents.
+5. INTERDIT : mots génériques (ex: "chose", "objet"), mots abstraits, mots en anglais, mots hors-sujet.
+6. Si le thème est précis, sois précis. Ne t'éloigne pas du sujet.
+
+Format de réponse attendu :
+mot1,mot2,mot3,...
+
+Réponds UNIQUEMENT avec la liste de mots séparés par des virgules. Pas de phrase d'introduction, pas de numérotation.`;
 
             // Appel avec le nouveau SDK
             const response = await this.client.models.generateContent({
                 model: 'gemini-2.0-flash',
                 contents: prompt,
                 config: {
-                    temperature: 1.6, // Augmente la créativité et la diversité
+                    temperature: 1.0, // Réduit pour plus de cohérence et moins d'hallucinations
                 }
             });
 
@@ -57,14 +60,13 @@ Seed: ${Math.random()}`; // Ajout d'un seed aléatoire pour varier les réponses
             // Remove duplicates
             const uniqueWords = [...new Set(words)].slice(0, count);
             
-            // If we didn't get enough words, pad with fallback only if missing significantly
+            // If we didn't get enough words, throw error instead of fallback
             if (uniqueWords.length < count) {
                 if (uniqueWords.length >= count * 0.5) {
                     console.warn(`⚠️ Gemini returned only ${uniqueWords.length}/${count} words. Keeping as is (>= 50%).`);
                 } else {
-                    console.warn(`⚠️ Gemini returned only ${uniqueWords.length}/${count} words, using fallback for remaining`);
-                    const fallback = this.getFallbackWords(count - uniqueWords.length);
-                    uniqueWords.push(...fallback);
+                    console.error(`❌ Gemini returned only ${uniqueWords.length}/${count} words. Too few results.`);
+                    throw new Error("L'IA n'a pas généré assez de mots valides pour ce thème.");
                 }
             }
             
@@ -73,7 +75,7 @@ Seed: ${Math.random()}`; // Ajout d'un seed aléatoire pour varier les réponses
             
         } catch (error) {
             console.error('❌ Gemini API error:', error);
-            return this.getFallbackWords(count);
+            throw error; // Propagate error to Game class
         }
     }
 
