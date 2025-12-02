@@ -105,6 +105,7 @@ export class RoomHandler {
     handleRoomSettingsUpdated(settings) {
         state.settings = settings;
         this.updateModelToolState();
+        this.cursorManager.refreshVisibility();
     }
 
     updateModelToolState() {
@@ -174,6 +175,7 @@ export class RoomHandler {
         state.isSpectator = data.isSpectator;
         state.settings = data.settings || {};
         this.updateModelToolState();
+        this.cursorManager.refreshVisibility();
 
         // Update Privacy Badge
         if (roomPrivacyBadge) {

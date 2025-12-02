@@ -388,7 +388,7 @@ class Game {
             if (this.telephoneDrawings[userId]) {
                 // Find actions to remove
                 const actionsToRemove = this.telephoneDrawings[userId].filter(action => action.strokeId === lastStrokeId);
-                
+
                 // Remove all actions with this strokeId
                 this.telephoneDrawings[userId] = this.telephoneDrawings[userId].filter(action => action.strokeId !== lastStrokeId);
                 

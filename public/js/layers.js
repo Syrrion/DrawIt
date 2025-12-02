@@ -338,7 +338,7 @@ export class LayerManager {
                 const [movedLayer] = newLayers.splice(srcIndex, 1);
                 newLayers.splice(targetIndex, 0, movedLayer);
                 
-                if (globalState.settings && globalState.settings.mode === 'telephone') {
+                if (globalState.settings && (globalState.settings.mode === 'telephone' || globalState.settings.mode === 'creative')) {
                     this.layers.length = 0;
                     this.layers.push(...newLayers);
                     this.updateLayersUI();
@@ -368,7 +368,7 @@ export class LayerManager {
     }
 
     renameLayer(layerId, newName) {
-        if (globalState.settings && globalState.settings.mode === 'telephone') {
+        if (globalState.settings && (globalState.settings.mode === 'telephone' || globalState.settings.mode === 'creative')) {
             const layer = this.layers.find(l => l.id === layerId);
             if (layer) {
                 layer.name = newName;
@@ -389,7 +389,7 @@ export class LayerManager {
             'Supprimer le calque',
             'Voulez-vous vraiment supprimer ce calque ?',
             () => {
-                if (globalState.settings && globalState.settings.mode === 'telephone') {
+                if (globalState.settings && (globalState.settings.mode === 'telephone' || globalState.settings.mode === 'creative')) {
                     const index = this.layers.findIndex(l => l.id === layerId);
                     if (index !== -1) {
                         this.layers.splice(index, 1);
@@ -415,7 +415,7 @@ export class LayerManager {
             const newLayers = [...this.layers];
             [newLayers[index], newLayers[index + 1]] = [newLayers[index + 1], newLayers[index]];
             
-            if (globalState.settings && globalState.settings.mode === 'telephone') {
+            if (globalState.settings && (globalState.settings.mode === 'telephone' || globalState.settings.mode === 'creative')) {
                 this.layers.length = 0;
                 this.layers.push(...newLayers);
                 this.updateLayersUI();
@@ -432,7 +432,7 @@ export class LayerManager {
             const newLayers = [...this.layers];
             [newLayers[index], newLayers[index - 1]] = [newLayers[index - 1], newLayers[index]];
             
-            if (globalState.settings && globalState.settings.mode === 'telephone') {
+            if (globalState.settings && (globalState.settings.mode === 'telephone' || globalState.settings.mode === 'creative')) {
                 this.layers.length = 0;
                 this.layers.push(...newLayers);
                 this.updateLayersUI();
@@ -456,7 +456,7 @@ export class LayerManager {
             creatorId: this.socket.id
         };
         
-        if (globalState.settings && globalState.settings.mode === 'telephone') {
+        if (globalState.settings && (globalState.settings.mode === 'telephone' || globalState.settings.mode === 'creative')) {
             this.layers.push(newLayer);
             this.createLayerCanvas(newLayer.id);
             this.updateLayersUI();

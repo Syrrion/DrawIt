@@ -168,6 +168,18 @@ module.exports = (io, socket) => {
     socket.on('clearCanvas', (roomCode) => {
         const room = rooms[roomCode];
         if (room) {
+            if (room.gameState === 'PLAYING' && room.settings.mode === 'creative') {
+                if (room.game && room.game.handleCreativeClear) {
+                    room.game.handleCreativeClear(socket.id);
+                }
+                return;
+            }
+            if (room.gameState === 'PLAYING' && room.settings.mode === 'telephone') {
+                if (room.game && room.game.handleTelephoneClear) {
+                    room.game.handleTelephoneClear(socket.id);
+                }
+                return;
+            }
             room.clearCanvas();
         }
     });
@@ -175,6 +187,18 @@ module.exports = (io, socket) => {
     socket.on('clearLayer', ({ roomCode, layerId }) => {
         const room = rooms[roomCode];
         if (room) {
+            if (room.gameState === 'PLAYING' && room.settings.mode === 'creative') {
+                if (room.game && room.game.handleCreativeClearLayer) {
+                    room.game.handleCreativeClearLayer(socket.id, layerId);
+                }
+                return;
+            }
+            if (room.gameState === 'PLAYING' && room.settings.mode === 'telephone') {
+                 if (room.game && room.game.handleTelephoneClearLayer) {
+                    room.game.handleTelephoneClearLayer(socket.id, layerId);
+                }
+                return;
+            }
             room.clearLayer(layerId);
         }
     });

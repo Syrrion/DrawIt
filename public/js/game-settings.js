@@ -9,6 +9,7 @@ export class GameSettingsManager {
         this.playerCountProvider = playerCountProvider;
 
         this.currentMode = 'guess-word';
+        this.activeRoomMode = 'guess-word'; // Tracks the actual room mode (Leader's choice)
         this.previousHintsEnabled = true;
         this.storedWordChoiceTimes = {
             'guess-word': 20,
@@ -72,6 +73,11 @@ export class GameSettingsManager {
             onOpen: () => {
                 if (this.isLeaderProvider()) {
                     this.socket.emit('leaderConfiguring', { roomCode: this.roomCodeProvider(), isConfiguring: true });
+                } else {
+                    // If not leader, switch to the active room mode when opening
+                    if (this.activeRoomMode && this.currentMode !== this.activeRoomMode) {
+                        this.selectCard(this.activeRoomMode);
+                    }
                 }
             },
             onClose: () => {
@@ -88,10 +94,11 @@ export class GameSettingsManager {
         // Game Mode Cards
         this.cards.forEach(card => {
             card.addEventListener('click', () => {
-                if (!this.isLeaderProvider()) return;
                 const mode = card.dataset.mode;
                 this.selectCard(mode);
-                this.emitSettingsUpdate();
+                if (this.isLeaderProvider()) {
+                    this.emitSettingsUpdate();
+                }
             });
         });
 
@@ -177,7 +184,12 @@ export class GameSettingsManager {
         this.socket.on('roomJoined', (data) => {
             if (data.settings) {
                 const s = data.settings;
+                this.activeRoomMode = s.mode;
+                
+                // If I am leader, I should be viewing the room mode.
+                // If I am not leader, I might be viewing something else, but on join, sync to room.
                 if (this.currentMode !== s.mode) this.selectCard(s.mode);
+                else this.updateCardVisuals(); // Ensure visuals are correct even if mode didn't change
                 
                 if (s.mode === 'creative') {
                     if (this.creativeDrawTimeInput) this.creativeDrawTimeInput.value = s.drawTime;
@@ -224,8 +236,26 @@ export class GameSettingsManager {
         });
 
         this.socket.on('roomSettingsUpdated', (settings) => {
-            if (this.currentMode !== settings.mode) {
-                this.selectCard(settings.mode);
+            this.activeRoomMode = settings.mode;
+            
+            // Only force view switch if I am leader (should already be synced) 
+            // OR if I haven't manually navigated away (hard to know, so let's just NOT force switch for non-leader)
+            // BUT, if I am leader, I definitely want to be on the mode I just set.
+            if (this.isLeaderProvider()) {
+                if (this.currentMode !== settings.mode) {
+                    this.selectCard(settings.mode);
+                } else {
+                    this.updateCardVisuals();
+                }
+            } else {
+                // Non-leader: Just update visuals to show the new Gold card
+                this.updateCardVisuals();
+                
+                // If I happen to be viewing the mode that just became active, refresh the panel
+                if (this.currentMode === settings.mode) {
+                    // selectCard re-triggers panel visibility logic
+                    this.selectCard(settings.mode);
+                }
             }
             
             if (settings.mode === 'creative') {
@@ -297,15 +327,8 @@ export class GameSettingsManager {
             }
         }
 
-        this.cards.forEach(card => {
-            if (card.dataset.mode === mode) {
-                card.classList.add('selected');
-            } else {
-                card.classList.remove('selected');
-            }
-        });
-        
         this.currentMode = mode;
+        this.updateCardVisuals();
 
         // Restore time for new mode
         if (mode === 'guess-word' || mode === 'custom-word') {
@@ -358,6 +381,24 @@ export class GameSettingsManager {
         }
     }
 
+    updateCardVisuals() {
+        this.cards.forEach(card => {
+            const mode = card.dataset.mode;
+            
+            // Reset classes
+            card.classList.remove('selected', 'local-selected');
+
+            // Apply classes based on state
+            if (mode === this.activeRoomMode) {
+                card.classList.add('selected');
+            }
+            
+            if (mode === this.currentMode) {
+                card.classList.add('local-selected');
+            }
+        });
+    }
+
     updateControlsState() {
         const isLeader = this.isLeaderProvider();
         const disabled = !isLeader;
@@ -383,8 +424,8 @@ export class GameSettingsManager {
         
         // Cards interaction
         this.cards.forEach(card => {
-            card.style.pointerEvents = isLeader ? 'auto' : 'none';
-            card.style.opacity = isLeader ? '1' : '0.7';
+            card.style.pointerEvents = 'auto';
+            card.style.opacity = '1';
         });
 
         // Buttons visibility

@@ -1,7 +1,7 @@
 import { socket, gameTopBar, wordChoiceModal, wordChoicesContainer, timerValue, wordDisplay, roundCurrent, roundTotal, roundResultOverlay, roundResultTitle, roundResultWord, roundResultWordLabel, roundResultScores, gameEndModal, gameEndScores, readyCheckModal, btnIamReady, btnRefuseGame, readyCountVal, readyTotalVal, readyTimerVal, readyPlayersList, helpModal, lobbySettingsModal, confirmationModal, kickModal, alertModal, btnUseHint, hintsCount, customWordModal, customWordInput, btnSubmitCustomWord, customWordTimerVal, btnRandomCustomWord, drawerNameDisplay } from '../dom-elements.js';
 import { state } from '../state.js';
 import { showToast, playTickSound } from '../utils.js';
-import { performDraw, performFloodFill } from '../draw.js';
+import { performDraw, performFloodFill, performClearRect, performMoveSelection } from '../draw.js';
 import { CANVAS_CONFIG } from '../config.js';
 
 export class GameHandler {
@@ -980,8 +980,7 @@ export class GameHandler {
         artistName.innerHTML = `Artiste : ${avatarHtml}${data.artist}`;
         
         const ctx = canvas.getContext('2d');
-        ctx.fillStyle = 'white';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         
         this.replayDrawing(ctx, data.drawing);
 
@@ -1011,6 +1010,24 @@ export class GameHandler {
                     Math.floor(action.x0 * scaleX), 
                     Math.floor(action.y0 * scaleY), 
                     action.color
+                );
+            } else if (action.tool === 'clear-rect') {
+                performClearRect(
+                    ctx,
+                    action.x * scaleX,
+                    action.y * scaleY,
+                    action.w * scaleX,
+                    action.h * scaleY
+                );
+            } else if (action.tool === 'move-selection') {
+                performMoveSelection(
+                    ctx,
+                    action.srcX * scaleX,
+                    action.srcY * scaleY,
+                    action.w * scaleX,
+                    action.h * scaleY,
+                    action.destX * scaleX,
+                    action.destY * scaleY
                 );
             } else {
                 performDraw(
@@ -1056,18 +1073,21 @@ export class GameHandler {
             card.style.flexDirection = 'column';
             card.style.gap = '10px';
 
+            const cvsContainer = document.createElement('div');
+            cvsContainer.style.background = 'white';
+            cvsContainer.style.borderRadius = '4px';
+            cvsContainer.style.overflow = 'hidden';
+            cvsContainer.style.width = '100%';
+
             const cvs = document.createElement('canvas');
             cvs.width = CANVAS_CONFIG.width;
             cvs.height = CANVAS_CONFIG.height;
             cvs.style.width = '100%';
-            cvs.style.background = 'white';
-            cvs.style.borderRadius = '4px';
+            cvs.style.display = 'block';
+            
+            cvsContainer.appendChild(cvs);
             
             const ctx = cvs.getContext('2d');
-            // Fill white background explicitly
-            ctx.fillStyle = 'white';
-            ctx.fillRect(0, 0, cvs.width, cvs.height);
-            
             // No scaling needed as we use full resolution
             this.replayDrawing(ctx, item.drawing);
 
@@ -1146,7 +1166,7 @@ export class GameHandler {
                 };
             }
 
-            card.appendChild(cvs);
+            card.appendChild(cvsContainer);
             card.appendChild(info);
             card.appendChild(starsContainer);
             grid.appendChild(card);

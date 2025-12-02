@@ -1,4 +1,5 @@
 import { stringToColor } from './utils.js';
+import { state } from './state.js';
 
 export class CursorManager {
     constructor(socket, cursorsLayer, roomCodeProvider, usernameProvider, cameraManager) {
@@ -27,6 +28,14 @@ export class CursorManager {
     }
 
     handleCursorMove({ id, x, y, username }) {
+        // In telephone mode, we don't show other players' cursors
+        if (state.settings && state.settings.mode === 'telephone') {
+            if (this.cursors[id]) {
+                this.cursors[id].element.style.display = 'none';
+            }
+            return;
+        }
+
         if (!this.cursors[id]) {
             const cursor = document.createElement('div');
             cursor.className = 'cursor';
@@ -41,6 +50,11 @@ export class CursorManager {
             
             // Apply initial scale
             this.updateCursorScale(id);
+        } else {
+            // Ensure visible if it was hidden
+            if (this.cursors[id].element.style.display === 'none') {
+                this.cursors[id].element.style.display = 'block';
+            }
         }
         
         this.cursors[id].x = x;
@@ -140,5 +154,14 @@ export class CursorManager {
     setCursorsVisible(visible) {
         this.areCursorsVisible = visible;
         this.updateAllCursorsVisibility();
+    }
+
+    refreshVisibility() {
+        const isTelephone = state.settings && state.settings.mode === 'telephone';
+        Object.values(this.cursors).forEach(cursor => {
+            if (cursor.element) {
+                cursor.element.style.display = isTelephone ? 'none' : 'block';
+            }
+        });
     }
 }
