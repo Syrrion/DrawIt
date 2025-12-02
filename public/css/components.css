@@ -1,45 +1,72 @@
 /* Buttons & Inputs */
-button {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border-color);
-    color: var(--text-main);
+/* Buttons & Inputs */
+button:not(.tool-btn):not(.tool-btn-danger):not(.window-btn):not(.icon-btn):not(.close-btn):not(.hint-btn):not(.kick-btn):not(.browser-nav-btn):not(.tracing-finalize-btn):not(.use-as-layer-btn):not(.tracing-btn-validate):not(.tracing-btn-cancel):not(.tab-btn):not(.login-tab):not(.layer-btn):not(.edit-layer-btn) {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(139, 92, 246, 0.15));
+    border: 1px solid rgba(139, 92, 246, 0.4);
+    color: #e2e8f0;
     padding: 0.8rem 1.5rem;
     font-family: 'Orbitron', sans-serif;
     font-size: 0.9rem;
     cursor: pointer;
-    transition: all 0.3s ease;
-    border-radius: var(--radius-md);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 8px;
     backdrop-filter: blur(5px);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    position: relative;
+    overflow: hidden;
 }
 
-button:hover {
-    background: var(--primary);
-    border-color: var(--primary);
-    box-shadow: 0 0 15px var(--primary-glow);
-    transform: translateY(-1px);
+button:not(.tool-btn):not(.tool-btn-danger):not(.window-btn):not(.icon-btn):not(.close-btn):not(.hint-btn):not(.kick-btn):not(.browser-nav-btn):not(.tracing-finalize-btn):not(.use-as-layer-btn):not(.tracing-btn-validate):not(.tracing-btn-cancel):not(.tab-btn):not(.login-tab):not(.layer-btn):not(.edit-layer-btn):hover {
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    border-color: rgba(255, 255, 255, 0.4);
+    box-shadow: 0 8px 25px rgba(139, 92, 246, 0.6);
+    transform: translateY(-2px);
+    color: white;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
 }
 
-button.secondary {
-    border-color: var(--border-color);
+button:not(.tool-btn):not(.tool-btn-danger):not(.window-btn):not(.icon-btn):not(.close-btn):not(.hint-btn):not(.kick-btn):not(.browser-nav-btn):not(.tracing-finalize-btn):not(.use-as-layer-btn):not(.tracing-btn-validate):not(.tracing-btn-cancel):not(.tab-btn):not(.login-tab):not(.layer-btn):not(.edit-layer-btn):active {
+    transform: translateY(0);
+    box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
 }
 
-button.secondary:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: var(--text-main);
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    filter: grayscale(1);
+}
+
+button.secondary:not(.tool-btn) {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: var(--text-dim);
     box-shadow: none;
 }
 
-button.danger-btn {
-    background: rgba(239, 68, 68, 0.15);
-    border-color: rgba(239, 68, 68, 0.5);
-    color: var(--danger);
+button.secondary:not(.tool-btn):hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: white;
+    color: white;
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+    transform: translateY(-1px);
 }
 
-button.danger-btn:hover {
-    background: var(--danger);
+button.danger-btn:not(.tool-btn-danger) {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(185, 28, 28, 0.15));
+    border: 1px solid rgba(239, 68, 68, 0.5);
+    color: var(--danger);
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.1);
+}
+
+button.danger-btn:not(.tool-btn-danger):hover {
+    background: linear-gradient(135deg, #ef4444, #b91c1c);
     border-color: var(--danger);
-    box-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
     color: white;
+    box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
 }
 
 input[type="text"], input[type="number"] {
@@ -189,7 +216,7 @@ body.game-active #toast-container {
 .checkbox-group input[type="checkbox"]::after {
     content: '';
     position: absolute;
-    top: 2px;
+    top: 50%;
     left: 2px;
     width: 18px;
     height: 18px;
@@ -197,6 +224,7 @@ body.game-active #toast-container {
     border-radius: 50%;
     transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
     box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    transform: translateY(-50%);
 }
 
 .checkbox-group input[type="checkbox"]:checked {
@@ -211,15 +239,19 @@ body.game-active #toast-container {
 }
 
 .checkbox-group:hover input[type="checkbox"] {
-    border-color: var(--text-main);
+    border-color: var(--primary);
+    box-shadow: 0 0 10px var(--primary-glow);
+    background: rgba(0, 0, 0, 0.6);
 }
 
 .checkbox-group:hover input[type="checkbox"]::after {
-    background: var(--text-main);
+    background: white;
+    box-shadow: 0 0 8px white;
 }
 
 .checkbox-group:hover input[type="checkbox"]:checked::after {
     background: var(--primary-hover);
+    box-shadow: 0 0 15px var(--primary-glow);
 }
 
 .checkbox-group label {
@@ -229,7 +261,7 @@ body.game-active #toast-container {
     color: var(--text-dim);
     transition: color 0.2s;
     line-height: 1.2;
-    margin-top: 15px; /* Push text down for better visual alignment */
+    margin-top: 0; /* Push text down for better visual alignment */
 }
 
 .checkbox-group:hover label {
@@ -269,9 +301,9 @@ body.game-active #toast-container {
 .slider {
     -webkit-appearance: none;
     width: 100%;
-    height: 6px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 3px;
+    height: 12px;
+    background: rgba(255, 255, 255, 0.1); /* Default background if JS fails */
+    border-radius: 6px;
     outline: none;
     transition: opacity .2s;
 }
@@ -283,31 +315,49 @@ body.game-active #toast-container {
 .slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 20px;
-    height: 20px;
-    background: var(--primary);
+    width: 16px;
+    height: 16px;
+    background: var(--text-dim);
     border-radius: 50%;
     cursor: pointer;
-    box-shadow: 0 0 10px var(--primary-glow);
-    transition: transform 0.2s;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    transition: all 0.2s;
+    margin-top: 0; /* Webkit handles centering differently on standard range inputs sometimes, but let's try 0 or remove margin if height matches */
+}
+
+/* Adjust margin for webkit if needed, but standard behavior usually centers if height matches. 
+   However, tools.css used margin-top: -2px because track was 12px and thumb 16px. 
+   Let's replicate that exactly. */
+.slider::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 12px;
+    cursor: pointer;
+    background: transparent; /* Ensure gradient shows through */
+    border-radius: 6px;
+}
+
+.slider::-webkit-slider-thumb {
+    margin-top: -2px; /* (12 - 16) / 2 */
 }
 
 .slider::-webkit-slider-thumb:hover {
+    background: var(--primary);
     transform: scale(1.2);
 }
 
 .slider::-moz-range-thumb {
-    width: 20px;
-    height: 20px;
-    background: var(--primary);
+    width: 16px;
+    height: 16px;
+    background: var(--text-dim);
     border-radius: 50%;
     cursor: pointer;
-    box-shadow: 0 0 10px var(--primary-glow);
-    transition: transform 0.2s;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    transition: all 0.2s;
     border: none;
 }
 
 .slider::-moz-range-thumb:hover {
+    background: var(--primary);
     transform: scale(1.2);
 }
 

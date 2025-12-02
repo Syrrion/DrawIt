@@ -178,7 +178,23 @@ export class AvatarManager {
             btnRandomAvatar.addEventListener('click', () => this.randomizeAvatar());
         }
 
+        window.addEventListener('resize', () => {
+            const activeTab = document.querySelector('.avatar-tabs .tab-btn.active');
+            if (activeTab) {
+                this.updateTabGlider(activeTab);
+            }
+        });
+
         this.loadAvatar();
+    }
+
+    updateTabGlider(activeTab) {
+        const container = activeTab.parentElement;
+        const glider = container.querySelector('.tab-glider');
+        if (glider) {
+            glider.style.width = `${activeTab.offsetWidth}px`;
+            glider.style.left = `${activeTab.offsetLeft}px`;
+        }
     }
 
     switchAvatarMode(mode) {
@@ -186,9 +202,15 @@ export class AvatarManager {
         
         // Update tabs
         [this.tabEmoji, this.tabDraw, this.tabUpload].forEach(t => t.classList.remove('active'));
-        if (mode === 'emoji') this.tabEmoji.classList.add('active');
-        if (mode === 'draw') this.tabDraw.classList.add('active');
-        if (mode === 'upload') this.tabUpload.classList.add('active');
+        let activeTab;
+        if (mode === 'emoji') activeTab = this.tabEmoji;
+        if (mode === 'draw') activeTab = this.tabDraw;
+        if (mode === 'upload') activeTab = this.tabUpload;
+        
+        if (activeTab) {
+            activeTab.classList.add('active');
+            this.updateTabGlider(activeTab);
+        }
 
         // Update content visibility
         [this.modeEmoji, this.modeDraw, this.modeUpload].forEach(m => m.classList.add('hidden'));

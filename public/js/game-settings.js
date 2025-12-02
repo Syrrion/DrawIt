@@ -1,4 +1,4 @@
-import { showToast } from './utils.js';
+import { showToast, updateSliderBackground } from './utils.js';
 import { Modal } from './components/modal.js';
 
 export class GameSettingsManager {
@@ -71,6 +71,8 @@ export class GameSettingsManager {
         this.modal = new Modal(this.modalElement, {
             closeBtn: this.btnClose,
             onOpen: () => {
+                this.updateControlsState();
+                this.updateAllSliderDisplays();
                 if (this.isLeaderProvider()) {
                     this.socket.emit('leaderConfiguring', { roomCode: this.roomCodeProvider(), isConfiguring: true });
                 } else {
@@ -120,12 +122,26 @@ export class GameSettingsManager {
             { input: this.telephoneDrawTimeInput, spanId: 'setting-telephone-drawtime-val' }
         ];
 
+        // ResizeObserver to handle layout changes (modal open, resize)
+        const resizeObserver = new ResizeObserver(entries => {
+            for (let entry of entries) {
+                updateSliderBackground(entry.target);
+            }
+        });
+
         sliders.forEach(({ input, spanId }) => {
             if (input) {
+                // Observe for size changes
+                resizeObserver.observe(input);
+
+                // Initial background update
+                updateSliderBackground(input);
+
                 // Visual update on drag
                 input.addEventListener('input', (e) => {
                     const span = document.getElementById(spanId);
                     if (span) span.textContent = e.target.value;
+                    updateSliderBackground(e.target);
                 });
                 
                 // Emit update on release/change
@@ -139,6 +155,10 @@ export class GameSettingsManager {
             }
         });
 
+        if (this.personalHintsInput) {
+            resizeObserver.observe(this.personalHintsInput);
+        }
+
         if (this.fuzzyInput) this.fuzzyInput.addEventListener('change', () => this.emitSettingsUpdate());
         if (this.hintsInput) this.hintsInput.addEventListener('change', () => {
             this.updatePersonalHints();
@@ -147,6 +167,7 @@ export class GameSettingsManager {
         if (this.personalHintsInput) {
             this.personalHintsInput.addEventListener('input', (e) => {
                 document.getElementById('setting-personal-hints-val').textContent = e.target.value;
+                updateSliderBackground(e.target);
             });
             // We disable manual change if rule is active, but keep listener just in case
             this.personalHintsInput.addEventListener('change', () => this.emitSettingsUpdate());
@@ -363,18 +384,18 @@ export class GameSettingsManager {
             
             // Specific adjustments
             if (mode === 'custom-word') {
-                if (this.wordChoicesInput) this.wordChoicesInput.closest('.setting-group').classList.add('hidden');
-                if (this.maxWordLengthInput) this.maxWordLengthInput.closest('.setting-group').classList.remove('hidden');
+                if (this.wordChoicesInput) this.wordChoicesInput.closest('.modal-slider-item').classList.add('hidden');
+                if (this.maxWordLengthInput) this.maxWordLengthInput.closest('.modal-slider-item').classList.remove('hidden');
                 const aiThemeGroup = document.getElementById('setting-group-ai-theme');
                 if (aiThemeGroup) aiThemeGroup.classList.add('hidden');
             } else if (mode === 'ai-theme') {
-                if (this.wordChoicesInput) this.wordChoicesInput.closest('.setting-group').classList.remove('hidden');
-                if (this.maxWordLengthInput) this.maxWordLengthInput.closest('.setting-group').classList.add('hidden');
+                if (this.wordChoicesInput) this.wordChoicesInput.closest('.modal-slider-item').classList.remove('hidden');
+                if (this.maxWordLengthInput) this.maxWordLengthInput.closest('.modal-slider-item').classList.add('hidden');
                 const aiThemeGroup = document.getElementById('setting-group-ai-theme');
                 if (aiThemeGroup) aiThemeGroup.classList.remove('hidden');
             } else {
-                if (this.wordChoicesInput) this.wordChoicesInput.closest('.setting-group').classList.remove('hidden');
-                if (this.maxWordLengthInput) this.maxWordLengthInput.closest('.setting-group').classList.add('hidden');
+                if (this.wordChoicesInput) this.wordChoicesInput.closest('.modal-slider-item').classList.remove('hidden');
+                if (this.maxWordLengthInput) this.maxWordLengthInput.closest('.modal-slider-item').classList.add('hidden');
                 const aiThemeGroup = document.getElementById('setting-group-ai-theme');
                 if (aiThemeGroup) aiThemeGroup.classList.add('hidden');
             }
@@ -382,19 +403,28 @@ export class GameSettingsManager {
     }
 
     updateCardVisuals() {
+        const isLeader = this.isLeaderProvider();
+
         this.cards.forEach(card => {
             const mode = card.dataset.mode;
             
             // Reset classes
             card.classList.remove('selected', 'local-selected');
 
-            // Apply classes based on state
-            if (mode === this.activeRoomMode) {
-                card.classList.add('selected');
-            }
-            
-            if (mode === this.currentMode) {
-                card.classList.add('local-selected');
+            if (isLeader) {
+                // Leader: The current selection is the active one (Optimistic UI)
+                if (mode === this.currentMode) {
+                    card.classList.add('selected');
+                }
+            } else {
+                // Non-Leader: Distinguish between Room Mode (Yellow) and Local View (Blue)
+                if (mode === this.activeRoomMode) {
+                    card.classList.add('selected');
+                }
+                
+                if (mode === this.currentMode) {
+                    card.classList.add('local-selected');
+                }
             }
         });
     }
@@ -441,6 +471,9 @@ export class GameSettingsManager {
             this.waitingMsg.classList.remove('hidden');
             this.startBtn.classList.add('hidden'); // Inside modal
         }
+
+        // Update slider backgrounds based on disabled state
+        this.updateAllSliderDisplays();
     }
 
     updateAllSliderDisplays() {
@@ -462,6 +495,7 @@ export class GameSettingsManager {
             if (input) {
                 const span = document.getElementById(spanId);
                 if (span) span.textContent = input.value;
+                updateSliderBackground(input);
             }
         });
     }
@@ -509,7 +543,7 @@ export class GameSettingsManager {
         if (!this.personalHintsInput) return;
 
         const hintsEnabled = this.hintsInput ? this.hintsInput.checked : true;
-        const group = this.personalHintsInput.closest('.setting-group');
+        const group = this.personalHintsInput.closest('.modal-slider-item');
 
         // Visibility Logic (Apply to everyone)
         if (hintsEnabled) {
@@ -557,6 +591,8 @@ export class GameSettingsManager {
         } else {
             this.personalHintsInput.disabled = true;
         }
+
+        updateSliderBackground(this.personalHintsInput);
     }
 
     show() {

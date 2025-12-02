@@ -227,7 +227,7 @@
 
 /* Lobby Settings Modal */
 .settings-content {
-    max-width: 900px;
+    max-width: 1100px;
     width: 95%;
     text-align: left;
     background: var(--bg-glass-strong);
@@ -268,10 +268,11 @@
 
 .sidebar-label {
     display: block;
-    color: var(--text-dim);
-    font-size: 0.9rem;
+    color: var(--text-main);
+    font-size: 0.85rem;
+    font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 0.5px;
     margin-bottom: 0.5rem;
 }
 
@@ -392,8 +393,8 @@
 /* Settings Inputs */
 .settings-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
     margin-bottom: 1rem;
 }
 
@@ -462,13 +463,43 @@
 }
 
 .setting-group label {
-    display: block;
+    display: flex;
+    align-items: center;
     color: var(--text-dim);
     margin-bottom: 0.5rem;
-    font-size: 0.85rem; /* Slightly smaller to fit */
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    transition: all 0.3s ease;
+}
+
+.setting-group:hover label {
+    color: var(--text-main);
+    text-shadow: none;
+}
+
+.setting-group.checkbox-group {
+    margin-bottom: 8px;
+}
+
+.setting-group.checkbox-group label {
+    margin-bottom: 0;
+    font-size: 0.8rem;
+    text-shadow: none;
+    cursor: pointer;
+    color: var(--text-dim);
+    transition: color 0.3s;
+    text-transform: none; /* Reset for checkboxes if needed, or keep uppercase */
+    font-weight: 600;
+}
+
+.setting-group.checkbox-group:hover label {
+    color: var(--text-main);
+    text-shadow: 0 0 5px rgba(255, 255, 255, 0.2);
 }
 
 .setting-group input {
@@ -879,3 +910,463 @@
     to { opacity: 1; transform: translateY(0); }
 }
 
+/* Slider & Value Tag Layout */
+.slider-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 5px;
+}
+
+.slider-wrapper .slider {
+    flex: 1;
+    width: auto; /* Override width: 100% */
+}
+
+.setting-value-tag {
+    background: #151515;
+    color: #e0e0e0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.9rem;
+    font-weight: bold;
+    min-width: 60px;
+    text-align: center;
+    box-shadow: none;
+}
+
+
+/* Modal Slider Item (New Layout) */
+.modal-slider-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 5px;
+}
+
+.modal-slider-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-slider-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-dim);
+    font-weight: bold;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.modal-slider-label i {
+    font-size: 1rem;
+    width: 20px;
+    text-align: center;
+    color: var(--text-dim);
+}
+
+.modal-slider-value {
+    background: #151515;
+    border: 1px solid rgba(255,255,255,0.1);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.9rem;
+    font-weight: bold;
+    min-width: 60px;
+    text-align: center;
+    color: #e0e0e0;
+}
+
+.modal-slider-item input[type='range'] {
+    width: 100%;
+    height: 12px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    outline: none;
+    margin-top: 2px;
+}
+
+.modal-slider-item input[type='range']::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 12px;
+    cursor: pointer;
+    background: transparent;
+    border-radius: 6px;
+}
+
+.modal-slider-item input[type='range']::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    background: var(--text-dim);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    margin-top: -2px;
+}
+
+.modal-slider-item input[type='range']:hover::-webkit-slider-thumb {
+    background: var(--primary);
+    transform: scale(1.2);
+}
+
+
+.modal-slider-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+
+/* Modal Slider Text Input */
+.modal-slider-item input[type='text'] {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    padding: 0.6rem 1rem;
+    border-radius: var(--radius-md);
+    width: 100%;
+    font-family: inherit;
+    font-size: 0.9rem;
+    margin-top: 5px;
+    transition: all 0.2s;
+}
+
+.modal-slider-item input[type='text']:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px var(--primary-glow);
+    outline: none;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+/* Fix Full Width for Modal Slider Item */
+.modal-slider-item.full-width {
+    grid-column: 1 / -1;
+}
+
+/* Ensure header takes full width and aligns correctly */
+.modal-slider-header {
+    width: 100%;
+    justify-content: space-between;
+}
+
+/* Ensure input takes full width */
+.modal-slider-item input[type='text'] {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Fix Full Width for Modal Slider Item */
+.modal-slider-item.full-width {
+    grid-column: 1 / -1;
+}
+
+/* Ensure header takes full width and aligns correctly */
+.modal-slider-header {
+    width: 100%;
+    justify-content: space-between;
+}
+
+/* Ensure input takes full width */
+.modal-slider-item input[type='text'] {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Fix Full Width for Modal Slider Item */
+.modal-slider-item.full-width {
+    grid-column: 1 / -1;
+}
+
+/* Ensure header takes full width and aligns correctly */
+.modal-slider-header {
+    width: 100%;
+    justify-content: space-between;
+}
+
+/* Ensure input takes full width */
+.modal-slider-item input[type='text'] {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Fix Full Width for Modal Slider Item */
+.modal-slider-item.full-width {
+    grid-column: 1 / -1;
+}
+
+/* Ensure header takes full width and aligns correctly */
+.modal-slider-header {
+    width: 100%;
+    justify-content: space-between;
+}
+
+/* Ensure input takes full width */
+.modal-slider-item input[type='text'] {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Fix Full Width for Modal Slider Item */
+.modal-slider-item.full-width {
+    grid-column: 1 / -1;
+}
+
+/* Ensure header takes full width and aligns correctly */
+.modal-slider-header {
+    width: 100%;
+    justify-content: space-between;
+}
+
+/* Ensure input takes full width */
+.modal-slider-item input[type='text'] {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Fix Full Width for Modal Slider Item */
+.modal-slider-item.full-width {
+    grid-column: 1 / -1;
+}
+
+/* Ensure header takes full width and aligns correctly */
+.modal-slider-header {
+    width: 100%;
+    justify-content: space-between;
+}
+
+/* Ensure input takes full width */
+.modal-slider-item input[type='text'] {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Fix Full Width for Modal Slider Item */
+.modal-slider-item.full-width {
+    grid-column: 1 / -1;
+}
+
+/* Ensure header takes full width and aligns correctly */
+.modal-slider-header {
+    width: 100%;
+    justify-content: space-between;
+}
+
+/* Ensure input takes full width */
+.modal-slider-item input[type='text'] {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Fix Full Width for Modal Slider Item */
+.modal-slider-item.full-width {
+    grid-column: 1 / -1;
+}
+
+/* Ensure header takes full width and aligns correctly */
+.modal-slider-header {
+    width: 100%;
+    justify-content: space-between;
+}
+
+/* Ensure input takes full width */
+.modal-slider-item input[type='text'] {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Fix Full Width for Modal Slider Item */
+.modal-slider-item.full-width {
+    grid-column: 1 / -1;
+}
+
+/* Ensure header takes full width and aligns correctly */
+.modal-slider-header {
+    width: 100%;
+    justify-content: space-between;
+}
+
+/* Ensure input takes full width */
+.modal-slider-item input[type='text'] {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Fix Full Width for Modal Slider Item */
+.modal-slider-item.full-width {
+    grid-column: 1 / -1;
+}
+
+/* Ensure header takes full width and aligns correctly */
+.modal-slider-header {
+    width: 100%;
+    justify-content: space-between;
+}
+
+/* Ensure input takes full width */
+.modal-slider-item input[type='text'] {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Fix Full Width for Modal Slider Item */
+.modal-slider-item.full-width {
+    grid-column: 1 / -1;
+}
+
+/* Ensure header takes full width and aligns correctly */
+.modal-slider-header {
+    width: 100%;
+    justify-content: space-between;
+}
+
+/* Ensure input takes full width */
+.modal-slider-item input[type='text'] {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Fix Full Width for Modal Slider Item */
+.modal-slider-item.full-width {
+    grid-column: 1 / -1;
+}
+
+/* Ensure header takes full width and aligns correctly */
+.modal-slider-header {
+    width: 100%;
+    justify-content: space-between;
+}
+
+/* Ensure input takes full width */
+.modal-slider-item input[type='text'] {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Fix Full Width for Modal Slider Item */
+.modal-slider-item.full-width {
+    grid-column: 1 / -1;
+}
+
+/* Ensure header takes full width and aligns correctly */
+.modal-slider-header {
+    width: 100%;
+    justify-content: space-between;
+}
+
+/* Ensure input takes full width */
+.modal-slider-item input[type='text'] {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Fix Full Width for Modal Slider Item */
+.modal-slider-item.full-width {
+    grid-column: 1 / -1;
+}
+
+/* Ensure header takes full width and aligns correctly */
+.modal-slider-header {
+    width: 100%;
+    justify-content: space-between;
+}
+
+/* Ensure input takes full width */
+.modal-slider-item input[type='text'] {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Fix Full Width for Modal Slider Item */
+.modal-slider-item.full-width {
+    grid-column: 1 / -1;
+}
+
+/* Ensure header takes full width and aligns correctly */
+.modal-slider-header {
+    width: 100%;
+    justify-content: space-between;
+}
+
+/* Ensure input takes full width */
+.modal-slider-item input[type='text'] {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Fix Full Width for Modal Slider Item */
+.modal-slider-item.full-width {
+    grid-column: 1 / -1;
+}
+
+/* Ensure header takes full width and aligns correctly */
+.modal-slider-header {
+    width: 100%;
+    justify-content: space-between;
+}
+
+/* Ensure input takes full width */
+.modal-slider-item input[type='text'] {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Fix Full Width for Modal Slider Item */
+.modal-slider-item.full-width {
+    grid-column: 1 / -1;
+}
+
+/* Ensure header takes full width and aligns correctly */
+.modal-slider-header {
+    width: 100%;
+    justify-content: space-between;
+}
+
+/* Ensure input takes full width */
+.modal-slider-item input[type='text'] {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Fix Full Width for Modal Slider Item */
+.modal-slider-item.full-width {
+    grid-column: 1 / -1;
+}
+
+/* Ensure header takes full width and aligns correctly */
+.modal-slider-header {
+    width: 100%;
+    justify-content: space-between;
+}
+
+/* Ensure input takes full width */
+.modal-slider-item input[type='text'] {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Fix Full Width for Modal Slider Item */
+.modal-slider-item.full-width {
+    grid-column: 1 / -1;
+}
+
+/* Ensure header takes full width and aligns correctly */
+.modal-slider-header {
+    width: 100%;
+    justify-content: space-between;
+}
+
+/* Ensure input takes full width */
+.modal-slider-item input[type='text'] {
+    width: 100%;
+    box-sizing: border-box;
+}

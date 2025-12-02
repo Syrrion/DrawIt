@@ -235,3 +235,37 @@ export function calculateSliderValue(brushSize) {
     return min + (max - min) * t;
 }
 
+export function updateSliderBackground(slider) {
+    if (!slider) return;
+    
+    // We want to show the fill even if disabled, so we remove the early return.
+    // The visual indication of 'disabled' can be handled by CSS opacity if needed.
+    
+    const min = parseFloat(slider.min) || 0;
+    const max = parseFloat(slider.max) || 100;
+    const val = parseFloat(slider.value) || 0;
+    
+    // Thumb width from CSS (16px)
+    const thumbWidth = 16; 
+    const width = slider.offsetWidth;
+    
+    let percentage;
+    
+    if (width && width > thumbWidth) {
+        const ratio = (val - min) / (max - min);
+        // Calculate the center position of the thumb
+        const centerPosition = (thumbWidth / 2) + (ratio * (width - thumbWidth));
+        percentage = (centerPosition / width) * 100;
+    } else {
+        // Fallback if width is not available yet
+        percentage = ((val - min) / (max - min)) * 100;
+    }
+    
+    percentage = Math.min(100, Math.max(0, percentage));
+    
+    // Use a different color or opacity if disabled, or just standard primary
+    const colorVar = slider.disabled ? 'var(--text-dim)' : 'var(--primary)';
+    
+    slider.style.background = `linear-gradient(to right, ${colorVar} 0%, ${colorVar} ${percentage}%, rgba(255, 255, 255, 0.1) ${percentage}%, rgba(255, 255, 255, 0.1) 100%)`;
+}
+
