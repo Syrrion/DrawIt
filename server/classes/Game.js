@@ -278,6 +278,7 @@ class Game {
             };
         }
 
+        this.io.to(this.room.code).emit('telephonePlayerFinished', userId);
         this.checkTelephoneCompletion();
     }
 
@@ -461,12 +462,83 @@ class Game {
 
     // Creative Mode Methods
     startCreativeRound() {
+        this.undoStacks.clear();
+        this.redoStacks.clear();
+        this.room.clearCanvas();
+
+        if (this.room.settings.wordSource === 'custom') {
+            this.phase = 'WORD_CHOICE';
+            this.creativeWordChoices = {};
+            
+            this.io.to(this.room.code).emit('creativeWordChoiceStart', {
+                duration: 30
+            });
+            
+            this.startTimer(30, () => this.forceCreativeRoulette());
+        } else {
+            this.startCreativeDrawingPhase(getRandomWord().toUpperCase());
+        }
+    }
+
+    handleCreativeWordChoice(userId, word) {
+        if (this.phase !== 'WORD_CHOICE') return;
+        
+        if (!word || word.trim().length === 0) return;
+        
+        this.creativeWordChoices[userId] = word.trim().toUpperCase();
+        
+        // Notify that this user has chosen (optional, for UI feedback)
+        this.io.to(this.room.code).emit('creativePlayerChose', userId);
+
+        const players = this.room.getPlayers();
+        const allChosen = players.every(p => this.creativeWordChoices[p.id]);
+        
+        if (allChosen) {
+            this.startCreativeRoulette();
+        }
+    }
+
+    forceCreativeRoulette() {
+        const players = this.room.getPlayers();
+        players.forEach(p => {
+            if (!this.creativeWordChoices[p.id]) {
+                this.creativeWordChoices[p.id] = getRandomWord().toUpperCase();
+            }
+        });
+        this.startCreativeRoulette();
+    }
+
+    startCreativeRoulette() {
+        this.phase = 'ROULETTE';
+        const words = Object.values(this.creativeWordChoices);
+        const winningWord = words[Math.floor(Math.random() * words.length)];
+        
+        this.io.to(this.room.code).emit('creativeRouletteStart', {
+            words: words,
+            winner: winningWord,
+            duration: 5
+        });
+        
+        this.startTimer(5, () => this.startCreativePause(winningWord));
+    }
+
+    startCreativePause(word) {
+        this.phase = 'PAUSE';
+        this.io.to(this.room.code).emit('creativePause', {
+            word: word,
+            duration: 5
+        });
+        
+        this.startTimer(5, () => this.startCreativeDrawingPhase(word));
+    }
+
+    startCreativeDrawingPhase(word) {
         this.phase = 'DRAWING';
         this.playerDrawings = {};
         this.playerImages = {}; // Store composite images
         this.votes = {};
         this.spectatorSubscriptions = {};
-        this.currentWord = getRandomWord().toUpperCase();
+        this.currentWord = word;
         
         this.room.getPlayers().forEach(p => {
             this.playerDrawings[p.id] = [];
@@ -474,10 +546,7 @@ class Game {
             this.votes[p.id] = {};
         });
         
-        this.undoStacks.clear();
-        this.redoStacks.clear();
-
-        // Clear global canvas for everyone
+        // Clear global canvas for everyone (already done in startCreativeRound but good to ensure)
         this.room.clearCanvas();
 
         this.io.to(this.room.code).emit('creativeRoundStart', {
@@ -795,7 +864,7 @@ class Game {
 
         setTimeout(() => {
             this.nextCreativeRound();
-        }, 15000);
+        }, 22000);
     }
 
     nextCreativeRound() {
@@ -870,7 +939,8 @@ class Game {
             timeout: settings.wordChoiceTime
         });
 
-        if (settings.mode === 'custom-word') {
+        // Check for Custom Word Source (merged into guess-word) or legacy custom-word mode
+        if (settings.mode === 'custom-word' || (settings.mode === 'guess-word' && settings.wordSource === 'custom')) {
             this.io.to(drawerId).emit('typeWord', {
                 timeout: settings.wordChoiceTime,
                 maxWordLength: settings.maxWordLength || 20

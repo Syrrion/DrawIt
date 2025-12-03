@@ -12,13 +12,11 @@ export class GameSettingsManager {
         this.activeRoomMode = 'guess-word'; // Tracks the actual room mode (Leader's choice)
         this.previousHintsEnabled = true;
         this.storedWordChoiceTimes = {
-            'guess-word': 20,
-            'custom-word': 45
+            'guess-word': 20
         };
 
         this.modeDescriptions = {
             'guess-word': 'Un joueur dessine, les autres doivent deviner le mot le plus vite possible.',
-            'custom-word': 'Le dessinateur choisit son propre mot à faire deviner.',
             'ai-theme': 'Mots générés par IA selon un thème choisi. Idéal pour des parties thématiques !',
             'creative': 'Tout le monde dessine le même thème, puis vote pour le meilleur dessin.',
             'telephone': 'Bouche à oreille dessiné : écrivez, dessinez, devinez en chaîne ! Idéal pour les groupes de 4 joueurs ou plus.'
@@ -49,6 +47,7 @@ export class GameSettingsManager {
         this.creativeRoundsInput = document.getElementById('setting-creative-rounds');
         this.creativePresentationTimeInput = document.getElementById('setting-creative-presentationtime');
         this.creativeVoteTimeInput = document.getElementById('setting-creative-votetime');
+        this.creativeMaxWordLengthInput = document.getElementById('setting-creative-max-word-length');
         this.anonymousVotingInput = document.getElementById('setting-anonymous-voting');
 
         // Telephone Settings
@@ -57,6 +56,11 @@ export class GameSettingsManager {
 
         // AI Theme Settings (reuse guess-word inputs + specific theme input)
         this.aiThemeInput = document.getElementById('setting-ai-theme');
+
+        // Word Source Settings
+        this.wordSourceInputs = document.querySelectorAll('input[name="word-source"]');
+        this.wordSourceGroup = document.getElementById('setting-group-word-source');
+        this.creativeWordSourceInputs = document.querySelectorAll('input[name="creative-word-source"]');
 
         // Actions
         this.startBtn = document.getElementById('btn-start-game');
@@ -118,6 +122,7 @@ export class GameSettingsManager {
             { input: this.creativeRoundsInput, spanId: 'setting-creative-rounds-val' },
             { input: this.creativePresentationTimeInput, spanId: 'setting-creative-presentationtime-val' },
             { input: this.creativeVoteTimeInput, spanId: 'setting-creative-votetime-val' },
+            { input: this.creativeMaxWordLengthInput, spanId: 'setting-creative-max-word-length-val' },
             { input: this.telephoneWriteTimeInput, spanId: 'setting-telephone-writetime-val' },
             { input: this.telephoneDrawTimeInput, spanId: 'setting-telephone-drawtime-val' }
         ];
@@ -178,6 +183,23 @@ export class GameSettingsManager {
         // AI Theme Listeners
         if (this.aiThemeInput) this.aiThemeInput.addEventListener('change', () => this.emitSettingsUpdate());
 
+        // Word Source Listeners
+        this.wordSourceInputs.forEach(input => {
+            input.addEventListener('change', () => {
+                this.updateGuessWordUI();
+                this.emitSettingsUpdate();
+            });
+        });
+
+        if (this.creativeWordSourceInputs) {
+            this.creativeWordSourceInputs.forEach(input => {
+                input.addEventListener('change', () => {
+                    this.updateCreativeUI();
+                    this.emitSettingsUpdate();
+                });
+            });
+        }
+
         // Start Game
         this.startBtn.addEventListener('click', () => {
             if (!this.isLeaderProvider()) return;
@@ -217,6 +239,7 @@ export class GameSettingsManager {
                     if (this.creativeRoundsInput) this.creativeRoundsInput.value = s.rounds;
                     if (this.creativePresentationTimeInput) this.creativePresentationTimeInput.value = s.presentationTime || 10;
                     if (this.creativeVoteTimeInput) this.creativeVoteTimeInput.value = s.voteTime || 60;
+                    if (this.creativeMaxWordLengthInput) this.creativeMaxWordLengthInput.value = s.maxWordLength || 20;
                 } else if (s.mode === 'telephone') {
                     if (this.telephoneWriteTimeInput) this.telephoneWriteTimeInput.value = s.writeTime || 30;
                     if (this.telephoneDrawTimeInput) this.telephoneDrawTimeInput.value = s.drawTime || 180;
@@ -228,6 +251,22 @@ export class GameSettingsManager {
                 // AI Theme specific
                 if (s.mode === 'ai-theme' && this.aiThemeInput) {
                     this.aiThemeInput.value = s.aiTheme || 'Animaux';
+                }
+
+                // Word Source specific
+                if (s.mode === 'guess-word' && this.wordSourceInputs) {
+                    const source = s.wordSource || 'dictionary';
+                    this.wordSourceInputs.forEach(input => {
+                        input.checked = (input.value === source);
+                    });
+                    this.updateGuessWordUI();
+                }
+                if (s.mode === 'creative' && this.creativeWordSourceInputs) {
+                    const source = s.wordSource || 'dictionary';
+                    this.creativeWordSourceInputs.forEach(input => {
+                        input.checked = (input.value === source);
+                    });
+                    this.updateCreativeUI();
                 }
 
                 if (this.allowTracingInput) this.allowTracingInput.checked = s.allowTracing !== undefined ? s.allowTracing : true;
@@ -284,6 +323,7 @@ export class GameSettingsManager {
                 if (this.creativeRoundsInput && this.creativeRoundsInput.value != settings.rounds) this.creativeRoundsInput.value = settings.rounds;
                 if (this.creativePresentationTimeInput && this.creativePresentationTimeInput.value != settings.presentationTime) this.creativePresentationTimeInput.value = settings.presentationTime;
                 if (this.creativeVoteTimeInput && this.creativeVoteTimeInput.value != settings.voteTime) this.creativeVoteTimeInput.value = settings.voteTime;
+                if (this.creativeMaxWordLengthInput && this.creativeMaxWordLengthInput.value != settings.maxWordLength) this.creativeMaxWordLengthInput.value = settings.maxWordLength;
             } else if (settings.mode === 'telephone') {
                 if (this.telephoneWriteTimeInput && this.telephoneWriteTimeInput.value != settings.writeTime) this.telephoneWriteTimeInput.value = settings.writeTime;
                 if (this.telephoneDrawTimeInput && this.telephoneDrawTimeInput.value != settings.drawTime) this.telephoneDrawTimeInput.value = settings.drawTime;
@@ -295,6 +335,30 @@ export class GameSettingsManager {
             // AI Theme specific
             if (settings.mode === 'ai-theme' && this.aiThemeInput && this.aiThemeInput.value != settings.aiTheme) {
                 this.aiThemeInput.value = settings.aiTheme || 'Animaux';
+            }
+
+            // Word Source specific
+            if (settings.mode === 'guess-word' && this.wordSourceInputs) {
+                const source = settings.wordSource || 'dictionary';
+                let changed = false;
+                this.wordSourceInputs.forEach(input => {
+                    if (input.checked !== (input.value === source)) {
+                        input.checked = (input.value === source);
+                        changed = true;
+                    }
+                });
+                if (changed) this.updateGuessWordUI();
+            }
+            if (settings.mode === 'creative' && this.creativeWordSourceInputs) {
+                const source = settings.wordSource || 'dictionary';
+                let changed = false;
+                this.creativeWordSourceInputs.forEach(input => {
+                    if (input.checked !== (input.value === source)) {
+                        input.checked = (input.value === source);
+                        changed = true;
+                    }
+                });
+                if (changed) this.updateCreativeUI();
             }
 
             if (this.allowTracingInput && settings.allowTracing !== undefined && this.allowTracingInput.checked !== settings.allowTracing) this.allowTracingInput.checked = settings.allowTracing;
@@ -342,7 +406,7 @@ export class GameSettingsManager {
         }
 
         // Save current time for previous mode
-        if (this.currentMode === 'guess-word' || this.currentMode === 'custom-word') {
+        if (this.currentMode === 'guess-word') {
             if (this.wordChoiceTimeInput) {
                 this.storedWordChoiceTimes[this.currentMode] = parseInt(this.wordChoiceTimeInput.value) || 20;
             }
@@ -352,7 +416,7 @@ export class GameSettingsManager {
         this.updateCardVisuals();
 
         // Restore time for new mode
-        if (mode === 'guess-word' || mode === 'custom-word') {
+        if (mode === 'guess-word') {
             if (this.wordChoiceTimeInput) {
                 this.wordChoiceTimeInput.value = this.storedWordChoiceTimes[mode] || 20;
             }
@@ -364,7 +428,7 @@ export class GameSettingsManager {
 
         // Update switches visibility
         document.querySelectorAll('.mode-specific').forEach(el => el.classList.add('hidden'));
-        if (mode === 'guess-word' || mode === 'custom-word' || mode === 'ai-theme') {
+        if (mode === 'guess-word' || mode === 'ai-theme') {
             document.querySelectorAll('.guess-word-only').forEach(el => el.classList.remove('hidden'));
         } else if (mode === 'creative') {
             document.querySelectorAll('.creative-only').forEach(el => el.classList.remove('hidden'));
@@ -373,32 +437,51 @@ export class GameSettingsManager {
         }
 
         // Show the selected mode settings
-        // For custom-word and ai-theme, we reuse guess-word settings but hide/show specific fields
+        // For ai-theme, we reuse guess-word settings but hide/show specific fields
         
         let targetId = `settings-${mode}`;
-        if (mode === 'custom-word' || mode === 'ai-theme') targetId = 'settings-guess-word'; // Reuse same settings panel
+        if (mode === 'ai-theme') targetId = 'settings-guess-word'; // Reuse same settings panel
 
         const targetSettings = document.getElementById(targetId);
         if (targetSettings) {
             targetSettings.classList.remove('hidden');
             
             // Specific adjustments
-            if (mode === 'custom-word') {
-                if (this.wordChoicesInput) this.wordChoicesInput.closest('.modal-slider-item').classList.add('hidden');
-                if (this.maxWordLengthInput) this.maxWordLengthInput.closest('.modal-slider-item').classList.remove('hidden');
-                const aiThemeGroup = document.getElementById('setting-group-ai-theme');
-                if (aiThemeGroup) aiThemeGroup.classList.add('hidden');
-            } else if (mode === 'ai-theme') {
+            if (mode === 'ai-theme') {
                 if (this.wordChoicesInput) this.wordChoicesInput.closest('.modal-slider-item').classList.remove('hidden');
                 if (this.maxWordLengthInput) this.maxWordLengthInput.closest('.modal-slider-item').classList.add('hidden');
                 const aiThemeGroup = document.getElementById('setting-group-ai-theme');
                 if (aiThemeGroup) aiThemeGroup.classList.remove('hidden');
-            } else {
-                if (this.wordChoicesInput) this.wordChoicesInput.closest('.modal-slider-item').classList.remove('hidden');
-                if (this.maxWordLengthInput) this.maxWordLengthInput.closest('.modal-slider-item').classList.add('hidden');
+                if (this.wordSourceGroup) this.wordSourceGroup.classList.add('hidden');
+            } else if (mode === 'guess-word') {
                 const aiThemeGroup = document.getElementById('setting-group-ai-theme');
                 if (aiThemeGroup) aiThemeGroup.classList.add('hidden');
+                if (this.wordSourceGroup) this.wordSourceGroup.classList.remove('hidden');
+                
+                this.updateGuessWordUI();
+            } else if (mode === 'creative') {
+                this.updateCreativeUI();
             }
+        }
+    }
+
+    updateGuessWordUI() {
+        const source = this.getWordSource();
+        if (source === 'custom') {
+            if (this.wordChoicesInput) this.wordChoicesInput.closest('.modal-slider-item').classList.add('hidden');
+            if (this.maxWordLengthInput) this.maxWordLengthInput.closest('.modal-slider-item').classList.remove('hidden');
+        } else {
+            if (this.wordChoicesInput) this.wordChoicesInput.closest('.modal-slider-item').classList.remove('hidden');
+            if (this.maxWordLengthInput) this.maxWordLengthInput.closest('.modal-slider-item').classList.add('hidden');
+        }
+    }
+
+    updateCreativeUI() {
+        const source = this.getWordSource();
+        if (source === 'custom') {
+            if (this.creativeMaxWordLengthInput) this.creativeMaxWordLengthInput.closest('.modal-slider-item').classList.remove('hidden');
+        } else {
+            if (this.creativeMaxWordLengthInput) this.creativeMaxWordLengthInput.closest('.modal-slider-item').classList.add('hidden');
         }
     }
 
@@ -447,10 +530,18 @@ export class GameSettingsManager {
         if (this.creativeRoundsInput) this.creativeRoundsInput.disabled = disabled;
         if (this.creativePresentationTimeInput) this.creativePresentationTimeInput.disabled = disabled;
         if (this.creativeVoteTimeInput) this.creativeVoteTimeInput.disabled = disabled;
+        if (this.creativeMaxWordLengthInput) this.creativeMaxWordLengthInput.disabled = disabled;
         if (this.anonymousVotingInput) this.anonymousVotingInput.disabled = disabled;
         if (this.telephoneWriteTimeInput) this.telephoneWriteTimeInput.disabled = disabled;
         if (this.telephoneDrawTimeInput) this.telephoneDrawTimeInput.disabled = disabled;
         if (this.aiThemeInput) this.aiThemeInput.disabled = disabled;
+        
+        if (this.wordSourceInputs) {
+            this.wordSourceInputs.forEach(input => input.disabled = disabled);
+        }
+        if (this.creativeWordSourceInputs) {
+            this.creativeWordSourceInputs.forEach(input => input.disabled = disabled);
+        }
         
         // Cards interaction
         this.cards.forEach(card => {
@@ -487,6 +578,7 @@ export class GameSettingsManager {
             { input: this.creativeRoundsInput, spanId: 'setting-creative-rounds-val' },
             { input: this.creativePresentationTimeInput, spanId: 'setting-creative-presentationtime-val' },
             { input: this.creativeVoteTimeInput, spanId: 'setting-creative-votetime-val' },
+            { input: this.creativeMaxWordLengthInput, spanId: 'setting-creative-max-word-length-val' },
             { input: this.telephoneWriteTimeInput, spanId: 'setting-telephone-writetime-val' },
             { input: this.telephoneDrawTimeInput, spanId: 'setting-telephone-drawtime-val' }
         ];
@@ -505,10 +597,12 @@ export class GameSettingsManager {
         
         let drawTime = parseInt(this.timeInput.value);
         let rounds = parseInt(this.roundsInput.value);
+        let maxWordLength = this.maxWordLengthInput ? parseInt(this.maxWordLengthInput.value) : 20;
 
         if (this.currentMode === 'creative') {
             drawTime = this.creativeDrawTimeInput ? parseInt(this.creativeDrawTimeInput.value) : 180;
             rounds = this.creativeRoundsInput ? parseInt(this.creativeRoundsInput.value) : 3;
+            maxWordLength = this.creativeMaxWordLengthInput ? parseInt(this.creativeMaxWordLengthInput.value) : 20;
         }
 
         const settings = {
@@ -520,13 +614,14 @@ export class GameSettingsManager {
             rounds: rounds,
             allowFuzzy: this.fuzzyInput ? this.fuzzyInput.checked : false,
             hintsEnabled: this.hintsInput ? this.hintsInput.checked : true,
-            maxWordLength: this.maxWordLengthInput ? parseInt(this.maxWordLengthInput.value) : 20,
+            maxWordLength: maxWordLength,
             personalHints: this.personalHintsInput ? parseInt(this.personalHintsInput.value) : 3,
             anonymousVoting: this.anonymousVotingInput ? this.anonymousVotingInput.checked : true,
             presentationTime: this.creativePresentationTimeInput ? parseInt(this.creativePresentationTimeInput.value) : 10,
             voteTime: this.creativeVoteTimeInput ? parseInt(this.creativeVoteTimeInput.value) : 60,
             writeTime: this.telephoneWriteTimeInput ? parseInt(this.telephoneWriteTimeInput.value) : 30,
-            aiTheme: this.aiThemeInput ? this.aiThemeInput.value : 'Animaux'
+            aiTheme: this.aiThemeInput ? this.aiThemeInput.value : 'Animaux',
+            wordSource: this.getWordSource()
         };
 
         if (this.currentMode === 'telephone') {
@@ -537,6 +632,24 @@ export class GameSettingsManager {
             roomCode: this.roomCodeProvider(),
             settings
         });
+    }
+
+    getWordSource() {
+        let source = 'dictionary';
+        if (this.currentMode === 'creative') {
+             if (this.creativeWordSourceInputs) {
+                this.creativeWordSourceInputs.forEach(input => {
+                    if (input.checked) source = input.value;
+                });
+             }
+        } else {
+            if (this.wordSourceInputs) {
+                this.wordSourceInputs.forEach(input => {
+                    if (input.checked) source = input.value;
+                });
+            }
+        }
+        return source;
     }
 
     updatePersonalHints() {

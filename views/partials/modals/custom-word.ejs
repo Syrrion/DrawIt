@@ -1,13 +1,13 @@
 <div id="custom-word-modal" class="modal hidden">
     <div class="modal-content">
-        <h3>Choisissez un mot à faire deviner</h3>
+        <h3 id="custom-word-title">Choisissez un mot à faire deviner</h3>
         <div class="word-choice-timer">Temps restant : <span id="custom-word-timer-val">20</span>s</div>
         <div class="form-group">
             <div style="display: flex; gap: 10px;">
                 <input type="text" id="custom-word-input" placeholder="Entrez votre mot (max 20 car.)" maxlength="20" autocomplete="off" style="flex: 1;">
                 <button id="btn-random-custom-word" class="btn-secondary" title="Mot aléatoire"><i class="fas fa-dice"></i></button>
             </div>
-            <p class="help-text">Le mot sera caché aux autres joueurs.</p>
+            <p class="help-text" id="custom-word-help">Le mot sera caché aux autres joueurs.</p>
         </div>
         <div class="modal-actions">
             <button id="btn-submit-custom-word" class="btn-primary">Valider</button>

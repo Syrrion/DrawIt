@@ -1,0 +1,26 @@
+<div id="word-choice-waiting-modal" class="modal hidden">
+    <div class="modal-content word-waiting-content">
+        <h2><i class="fas fa-clock"></i> En attente des joueurs...</h2>
+        
+        <div class="word-waiting-body" style="justify-content: center;">
+            <!-- Single Column: Status & Players -->
+            <div class="word-waiting-status-column" style="max-width: 500px; flex: none; width: 100%;">
+                <div class="word-waiting-status">
+                    <div class="word-waiting-count-container">
+                        <div class="word-waiting-count"><span id="word-waiting-count-val">0</span>/<span id="word-waiting-total-val">0</span></div>
+                        <div>joueurs ont choisi un mot</div>
+                    </div>
+                    <div class="word-waiting-timer-inline">
+                        <i class="fas fa-clock"></i> <span id="word-waiting-timer-val">30</span>s
+                    </div>
+                </div>
+                <div id="word-waiting-players-list" class="word-waiting-players-list-container"></div>
+            </div>
+        </div>
+        
+        <div class="ready-actions">
+            <!-- No actions, just waiting -->
+            <p style="color: var(--text-dim); font-style: italic;">Veuillez patienter pendant que les autres joueurs choisissent un mot.</p>
+        </div>
+    </div>
+</div>

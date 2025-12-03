@@ -53,12 +53,17 @@ export class GameHandler {
         socket.on('creativeReveal', this.handleCreativeReveal.bind(this));
         socket.on('creativeRoundEnd', this.handleCreativeRoundEnd.bind(this));
         socket.on('creativeHistory', this.handleCreativeHistory.bind(this));
+        socket.on('creativeWordChoiceStart', this.handleCreativeWordChoiceStart.bind(this));
+        socket.on('creativeRouletteStart', this.handleCreativeRouletteStart.bind(this));
+        socket.on('creativePause', this.handleCreativePause.bind(this));
+        socket.on('creativePlayerChose', this.handleCreativePlayerChose.bind(this));
 
         // Telephone Mode Events
         socket.on('telephoneRoundStart', this.handleTelephoneRoundStart.bind(this));
         socket.on('telephoneRoundEnd', this.handleTelephoneRoundEnd.bind(this));
         socket.on('telephoneGameEnded', this.handleTelephoneGameEnded.bind(this));
         socket.on('telephoneRecapUpdate', this.handleTelephoneRecapUpdate.bind(this));
+        socket.on('telephonePlayerFinished', this.handleTelephonePlayerFinished.bind(this));
 
         if (btnUseHint) {
             btnUseHint.addEventListener('click', () => {
@@ -72,9 +77,26 @@ export class GameHandler {
             btnSubmitCustomWord.addEventListener('click', () => {
                 const word = customWordInput.value.trim();
                 if (word) {
-                    socket.emit('customWordChosen', { roomCode: state.currentRoom, word });
-                    customWordModal.classList.add('hidden');
-                    if (this.wordChoiceTimerInterval) clearInterval(this.wordChoiceTimerInterval);
+                    if (state.settings && state.settings.mode === 'creative') {
+                         socket.emit('creativeWordChoice', { roomCode: state.currentRoom, word });
+                         
+                         // Mark self as ready immediately
+                         if (this.creativeWordChoiceStatus) {
+                             this.creativeWordChoiceStatus[socket.id] = true;
+                         }
+                         
+                         this.showCreativeWaitingModal();
+
+                         if (wordDisplay) {
+                             wordDisplay.textContent = "En attente des autres joueurs...";
+                             wordDisplay.style.color = 'var(--text-dim)';
+                             wordDisplay.classList.add('choosing-word');
+                         }
+                    } else {
+                         socket.emit('customWordChosen', { roomCode: state.currentRoom, word });
+                         customWordModal.classList.add('hidden');
+                         if (this.wordChoiceTimerInterval) clearInterval(this.wordChoiceTimerInterval);
+                    }
                 } else {
                     showToast('Veuillez entrer un mot !', 'error');
                 }
@@ -341,8 +363,18 @@ export class GameHandler {
         if (customWordInput) {
             customWordInput.value = '';
             customWordInput.maxLength = maxLen;
+            customWordInput.style.display = 'block'; // Reset display
             customWordInput.focus();
         }
+        
+        if (btnSubmitCustomWord) btnSubmitCustomWord.style.display = 'inline-block'; // Reset display
+        if (btnRandomCustomWord) btnRandomCustomWord.style.display = 'inline-block'; // Reset display
+
+        // Reset Modal Content for Standard Mode
+        const title = document.getElementById('custom-word-title');
+        const help = document.getElementById('custom-word-help');
+        if (title) title.textContent = "Choisissez un mot personnalisé";
+        if (help) help.textContent = "Entrez un mot que les autres devront deviner.";
 
         if (wordDisplay) {
             wordDisplay.textContent = 'À vous de choisir !';
@@ -383,6 +415,8 @@ export class GameHandler {
         gameTopBar.classList.remove('hidden');
         wordChoiceModal.classList.add('hidden');
         customWordModal.classList.add('hidden');
+        const waitingModal = document.getElementById('word-choice-waiting-modal');
+        if (waitingModal) waitingModal.classList.add('hidden');
         if (this.wordChoiceTimerInterval) clearInterval(this.wordChoiceTimerInterval);
         timerValue.textContent = data.duration;
         wordDisplay.textContent = this.formatHint(data.hint);
@@ -555,6 +589,8 @@ export class GameHandler {
         // Hide game UI elements
         wordChoiceModal.classList.add('hidden');
         customWordModal.classList.add('hidden');
+        const waitingModal = document.getElementById('word-choice-waiting-modal');
+        if (waitingModal) waitingModal.classList.add('hidden');
         roundResultOverlay.classList.add('hidden');
         gameTopBar.classList.add('hidden');
 
@@ -653,6 +689,7 @@ export class GameHandler {
 
     getSettingsList(settings) {
         const labels = {
+            wordSource: (v) => ({ icon: 'fa-book', text: v === 'custom' ? 'Mots choisis par les joueurs' : 'Mots aléatoires' }),
             drawTime: (v) => ({ icon: 'fa-clock', text: `${v}s Dessin` }),
             wordChoiceTime: (v) => ({ icon: 'fa-hourglass-half', text: `${v}s Choix` }),
             wordChoices: (v) => ({ icon: 'fa-list-ol', text: `${v} Choix de mots` }),
@@ -670,10 +707,10 @@ export class GameHandler {
 
         // Whitelist per mode to ensure only relevant settings are shown
         const modeSettings = {
-            'guess-word': ['drawTime', 'wordChoiceTime', 'wordChoices', 'rounds', 'allowFuzzy', 'hintsEnabled', 'personalHints', 'allowTracing'],
+            'guess-word': ['wordSource', 'drawTime', 'wordChoiceTime', 'wordChoices', 'maxWordLength', 'rounds', 'allowFuzzy', 'hintsEnabled', 'personalHints', 'allowTracing'],
             'custom-word': ['drawTime', 'wordChoiceTime', 'rounds', 'allowFuzzy', 'hintsEnabled', 'personalHints', 'allowTracing', 'maxWordLength'],
             'ai-theme': ['drawTime', 'wordChoiceTime', 'wordChoices', 'rounds', 'allowFuzzy', 'hintsEnabled', 'personalHints', 'allowTracing'],
-            'creative': ['drawTime', 'presentationTime', 'voteTime', 'rounds', 'allowTracing', 'anonymousVoting'],
+            'creative': ['wordSource', 'drawTime', 'presentationTime', 'voteTime', 'rounds', 'allowTracing', 'anonymousVoting', 'maxWordLength'],
             'telephone': ['writeTime', 'drawTime', 'allowTracing']
         };
 
@@ -682,6 +719,22 @@ export class GameHandler {
         // If Auto Hints are enabled, Personal Hints are disabled/hidden in game logic, so hide them here too
         if (settings.hintsEnabled) {
             allowedKeys = allowedKeys.filter(k => k !== 'personalHints');
+        }
+
+        // Dynamic filtering for guess-word based on wordSource
+        if (settings.mode === 'guess-word') {
+            if (settings.wordSource === 'custom') {
+                allowedKeys = allowedKeys.filter(k => k !== 'wordChoices');
+            } else {
+                allowedKeys = allowedKeys.filter(k => k !== 'maxWordLength');
+            }
+        }
+
+        // Dynamic filtering for creative based on wordSource
+        if (settings.mode === 'creative') {
+            if (settings.wordSource !== 'custom') {
+                allowedKeys = allowedKeys.filter(k => k !== 'maxWordLength');
+            }
         }
 
         return allowedKeys
@@ -1538,15 +1591,268 @@ export class GameHandler {
         }
     }
 
+    handleCreativePlayerChose(userId) {
+        if (this.creativeWordChoiceStatus) {
+            this.creativeWordChoiceStatus[userId] = true;
+            this.updateCreativeWaitingModal();
+        }
+        
+        const player = this.playerListManager.getPlayer(userId);
+        if (player && userId !== socket.id) {
+            showToast(`${player.username} a choisi son mot !`, 'info');
+        }
+    }
+
+    handleCreativeWordChoiceStart(data) {
+        const timeout = data.duration || 30;
+        
+        // Ensure other modals are closed
+        const waitingModal = document.getElementById('word-choice-waiting-modal');
+        if (waitingModal) waitingModal.classList.add('hidden');
+        roundResultOverlay.classList.add('hidden');
+        
+        if (customWordInput) {
+            customWordInput.value = '';
+            customWordInput.maxLength = 20;
+            customWordInput.style.display = 'block'; // Reset display
+            customWordInput.focus();
+        }
+        
+        if (btnSubmitCustomWord) btnSubmitCustomWord.style.display = 'inline-block'; // Reset display
+        if (btnRandomCustomWord) btnRandomCustomWord.style.display = 'inline-block'; // Reset display
+
+        // Update Modal Content for Creative Mode
+        const title = document.getElementById('custom-word-title');
+        const help = document.getElementById('custom-word-help');
+        if (title) title.textContent = "Proposez un thème pour le dessin !";
+        if (help) help.textContent = "Votre mot sera ajouté à la roulette.";
+
+        if (wordDisplay) {
+            wordDisplay.textContent = 'Choisissez un mot pour le thème !';
+            wordDisplay.classList.add('choosing-word');
+        }
+        
+        // Initialize Waiting Modal State
+        this.creativeWordChoiceStatus = {}; // userId -> boolean
+        const players = this.playerListManager.getPlayerList();
+        players.forEach(p => this.creativeWordChoiceStatus[p.id] = false);
+        
+        if (customWordTimerVal) {
+            customWordTimerVal.textContent = timeout;
+            
+            if (this.wordChoiceTimerInterval) clearInterval(this.wordChoiceTimerInterval);
+            this.wordChoiceTimerInterval = this.startSmartTimer(timeout, (remaining) => {
+                customWordTimerVal.textContent = remaining;
+                // Update waiting modal timer too
+                const waitingTimer = document.getElementById('word-waiting-timer-val');
+                if (waitingTimer) waitingTimer.textContent = remaining;
+            }, () => {
+                 if (customWordInput && customWordInput.value.trim().length > 0) {
+                    const word = customWordInput.value.trim();
+                    socket.emit('creativeWordChoice', { roomCode: state.currentRoom, word });
+                    this.showCreativeWaitingModal();
+                }
+            });
+        }
+        
+        customWordModal.classList.remove('hidden');
+    }
+
+    showCreativeWaitingModal() {
+        customWordModal.classList.add('hidden');
+        const modal = document.getElementById('word-choice-waiting-modal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            this.updateCreativeWaitingModal();
+        }
+    }
+
+    updateCreativeWaitingModal() {
+        const modal = document.getElementById('word-choice-waiting-modal');
+        if (!modal || modal.classList.contains('hidden')) return;
+
+        const countVal = document.getElementById('word-waiting-count-val');
+        const totalVal = document.getElementById('word-waiting-total-val');
+        const list = document.getElementById('word-waiting-players-list');
+        
+        const players = this.playerListManager.getPlayerList();
+        const total = players.length;
+        const ready = players.filter(p => this.creativeWordChoiceStatus[p.id]).length;
+        
+        if (countVal) countVal.textContent = ready;
+        if (totalVal) totalVal.textContent = total;
+        
+        if (list) {
+            list.innerHTML = '';
+            players.forEach(user => {
+                const hasChosen = this.creativeWordChoiceStatus[user.id];
+                
+                const chip = document.createElement('div');
+                chip.className = `ready-player-chip ${hasChosen ? 'is-ready' : 'not-ready'}`;
+                
+                let avatarHtml = '';
+                if (user.avatar && user.avatar.type === 'image') {
+                    avatarHtml = `<img src="${user.avatar.value}" class="player-avatar-small">`;
+                } else {
+                    const color = (user.avatar && user.avatar.color) || '#3498db';
+                    const emoji = (user.avatar && user.avatar.emoji) || '🎨';
+                    avatarHtml = `<div class="player-avatar-small" style="background-color: ${color}; display: flex; align-items: center; justify-content: center; font-size: 14px;">${emoji}</div>`;
+                }
+
+                chip.innerHTML = `
+                    <div class="ready-player-info">
+                        ${avatarHtml}
+                        <span class="ready-player-name">${user.username}</span>
+                    </div>
+                    <div class="ready-player-status">
+                        <i class="fas fa-spinner fa-spin status-waiting" ${hasChosen ? 'style="display:none"' : ''}></i>
+                        <i class="fas fa-check status-ready" ${hasChosen ? '' : 'style="display:none"'}></i>
+                    </div>
+                `;
+                list.appendChild(chip);
+            });
+        }
+    }
+
+    handleCreativeRouletteStart(data) {
+        customWordModal.classList.add('hidden');
+        const waitingModal = document.getElementById('word-choice-waiting-modal');
+        if (waitingModal) waitingModal.classList.add('hidden');
+
+        if (this.wordChoiceTimerInterval) clearInterval(this.wordChoiceTimerInterval);
+        
+        // Show Roulette Modal
+        const rouletteModal = document.getElementById('roulette-modal');
+        const strip = document.getElementById('roulette-strip');
+        
+        if (rouletteModal && strip) {
+            rouletteModal.classList.remove('hidden');
+            
+            // Prepare Strip
+            const words = data.words;
+            const winner = data.winner;
+            
+            // Generate a sequence for the strip
+            strip.innerHTML = '';
+            const sequence = [];
+            // Add some initial padding
+            for(let i=0; i<5; i++) sequence.push(words[Math.floor(Math.random() * words.length)]);
+            
+            // Add many random words
+            for(let i=0; i<40; i++) {
+                sequence.push(words[Math.floor(Math.random() * words.length)]);
+            }
+            sequence.push(winner); // The winner is the last one
+            
+            sequence.forEach(word => {
+                const item = document.createElement('div');
+                item.className = 'roulette-item';
+                item.textContent = word;
+                strip.appendChild(item);
+            });
+            
+            // Reset Position
+            strip.style.transition = 'none';
+            strip.style.transform = 'translateY(0)';
+            
+            // Force Reflow
+            strip.offsetHeight;
+            
+            // Animate
+            const itemHeight = 120;
+            const targetY = - (sequence.length - 1) * itemHeight;
+            const duration = data.duration || 5; // seconds
+            
+            // Play sound effect loop
+            const tickInterval = setInterval(() => {
+                 // Simple tick sound simulation or use existing
+                 // playTickSound(); // Might be too annoying if too fast
+            }, 200);
+
+            setTimeout(() => {
+                strip.style.transition = `transform ${duration}s cubic-bezier(0.1, 0.7, 0.1, 1)`;
+                strip.style.transform = `translateY(${targetY}px)`;
+            }, 100);
+            
+            // End of animation
+            setTimeout(() => {
+                clearInterval(tickInterval);
+                playTickSound();
+                
+                // Highlight winner
+                const winnerItem = strip.lastElementChild;
+                if (winnerItem) {
+                    winnerItem.style.color = '#f1c40f';
+                    winnerItem.style.textShadow = '0 0 20px #f1c40f';
+                    winnerItem.style.transform = 'scale(1.2)';
+                    winnerItem.style.transition = 'all 0.3s';
+                }
+                
+                // Close modal after delay
+                setTimeout(() => {
+                    rouletteModal.classList.add('hidden');
+                }, 3000);
+            }, duration * 1000);
+        } else {
+            // Fallback
+            gameTopBar.classList.remove('hidden');
+            if (wordDisplay) wordDisplay.classList.add('choosing-word');
+            
+            const words = data.words;
+            const winner = data.winner;
+            const duration = data.duration * 1000;
+            const startTime = Date.now();
+            
+            const interval = setInterval(() => {
+                const elapsed = Date.now() - startTime;
+                if (elapsed >= duration) {
+                    clearInterval(interval);
+                    if (wordDisplay) {
+                        wordDisplay.textContent = winner;
+                        wordDisplay.style.color = 'var(--success)';
+                        wordDisplay.style.transform = 'scale(1.5)';
+                    }
+                    playTickSound();
+                } else {
+                    const randomWord = words[Math.floor(Math.random() * words.length)];
+                    if (wordDisplay) wordDisplay.textContent = randomWord;
+                }
+            }, 100);
+        }
+    }
+
+    handleCreativePause(data) {
+        if (wordDisplay) {
+            wordDisplay.textContent = data.word;
+            wordDisplay.style.color = 'var(--success)';
+        }
+        
+        showToast(`Le thème est : ${data.word} ! Préparez-vous...`, 'info');
+        
+        if (timerValue) timerValue.textContent = data.duration;
+        
+        if (this.currentTimerInterval) clearInterval(this.currentTimerInterval);
+        this.currentTimerInterval = this.startSmartTimer(data.duration, (remaining) => {
+            if (timerValue) timerValue.textContent = remaining;
+        });
+    }
+
     handleTelephoneRoundStart(data) {
         // Hide previous overlays
         const overlay = document.getElementById('telephone-write-overlay');
         const contentWrapper = document.getElementById('telephone-content-wrapper');
         const waitingMsg = document.getElementById('telephone-waiting-msg');
+        const waitingModal = document.getElementById('telephone-waiting-modal');
         
         overlay.classList.add('hidden');
         document.getElementById('telephone-guess-overlay')?.classList.add('hidden'); // Cleanup if exists
+        if (waitingModal) waitingModal.classList.add('hidden');
         gameTopBar.classList.remove('hidden');
+        
+        // Reset Telephone Status
+        this.telephoneStatus = {};
+        const players = this.playerListManager.getPlayerList();
+        players.forEach(p => this.telephoneStatus[p.id] = false);
         
         // Hide Drawer Name Display in Telephone Mode
         if (drawerNameDisplay) drawerNameDisplay.classList.add('hidden');
@@ -1563,6 +1869,11 @@ export class GameHandler {
         this.currentTimerInterval = this.startSmartTimer(data.duration, (remaining) => {
             if (timerValue) timerValue.textContent = remaining;
             if (telephoneTimerVal) telephoneTimerVal.textContent = remaining;
+            
+            // Update waiting modal timer too
+            const waitingModalTimer = document.getElementById('telephone-waiting-timer-val');
+            if (waitingModalTimer) waitingModalTimer.textContent = remaining;
+            
             if (remaining <= 10 && remaining > 0) playTickSound();
         }, () => {
             // Auto-submit on timeout (only for players)
@@ -1633,7 +1944,8 @@ export class GameHandler {
                 const text = input.value.trim() || '...'; // Default if empty
                 socket.emit('telephoneSubmit', { roomCode: state.currentRoom, content: text });
                 contentWrapper.classList.add('hidden');
-                waitingMsg.classList.remove('hidden');
+                // waitingMsg.classList.remove('hidden'); // OLD
+                this.showTelephoneWaitingModal(); // NEW
             } else {
                 // Capture canvas
                 const tempCanvas = document.createElement('canvas');
@@ -1657,7 +1969,14 @@ export class GameHandler {
                 // Show waiting overlay
                 overlay.classList.remove('hidden');
                 contentWrapper.classList.add('hidden');
-                waitingMsg.classList.remove('hidden');
+                // waitingMsg.classList.remove('hidden'); // OLD
+                this.showTelephoneWaitingModal(); // NEW
+            }
+            
+            // Mark self as ready locally
+            if (this.telephoneStatus) {
+                this.telephoneStatus[socket.id] = true;
+                this.updateTelephoneWaitingModal();
             }
         };
 
@@ -1702,11 +2021,19 @@ export class GameHandler {
                 if (text) {
                     socket.emit('telephoneSubmit', { roomCode: state.currentRoom, content: text });
                     contentWrapper.classList.add('hidden');
-                    waitingMsg.classList.remove('hidden');
+                    // waitingMsg.classList.remove('hidden'); // OLD
+                    this.showTelephoneWaitingModal(); // NEW
+                    
+                    // Mark self as ready locally
+                    if (this.telephoneStatus) {
+                        this.telephoneStatus[socket.id] = true;
+                        this.updateTelephoneWaitingModal();
+                    }
                 } else {
                     showToast('Écrivez quelque chose !', 'error');
                 }
             };
+
 
         } else {
             // DRAWING PHASE
@@ -1723,14 +2050,86 @@ export class GameHandler {
         }
     }
 
+    handleTelephonePlayerFinished(userId) {
+        if (!this.telephoneStatus) this.telephoneStatus = {};
+        this.telephoneStatus[userId] = true;
+        this.updateTelephoneWaitingModal();
+        
+        const player = this.playerListManager.getPlayer(userId);
+        if (player && userId !== socket.id) {
+            showToast(`${player.username} a terminé son tour !`, 'info');
+        }
+    }
+
+    showTelephoneWaitingModal() {
+        const modal = document.getElementById('telephone-waiting-modal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            this.updateTelephoneWaitingModal();
+        }
+    }
+
+    updateTelephoneWaitingModal() {
+        const modal = document.getElementById('telephone-waiting-modal');
+        if (!modal || modal.classList.contains('hidden')) return;
+
+        const countVal = document.getElementById('telephone-waiting-count-val');
+        const totalVal = document.getElementById('telephone-waiting-total-val');
+        const list = document.getElementById('telephone-waiting-players-list');
+        
+        const players = this.playerListManager.getPlayerList();
+        const total = players.length;
+        const ready = players.filter(p => this.telephoneStatus && this.telephoneStatus[p.id]).length;
+        
+        if (countVal) countVal.textContent = ready;
+        if (totalVal) totalVal.textContent = total;
+        
+        if (list) {
+            list.innerHTML = '';
+            players.forEach(user => {
+                const hasFinished = this.telephoneStatus && this.telephoneStatus[user.id];
+                
+                const chip = document.createElement('div');
+                chip.className = `ready-player-chip ${hasFinished ? 'is-ready' : 'not-ready'}`;
+                
+                let avatarHtml = '';
+                if (user.avatar && user.avatar.type === 'image') {
+                    avatarHtml = `<img src="${user.avatar.value}" class="player-avatar-small">`;
+                } else {
+                    const color = (user.avatar && user.avatar.color) || '#3498db';
+                    const emoji = (user.avatar && user.avatar.emoji) || '🎨';
+                    avatarHtml = `<div class="player-avatar-small" style="background-color: ${color}; display: flex; align-items: center; justify-content: center; font-size: 14px;">${emoji}</div>`;
+                }
+
+                chip.innerHTML = `
+                    <div class="ready-player-info">
+                        ${avatarHtml}
+                        <span class="ready-player-name">${user.username}</span>
+                    </div>
+                    <div class="ready-player-status">
+                        <i class="fas fa-spinner fa-spin status-waiting" ${hasFinished ? 'style="display:none"' : ''}></i>
+                        <i class="fas fa-check status-ready" ${hasFinished ? '' : 'style="display:none"'}></i>
+                    </div>
+                `;
+                list.appendChild(chip);
+            });
+        }
+    }
+
     handleTelephoneRoundEnd() {
         // Just a transition state, maybe show a spinner
         if (this.currentTimerInterval) clearInterval(this.currentTimerInterval);
+        
+        const waitingModal = document.getElementById('telephone-waiting-modal');
+        if (waitingModal) waitingModal.classList.add('hidden');
     }
 
     handleTelephoneGameEnded(data) {
         // Show Recap
         document.getElementById('telephone-write-overlay').classList.add('hidden');
+        const waitingModal = document.getElementById('telephone-waiting-modal');
+        if (waitingModal) waitingModal.classList.add('hidden');
+
         const finishBtn = document.getElementById('btn-telephone-finish-draw');
         if (finishBtn) finishBtn.classList.add('hidden');
         

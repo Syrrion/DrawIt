@@ -1391,3 +1391,239 @@
  100% { transform: scale(1); }
 }
 
+/* Segmented Control for Radio Buttons */
+.segmented-control {
+    display: flex;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: var(--radius-md);
+    padding: 4px;
+    border: 1px solid var(--border-color);
+    gap: 4px;
+    margin-top: 5px;
+    margin-bottom: 15px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.segmented-control label {
+    flex: 1 1 0;
+    text-align: center;
+    padding: 10px 12px;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: all 0.2s ease;
+    color: var(--text-dim);
+    font-size: 0.9rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    user-select: none;
+    border: 1px solid transparent;
+    white-space: nowrap;
+}
+
+.segmented-control label:hover {
+    color: var(--text-main);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.segmented-control input[type="radio"] {
+    display: none;
+}
+
+.segmented-control label:has(input:checked) {
+    background: var(--primary);
+    color: white;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+
+
+/* Roulette Machine */
+.roulette-window {
+    width: 100%;
+    height: 120px;
+    background: #000;
+    border: 4px solid #d4af37;
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+    margin-bottom: 20px;
+}
+
+.roulette-strip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: transform 0.1s linear;
+}
+
+.roulette-item {
+    height: 120px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 0 0 10px var(--primary);
+    font-family: 'Orbitron', sans-serif;
+}
+
+.roulette-machine {
+    background: linear-gradient(135deg, #2c3e50, #000);
+    padding: 20px;
+    border-radius: 15px;
+    border: 2px solid #444;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+.roulette-lever {
+    width: 20px;
+    height: 100px;
+    background: #c0392b;
+    position: absolute;
+    right: -30px;
+    top: 50px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: transform 0.3s;
+}
+
+.roulette-lever:active {
+    transform: scaleY(0.8);
+}
+
+
+.roulette-line {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 0, 0, 0.7);
+    transform: translateY(-50%);
+    z-index: 10;
+    box-shadow: 0 0 10px red;
+}
+
+.roulette-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,0) 70%, rgba(0,0,0,0.8) 100%);
+    pointer-events: none;
+    z-index: 5;
+}
+
+.roulette-content {
+    background: #1a1a1a;
+    border: 2px solid #444;
+}
+
+
+/* Roulette Z-Index Fix */
+.roulette-window .roulette-line {
+    z-index: 5; /* Lower than text */
+}
+
+.roulette-window .roulette-strip {
+    z-index: 10; /* Higher than line */
+    position: relative;
+}
+
+.roulette-window .roulette-item {
+    z-index: 10;
+    position: relative;
+}
+
+
+/* Word Waiting Modal (Clone of Ready Check) */
+.word-waiting-content {
+    text-align: center;
+    background: linear-gradient(145deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98));
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.6), inset 0 0 20px rgba(255, 255, 255, 0.02);
+    max-width: 800px;
+    width: 95%;
+}
+
+.word-waiting-content h2 {
+    font-size: 2rem;
+    margin-bottom: 1.5rem;
+    background: linear-gradient(to right, #fff, #94a3b8);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+}
+
+.word-waiting-body {
+    display: flex;
+    gap: 2rem;
+    margin: 1.5rem 0;
+    text-align: left;
+}
+
+.word-waiting-status-column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.word-waiting-status {
+    background: rgba(0, 0, 0, 0.2);
+    padding: 1rem 1.5rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    margin-bottom: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.word-waiting-count-container {
+    text-align: left;
+}
+
+.word-waiting-count {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--text-main);
+}
+
+.word-waiting-timer-inline {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.1rem;
+    color: var(--text-dim);
+    background: rgba(255, 255, 255, 0.05);
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.word-waiting-timer-inline i {
+    color: var(--primary);
+}
+
+.word-waiting-players-list-container {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 0.5rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    max-height: 450px;
+    overflow-y: auto;
+}
+

@@ -97,6 +97,9 @@ module.exports = (io, socket) => {
         const room = rooms[roomCode];
         if (!room) return;
 
+        // Prevent usage in Creative Mode (should use creativeWordChoice)
+        if (room.settings.mode === 'creative') return;
+
         // Verify it's the drawer
         const drawerId = room.game.turnOrder[room.game.currentDrawerIndex];
         if (socket.id !== drawerId) return;
@@ -151,6 +154,15 @@ module.exports = (io, socket) => {
         if (room && room.gameState === 'PLAYING' && room.settings.mode === 'creative') {
             if (room.game && room.game.handleCreativeSubmission) {
                 room.game.handleCreativeSubmission(socket.id, image);
+            }
+        }
+    });
+
+    socket.on('creativeWordChoice', ({ roomCode, word }) => {
+        const room = rooms[roomCode];
+        if (room && room.gameState === 'PLAYING' && room.settings.mode === 'creative') {
+            if (room.game && room.game.handleCreativeWordChoice) {
+                room.game.handleCreativeWordChoice(socket.id, word);
             }
         }
     });

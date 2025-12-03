@@ -14,12 +14,6 @@
                             <h4>Devine le dessin</h4>
                         </div>
                     </div>
-                    <div class="gamemode-card" data-mode="custom-word" data-tooltip="Le dessinateur choisit son propre mot à faire deviner.">
-                        <div class="card-icon"><i class="fas fa-keyboard"></i></div>
-                        <div class="card-info">
-                            <h4>Mot personnalisé</h4>
-                        </div>
-                    </div>
                     <div class="gamemode-card" data-mode="ai-theme" data-tooltip="Mots générés par IA selon un thème choisi. Idéal pour des parties thématiques !">
                         <span class="ai-badge">IA</span>
                         <div class="card-icon"><i class="fas fa-shapes"></i></div>
@@ -49,6 +43,30 @@
 
                 <div id="settings-guess-word" class="mode-settings">
                     <div class="settings-grid compact-grid">
+                        <div class="modal-slider-item full-width" id="setting-group-word-source">
+                            <div class="modal-slider-header">
+                                <div class="modal-slider-label">
+                                    <i class="fas fa-book"></i>
+                                    <span>Source des mots</span>
+                                </div>
+                                <div class="modal-slider-controls">
+                                    <i class="fas fa-info-circle setting-info" data-tooltip="Mots aléatoires : Le jeu propose des choix. Joueurs : Le dessinateur invente le mot."></i>
+                                </div>
+                            </div>
+                            <div class="segmented-control">
+                                <label>
+                                    <input type="radio" name="word-source" value="dictionary" checked>
+                                    <i class="fas fa-random"></i>
+                                    <span>Mots aléatoires</span>
+                                </label>
+                                <label>
+                                    <input type="radio" name="word-source" value="custom">
+                                    <i class="fas fa-user-edit"></i>
+                                    <span>Mots choisis par les joueurs</span>
+                                </label>
+                            </div>
+                        </div>
+
                         <div class="modal-slider-item full-width hidden" id="setting-group-ai-theme">
                             <div class="modal-slider-header">
                                 <div class="modal-slider-label">
@@ -144,6 +162,42 @@
 
                 <div id="settings-creative" class="mode-settings hidden">
                     <div class="settings-grid compact-grid">
+                        <div class="modal-slider-item full-width" id="setting-group-creative-word-source">
+                            <div class="modal-slider-header">
+                                <div class="modal-slider-label">
+                                    <i class="fas fa-book"></i>
+                                    <span>Source des mots</span>
+                                </div>
+                                <div class="modal-slider-controls">
+                                    <i class="fas fa-info-circle setting-info" data-tooltip="Mots aléatoires : Le jeu propose un thème. Joueurs : Chaque joueur propose un mot, un est tiré au sort."></i>
+                                </div>
+                            </div>
+                            <div class="segmented-control">
+                                <label>
+                                    <input type="radio" name="creative-word-source" value="dictionary" checked>
+                                    <i class="fas fa-random"></i>
+                                    <span>Mots aléatoires</span>
+                                </label>
+                                <label>
+                                    <input type="radio" name="creative-word-source" value="custom">
+                                    <i class="fas fa-user-edit"></i>
+                                    <span>Mots choisis par les joueurs</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="modal-slider-item hidden" id="setting-group-creative-max-word-length">
+                            <div class="modal-slider-header">
+                                <div class="modal-slider-label">
+                                    <i class="fas fa-text-width"></i>
+                                    <span>Longueur max</span>
+                                </div>
+                                <div class="modal-slider-controls">
+                                    <i class="fas fa-info-circle setting-info" data-tooltip="Nombre maximum de lettres pour les mots proposés."></i>
+                                    <div class="modal-slider-value"><span id="setting-creative-max-word-length-val">20</span></div>
+                                </div>
+                            </div>
+                            <input type="range" id="setting-creative-max-word-length" value="20" min="5" max="30" class="slider">
+                        </div>
                         <div class="modal-slider-item">
                             <div class="modal-slider-header">
                                 <div class="modal-slider-label">
