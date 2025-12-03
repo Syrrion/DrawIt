@@ -1,5 +1,5 @@
 import { showToast, updateSliderBackground } from './utils.js';
-import { Modal } from './components/modal.js';
+import { SettingsUIHandler } from './settings/settings-ui-handler.js';
 
 export class GameSettingsManager {
     constructor(socket, isLeaderProvider, roomCodeProvider, playerCountProvider) {
@@ -66,153 +66,11 @@ export class GameSettingsManager {
         this.startBtn = document.getElementById('btn-start-game');
         this.waitingMsg = document.getElementById('waiting-message');
 
+        this.uiHandler = new SettingsUIHandler(this);
         this.init();
     }
 
     init() {
-        if (!this.modalElement) return;
-
-        this.modal = new Modal(this.modalElement, {
-            closeBtn: this.btnClose,
-            onOpen: () => {
-                this.updateControlsState();
-                this.updateAllSliderDisplays();
-                if (this.isLeaderProvider()) {
-                    this.socket.emit('leaderConfiguring', { roomCode: this.roomCodeProvider(), isConfiguring: true });
-                } else {
-                    // If not leader, switch to the active room mode when opening
-                    if (this.activeRoomMode && this.currentMode !== this.activeRoomMode) {
-                        this.selectCard(this.activeRoomMode);
-                    }
-                }
-            },
-            onClose: () => {
-                if (this.isLeaderProvider()) {
-                    this.socket.emit('leaderConfiguring', { roomCode: this.roomCodeProvider(), isConfiguring: false });
-                }
-            }
-        });
-
-        // Modal Triggers
-        if (this.btnOpen) this.btnOpen.addEventListener('click', () => this.modal.open());
-        if (this.btnView) this.btnView.addEventListener('click', () => this.modal.open());
-
-        // Game Mode Cards
-        this.cards.forEach(card => {
-            card.addEventListener('click', () => {
-                const mode = card.dataset.mode;
-                this.selectCard(mode);
-                if (this.isLeaderProvider()) {
-                    this.emitSettingsUpdate();
-                }
-            });
-        });
-
-        // Inputs
-        if (this.allowTracingInput) this.allowTracingInput.addEventListener('change', () => this.emitSettingsUpdate());
-        
-        // Slider Visual Updates & Change Listeners
-        const sliders = [
-            { input: this.timeInput, spanId: 'setting-drawtime-val' },
-            { input: this.wordChoiceTimeInput, spanId: 'setting-wordchoicetime-val' },
-            { input: this.wordChoicesInput, spanId: 'setting-wordchoices-val' },
-            { input: this.maxWordLengthInput, spanId: 'setting-max-word-length-val' },
-            { input: this.roundsInput, spanId: 'setting-rounds-val' },
-            { input: this.creativeDrawTimeInput, spanId: 'setting-creative-drawtime-val' },
-            { input: this.creativeRoundsInput, spanId: 'setting-creative-rounds-val' },
-            { input: this.creativePresentationTimeInput, spanId: 'setting-creative-presentationtime-val' },
-            { input: this.creativeVoteTimeInput, spanId: 'setting-creative-votetime-val' },
-            { input: this.creativeMaxWordLengthInput, spanId: 'setting-creative-max-word-length-val' },
-            { input: this.telephoneWriteTimeInput, spanId: 'setting-telephone-writetime-val' },
-            { input: this.telephoneDrawTimeInput, spanId: 'setting-telephone-drawtime-val' }
-        ];
-
-        // ResizeObserver to handle layout changes (modal open, resize)
-        const resizeObserver = new ResizeObserver(entries => {
-            for (let entry of entries) {
-                updateSliderBackground(entry.target);
-            }
-        });
-
-        sliders.forEach(({ input, spanId }) => {
-            if (input) {
-                // Observe for size changes
-                resizeObserver.observe(input);
-
-                // Initial background update
-                updateSliderBackground(input);
-
-                // Visual update on drag
-                input.addEventListener('input', (e) => {
-                    const span = document.getElementById(spanId);
-                    if (span) span.textContent = e.target.value;
-                    updateSliderBackground(e.target);
-                });
-                
-                // Emit update on release/change
-                input.addEventListener('change', () => {
-                    this.emitSettingsUpdate();
-                    // Special case for rounds
-                    if (input === this.roundsInput) {
-                        this.updatePersonalHints();
-                    }
-                });
-            }
-        });
-
-        if (this.personalHintsInput) {
-            resizeObserver.observe(this.personalHintsInput);
-        }
-
-        if (this.fuzzyInput) this.fuzzyInput.addEventListener('change', () => this.emitSettingsUpdate());
-        if (this.hintsInput) this.hintsInput.addEventListener('change', () => {
-            this.updatePersonalHints();
-        });
-        
-        if (this.personalHintsInput) {
-            this.personalHintsInput.addEventListener('input', (e) => {
-                document.getElementById('setting-personal-hints-val').textContent = e.target.value;
-                updateSliderBackground(e.target);
-            });
-            // We disable manual change if rule is active, but keep listener just in case
-            this.personalHintsInput.addEventListener('change', () => this.emitSettingsUpdate());
-        }
-
-        if (this.anonymousVotingInput) this.anonymousVotingInput.addEventListener('change', () => this.emitSettingsUpdate());
-
-        // AI Theme Listeners
-        if (this.aiThemeInput) this.aiThemeInput.addEventListener('change', () => this.emitSettingsUpdate());
-
-        // Word Source Listeners
-        this.wordSourceInputs.forEach(input => {
-            input.addEventListener('change', () => {
-                this.updateGuessWordUI();
-                this.emitSettingsUpdate();
-            });
-        });
-
-        if (this.creativeWordSourceInputs) {
-            this.creativeWordSourceInputs.forEach(input => {
-                input.addEventListener('change', () => {
-                    this.updateCreativeUI();
-                    this.emitSettingsUpdate();
-                });
-            });
-        }
-
-        // Start Game
-        this.startBtn.addEventListener('click', () => {
-            if (!this.isLeaderProvider()) return;
-            
-            if (this.playerCountProvider && this.playerCountProvider() < 2) {
-                showToast('Il faut au moins 2 joueurs pour lancer la partie !', 'error');
-                return;
-            }
-
-            this.socket.emit('startGame', this.roomCodeProvider());
-            this.modal.close();
-        });
-
         // Socket Listeners
         this.socket.on('userJoined', () => {
             if (this.isLeaderProvider()) setTimeout(() => this.updatePersonalHints(), 100);
@@ -231,8 +89,8 @@ export class GameSettingsManager {
                 
                 // If I am leader, I should be viewing the room mode.
                 // If I am not leader, I might be viewing something else, but on join, sync to room.
-                if (this.currentMode !== s.mode) this.selectCard(s.mode);
-                else this.updateCardVisuals(); // Ensure visuals are correct even if mode didn't change
+                if (this.currentMode !== s.mode) this.uiHandler.selectCard(s.mode);
+                else this.uiHandler.updateCardVisuals(); // Ensure visuals are correct even if mode didn't change
                 
                 if (s.mode === 'creative') {
                     if (this.creativeDrawTimeInput) this.creativeDrawTimeInput.value = s.drawTime;
@@ -283,7 +141,7 @@ export class GameSettingsManager {
                     if (valDisplay) valDisplay.textContent = s.personalHints;
                 }
                 
-                this.updateAllSliderDisplays();
+                this.uiHandler.updateAllSliderDisplays();
 
                 // If I am leader, enforce the rule immediately
                 if (this.isLeaderProvider()) {
@@ -303,18 +161,18 @@ export class GameSettingsManager {
             // BUT, if I am leader, I definitely want to be on the mode I just set.
             if (this.isLeaderProvider()) {
                 if (this.currentMode !== settings.mode) {
-                    this.selectCard(settings.mode);
+                    this.uiHandler.selectCard(settings.mode);
                 } else {
-                    this.updateCardVisuals();
+                    this.uiHandler.updateCardVisuals();
                 }
             } else {
                 // Non-leader: Just update visuals to show the new Gold card
-                this.updateCardVisuals();
+                this.uiHandler.updateCardVisuals();
                 
                 // If I happen to be viewing the mode that just became active, refresh the panel
                 if (this.currentMode === settings.mode) {
                     // selectCard re-triggers panel visibility logic
-                    this.selectCard(settings.mode);
+                    this.uiHandler.selectCard(settings.mode);
                 }
             }
             
@@ -377,7 +235,7 @@ export class GameSettingsManager {
                 document.getElementById('setting-personal-hints-val').textContent = settings.personalHints;
             }
 
-            this.updateAllSliderDisplays();
+            this.uiHandler.updateAllSliderDisplays();
         });
 
         this.socket.on('gameStateChanged', (state) => {
@@ -387,6 +245,19 @@ export class GameSettingsManager {
                 this.lobbyControls.classList.add('hidden');
                 this.modal.close();
             }
+        });
+
+        // Start Game
+        this.startBtn.addEventListener('click', () => {
+            if (!this.isLeaderProvider()) return;
+            
+            if (this.playerCountProvider && this.playerCountProvider() < 2) {
+                showToast('Il faut au moins 2 joueurs pour lancer la partie !', 'error');
+                return;
+            }
+
+            this.socket.emit('startGame', this.roomCodeProvider());
+            this.modal.close();
         });
     }
 
@@ -399,197 +270,23 @@ export class GameSettingsManager {
     }
 
     selectCard(mode) {
-        // Update Description
-        const descEl = document.getElementById('gamemode-description');
-        if (descEl && this.modeDescriptions[mode]) {
-            descEl.textContent = this.modeDescriptions[mode];
-        }
-
-        // Save current time for previous mode
-        if (this.currentMode === 'guess-word') {
-            if (this.wordChoiceTimeInput) {
-                this.storedWordChoiceTimes[this.currentMode] = parseInt(this.wordChoiceTimeInput.value) || 20;
-            }
-        }
-
-        this.currentMode = mode;
-        this.updateCardVisuals();
-
-        // Restore time for new mode
-        if (mode === 'guess-word') {
-            if (this.wordChoiceTimeInput) {
-                this.wordChoiceTimeInput.value = this.storedWordChoiceTimes[mode] || 20;
-            }
-        }
-        
-        // Hide all settings sections first
-        const allSettings = document.querySelectorAll('[id^="settings-"]');
-        allSettings.forEach(el => el.classList.add('hidden'));
-
-        // Update switches visibility
-        document.querySelectorAll('.mode-specific').forEach(el => el.classList.add('hidden'));
-        if (mode === 'guess-word' || mode === 'ai-theme') {
-            document.querySelectorAll('.guess-word-only').forEach(el => el.classList.remove('hidden'));
-        } else if (mode === 'creative') {
-            document.querySelectorAll('.creative-only').forEach(el => el.classList.remove('hidden'));
-        } else if (mode === 'telephone') {
-            // No specific switches for telephone yet, maybe allow tracing?
-        }
-
-        // Show the selected mode settings
-        // For ai-theme, we reuse guess-word settings but hide/show specific fields
-        
-        let targetId = `settings-${mode}`;
-        if (mode === 'ai-theme') targetId = 'settings-guess-word'; // Reuse same settings panel
-
-        const targetSettings = document.getElementById(targetId);
-        if (targetSettings) {
-            targetSettings.classList.remove('hidden');
-            
-            // Specific adjustments
-            if (mode === 'ai-theme') {
-                if (this.wordChoicesInput) this.wordChoicesInput.closest('.modal-slider-item').classList.remove('hidden');
-                if (this.maxWordLengthInput) this.maxWordLengthInput.closest('.modal-slider-item').classList.add('hidden');
-                const aiThemeGroup = document.getElementById('setting-group-ai-theme');
-                if (aiThemeGroup) aiThemeGroup.classList.remove('hidden');
-                if (this.wordSourceGroup) this.wordSourceGroup.classList.add('hidden');
-            } else if (mode === 'guess-word') {
-                const aiThemeGroup = document.getElementById('setting-group-ai-theme');
-                if (aiThemeGroup) aiThemeGroup.classList.add('hidden');
-                if (this.wordSourceGroup) this.wordSourceGroup.classList.remove('hidden');
-                
-                this.updateGuessWordUI();
-            } else if (mode === 'creative') {
-                this.updateCreativeUI();
-            }
-        }
+        this.uiHandler.selectCard(mode);
     }
 
     updateGuessWordUI() {
-        const source = this.getWordSource();
-        if (source === 'custom') {
-            if (this.wordChoicesInput) this.wordChoicesInput.closest('.modal-slider-item').classList.add('hidden');
-            if (this.maxWordLengthInput) this.maxWordLengthInput.closest('.modal-slider-item').classList.remove('hidden');
-        } else {
-            if (this.wordChoicesInput) this.wordChoicesInput.closest('.modal-slider-item').classList.remove('hidden');
-            if (this.maxWordLengthInput) this.maxWordLengthInput.closest('.modal-slider-item').classList.add('hidden');
-        }
+        this.uiHandler.updateGuessWordUI();
     }
 
     updateCreativeUI() {
-        const source = this.getWordSource();
-        if (source === 'custom') {
-            if (this.creativeMaxWordLengthInput) this.creativeMaxWordLengthInput.closest('.modal-slider-item').classList.remove('hidden');
-        } else {
-            if (this.creativeMaxWordLengthInput) this.creativeMaxWordLengthInput.closest('.modal-slider-item').classList.add('hidden');
-        }
+        this.uiHandler.updateCreativeUI();
     }
 
     updateCardVisuals() {
-        const isLeader = this.isLeaderProvider();
-
-        this.cards.forEach(card => {
-            const mode = card.dataset.mode;
-            
-            // Reset classes
-            card.classList.remove('selected', 'local-selected');
-
-            if (isLeader) {
-                // Leader: The current selection is the active one (Optimistic UI)
-                if (mode === this.currentMode) {
-                    card.classList.add('selected');
-                }
-            } else {
-                // Non-Leader: Distinguish between Room Mode (Yellow) and Local View (Blue)
-                if (mode === this.activeRoomMode) {
-                    card.classList.add('selected');
-                }
-                
-                if (mode === this.currentMode) {
-                    card.classList.add('local-selected');
-                }
-            }
-        });
+        this.uiHandler.updateCardVisuals();
     }
 
     updateControlsState() {
-        const isLeader = this.isLeaderProvider();
-        const disabled = !isLeader;
-
-        // Inputs
-        if (this.allowTracingInput) this.allowTracingInput.disabled = disabled;
-        this.timeInput.disabled = disabled;
-        this.wordChoiceTimeInput.disabled = disabled;
-        this.wordChoicesInput.disabled = disabled;
-        this.roundsInput.disabled = disabled;
-        if (this.fuzzyInput) this.fuzzyInput.disabled = disabled;
-        if (this.hintsInput) this.hintsInput.disabled = disabled;
-        if (this.maxWordLengthInput) this.maxWordLengthInput.disabled = disabled;
-        if (this.personalHintsInput) this.personalHintsInput.disabled = disabled;
-        if (this.creativeDrawTimeInput) this.creativeDrawTimeInput.disabled = disabled;
-        if (this.creativeRoundsInput) this.creativeRoundsInput.disabled = disabled;
-        if (this.creativePresentationTimeInput) this.creativePresentationTimeInput.disabled = disabled;
-        if (this.creativeVoteTimeInput) this.creativeVoteTimeInput.disabled = disabled;
-        if (this.creativeMaxWordLengthInput) this.creativeMaxWordLengthInput.disabled = disabled;
-        if (this.anonymousVotingInput) this.anonymousVotingInput.disabled = disabled;
-        if (this.telephoneWriteTimeInput) this.telephoneWriteTimeInput.disabled = disabled;
-        if (this.telephoneDrawTimeInput) this.telephoneDrawTimeInput.disabled = disabled;
-        if (this.aiThemeInput) this.aiThemeInput.disabled = disabled;
-        
-        if (this.wordSourceInputs) {
-            this.wordSourceInputs.forEach(input => input.disabled = disabled);
-        }
-        if (this.creativeWordSourceInputs) {
-            this.creativeWordSourceInputs.forEach(input => input.disabled = disabled);
-        }
-        
-        // Cards interaction
-        this.cards.forEach(card => {
-            card.style.pointerEvents = 'auto';
-            card.style.opacity = '1';
-        });
-
-        // Buttons visibility
-        if (isLeader) {
-            if (this.btnOpen) this.btnOpen.classList.remove('hidden');
-            if (this.btnView) this.btnView.classList.add('hidden');
-            this.waitingMsg.classList.add('hidden');
-            this.startBtn.classList.remove('hidden'); // Inside modal
-        } else {
-            // Non-leader can see settings but not edit
-            if (this.btnOpen) this.btnOpen.classList.add('hidden');
-            if (this.btnView) this.btnView.classList.remove('hidden');
-            this.waitingMsg.classList.remove('hidden');
-            this.startBtn.classList.add('hidden'); // Inside modal
-        }
-
-        // Update slider backgrounds based on disabled state
-        this.updateAllSliderDisplays();
-    }
-
-    updateAllSliderDisplays() {
-        const sliders = [
-            { input: this.timeInput, spanId: 'setting-drawtime-val' },
-            { input: this.wordChoiceTimeInput, spanId: 'setting-wordchoicetime-val' },
-            { input: this.wordChoicesInput, spanId: 'setting-wordchoices-val' },
-            { input: this.maxWordLengthInput, spanId: 'setting-max-word-length-val' },
-            { input: this.roundsInput, spanId: 'setting-rounds-val' },
-            { input: this.creativeDrawTimeInput, spanId: 'setting-creative-drawtime-val' },
-            { input: this.creativeRoundsInput, spanId: 'setting-creative-rounds-val' },
-            { input: this.creativePresentationTimeInput, spanId: 'setting-creative-presentationtime-val' },
-            { input: this.creativeVoteTimeInput, spanId: 'setting-creative-votetime-val' },
-            { input: this.creativeMaxWordLengthInput, spanId: 'setting-creative-max-word-length-val' },
-            { input: this.telephoneWriteTimeInput, spanId: 'setting-telephone-writetime-val' },
-            { input: this.telephoneDrawTimeInput, spanId: 'setting-telephone-drawtime-val' }
-        ];
-
-        sliders.forEach(({ input, spanId }) => {
-            if (input) {
-                const span = document.getElementById(spanId);
-                if (span) span.textContent = input.value;
-                updateSliderBackground(input);
-            }
-        });
+        this.uiHandler.updateControlsState();
     }
 
     emitSettingsUpdate() {
@@ -653,59 +350,7 @@ export class GameSettingsManager {
     }
 
     updatePersonalHints() {
-        if (!this.personalHintsInput) return;
-
-        const hintsEnabled = this.hintsInput ? this.hintsInput.checked : true;
-        const group = this.personalHintsInput.closest('.modal-slider-item');
-
-        // Visibility Logic (Apply to everyone)
-        if (hintsEnabled) {
-            group.classList.add('hidden');
-        } else {
-            group.classList.remove('hidden');
-        }
-
-        if (this.isLeaderProvider()) {
-            const activePlayers = this.playerCountProvider ? this.playerCountProvider() : 0;
-            const rounds = parseInt(this.roundsInput.value) || 3;
-            
-            // Calculate Max: rounds * 3 + players * 2
-            const maxHints = (rounds * 3) + (activePlayers * 2);
-            
-            this.personalHintsInput.max = maxHints;
-
-            if (hintsEnabled) {
-                // Automatic hints enabled -> Personal hints = 0
-                this.personalHintsInput.value = 0;
-                this.personalHintsInput.disabled = true;
-            } else {
-                // Automatic hints disabled
-                this.personalHintsInput.disabled = false;
-                
-                // If transitioning from Enabled to Disabled, set a default value
-                // Default: Players + Rounds (from previous rule)
-                if (this.previousHintsEnabled) {
-                    this.personalHintsInput.value = activePlayers + rounds;
-                }
-
-                // Ensure value is within bounds
-                if (parseInt(this.personalHintsInput.value) > maxHints) {
-                    this.personalHintsInput.value = maxHints;
-                }
-            }
-            
-            this.previousHintsEnabled = hintsEnabled;
-
-            // Update display
-            const valDisplay = document.getElementById('setting-personal-hints-val');
-            if (valDisplay) valDisplay.textContent = this.personalHintsInput.value;
-
-            this.emitSettingsUpdate();
-        } else {
-            this.personalHintsInput.disabled = true;
-        }
-
-        updateSliderBackground(this.personalHintsInput);
+        this.uiHandler.updatePersonalHints();
     }
 
     show() {

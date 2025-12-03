@@ -32,9 +32,12 @@ class Game {
 
         this.undoStacks = new Map();
         this.redoStacks = new Map();
+        
+        this.clearTimers(); // Ensure no lingering timers
     }
 
     async init(settings) {
+        this.clearTimers(); // Double check
         this.mode = settings.mode || 'guess-word';
         
         // Shuffle players for turn order (exclude spectators)
@@ -133,9 +136,11 @@ class Game {
     // Telephone Mode Methods
     startTelephoneGame() {
         this.telephoneChains = {};
+        this.telephoneAssignments = {};
         this.telephoneRound = 0;
         this.telephonePendingSubmissions = {};
         this.telephoneDrawings = {}; // userId -> [actions]
+        this.currentWord = null; // Ensure no lingering word
         
         // Initialize chains for each player
         this.room.getPlayers().forEach(p => {
@@ -152,6 +157,7 @@ class Game {
     startTelephoneRound() {
         this.telephoneRound++;
         this.telephonePendingSubmissions = {};
+        this.telephoneAssignments = {};
         // Reset drawings for this round
         this.telephoneDrawings = {};
         this.undoStacks.clear();
@@ -202,6 +208,7 @@ class Game {
             
             const chainOwnerIndex = (index - (this.telephoneRound - 1) + playerCount * 100) % playerCount; // *100 to avoid negative modulo issues
             const chainOwnerId = players[chainOwnerIndex].id;
+            this.telephoneAssignments[player.id] = chainOwnerId;
             const chain = this.telephoneChains[chainOwnerId];
             
             let previousStep = null;
@@ -294,34 +301,30 @@ class Game {
     endTelephoneRound() {
         this.clearTimers();
         
-        const players = this.room.getPlayers();
-        const playerCount = players.length;
-        const submittedCount = Object.keys(this.telephonePendingSubmissions).length;
-
-        // Process submissions
-        players.forEach((player, index) => {
-            const chainOwnerIndex = (index - (this.telephoneRound - 1) + playerCount * 100) % playerCount;
-            const chainOwnerId = players[chainOwnerIndex].id;
-            
-            let submission = this.telephonePendingSubmissions[player.id];
+        // Iterate over all assignments made at the start of the round to ensure all chains are updated
+        // even if a player disconnected during the round.
+        Object.entries(this.telephoneAssignments).forEach(([userId, chainOwnerId]) => {
+            let submission = this.telephonePendingSubmissions[userId];
             
             // Handle timeout/no submission
             if (!submission) {
                 submission = {
                     type: this.telephonePhase === 'WRITING' ? 'text' : 'drawing',
                     content: this.telephonePhase === 'WRITING' ? '...' : null, // Empty drawing or text
-                    authorId: player.id
+                    authorId: userId
                 };
             }
 
-            this.telephoneChains[chainOwnerId].push(submission);
+            if (this.telephoneChains[chainOwnerId]) {
+                this.telephoneChains[chainOwnerId].push(submission);
+            }
         });
 
         this.io.to(this.room.code).emit('telephoneRoundEnd');
         
         setTimeout(() => {
             this.startTelephoneRound();
-        }, 3000);
+        }, 1000);
     }
 
     endTelephoneGame() {
@@ -465,6 +468,7 @@ class Game {
         this.undoStacks.clear();
         this.redoStacks.clear();
         this.room.clearCanvas();
+        this.currentWord = null; // Ensure no lingering word from previous modes
 
         if (this.room.settings.wordSource === 'custom') {
             this.phase = 'WORD_CHOICE';
@@ -516,20 +520,20 @@ class Game {
         this.io.to(this.room.code).emit('creativeRouletteStart', {
             words: words,
             winner: winningWord,
-            duration: 5
+            duration: 3
         });
         
-        this.startTimer(5, () => this.startCreativePause(winningWord));
+        this.startTimer(3, () => this.startCreativePause(winningWord));
     }
 
     startCreativePause(word) {
         this.phase = 'PAUSE';
         this.io.to(this.room.code).emit('creativePause', {
             word: word,
-            duration: 5
+            duration: 3
         });
         
-        this.startTimer(5, () => this.startCreativeDrawingPhase(word));
+        this.startTimer(3, () => this.startCreativeDrawingPhase(word));
     }
 
     startCreativeDrawingPhase(word) {
@@ -721,15 +725,10 @@ class Game {
     }
 
     endDrawingPhase() {
-        this.phase = 'INTERMISSION';
-        this.io.to(this.room.code).emit('creativeIntermission', { duration: 5 });
-
-        this.startTimer(5, () => {
-            this.phase = 'PRESENTATION';
-            this.presentationOrder = shuffle(Object.keys(this.playerDrawings));
-            this.presentationIndex = 0;
-            this.startPresentation();
-        });
+        this.phase = 'PRESENTATION';
+        this.presentationOrder = shuffle(Object.keys(this.playerDrawings));
+        this.presentationIndex = 0;
+        this.startPresentation();
     }
 
     startPresentation() {
@@ -806,12 +805,11 @@ class Game {
         }
 
         if (allVoted) {
+            this.io.to(this.room.code).emit('votingAllDone');
             if (this.room.settings.anonymousVoting) {
                 this.startTimer(5, () => this.startRevealPhase());
-                this.io.to(this.room.code).emit('votingAllDone');
             } else {
                 this.startTimer(5, () => this.endVoting());
-                this.io.to(this.room.code).emit('votingAllDone');
             }
         }
     }
@@ -864,7 +862,7 @@ class Game {
 
         setTimeout(() => {
             this.nextCreativeRound();
-        }, 22000);
+        }, 10000);
     }
 
     nextCreativeRound() {
@@ -993,6 +991,9 @@ class Game {
     }
 
     handleWordChosen(word, drawerId) {
+        // Prevent execution in wrong modes
+        if (this.mode === 'telephone' || this.mode === 'creative') return;
+
         // Prevent double execution (race condition between timeout and user selection)
         if (this.currentWord) return;
 
@@ -1040,6 +1041,7 @@ class Game {
 
     revealRandomHint(drawerId) {
         if (!this.currentWord) return;
+        if (this.mode === 'telephone' || this.mode === 'creative') return;
 
         const unrevealed = [];
         for (let i = 0; i < this.currentWord.length; i++) {
@@ -1293,10 +1295,16 @@ class Game {
                 });
                 this.endGame();
             } else {
-                const currentDrawerId = this.turnOrder[this.currentDrawerIndex];
-                if (user.id === currentDrawerId) {
-                    this.endRound('Le dessinateur a quitté la partie !');
+                // Only handle "Drawer Left" logic in Guess Word / Custom Word / AI Theme modes
+                if (this.mode === 'guess-word' || this.mode === 'custom-word' || this.mode === 'ai-theme') {
+                    const currentDrawerId = this.turnOrder[this.currentDrawerIndex];
+                    if (user.id === currentDrawerId) {
+                        this.endRound('Le dessinateur a quitté la partie !');
+                    }
                 }
+                // For Telephone/Creative, we might need specific logic, but definitely NOT endRound()
+                // Telephone: The chain might break. We handled this by using telephoneAssignments.
+                // Creative: Voting might be affected.
             }
         }
     }

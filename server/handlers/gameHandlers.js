@@ -86,6 +86,9 @@ module.exports = (io, socket) => {
         const room = rooms[roomCode];
         if (!room) return;
 
+        // Prevent usage in Telephone Mode
+        if (room.settings.mode === 'telephone') return;
+
         // Verify it's the drawer
         const drawerId = room.game.turnOrder[room.game.currentDrawerIndex];
         if (socket.id !== drawerId) return;
@@ -99,6 +102,8 @@ module.exports = (io, socket) => {
 
         // Prevent usage in Creative Mode (should use creativeWordChoice)
         if (room.settings.mode === 'creative') return;
+        // Prevent usage in Telephone Mode
+        if (room.settings.mode === 'telephone') return;
 
         // Verify it's the drawer
         const drawerId = room.game.turnOrder[room.game.currentDrawerIndex];

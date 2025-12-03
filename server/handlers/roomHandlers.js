@@ -152,11 +152,13 @@ module.exports = (io, socket) => {
             };
 
             // Calculate current hint for this user
-            if (room.game.currentWord) {
+            if (room.game.currentWord && room.settings.mode !== 'telephone' && room.settings.mode !== 'creative') {
                 const userRevealed = room.game.userRevealedIndices[socket.id] || [];
                 const allRevealed = [...room.game.revealedIndices, ...userRevealed];
                 roomState.game.currentHint = generateHint(room.game.currentWord, allRevealed);
                 roomState.game.totalTime = room.settings.drawTime;
+            } else if (room.settings.mode === 'creative' && room.game.currentWord) {
+                roomState.game.currentWord = room.game.currentWord;
             }
         }
 

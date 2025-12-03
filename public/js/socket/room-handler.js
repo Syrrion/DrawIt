@@ -94,6 +94,7 @@ export class RoomHandler {
     }
 
     handleRoomJoined(data) {
+        state.currentRoom = data.roomCode;
         state.currentGameState = data.gameState;
         state.isSpectator = data.isSpectator;
         state.settings = data.settings || {};

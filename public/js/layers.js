@@ -524,6 +524,10 @@ export class LayerManager {
         }
     }
 
+    getLayerCanvases() {
+        return this.layerCanvases;
+    }
+
     updateLayerPreview(layerId) {
         const layerDiv = [...this.layersList.children].find(div => div.dataset.layerId === layerId);
         if (layerDiv) {
