@@ -339,6 +339,10 @@ export class CanvasManager {
                 performFloodFill(state.layerCanvases[state.activeLayerId].ctx, CANVAS_CONFIG.width, CANVAS_CONFIG.height, Math.floor(x), Math.floor(y), color, opacity);
                 this.render();
 
+                if (state.layerManager) {
+                    state.layerManager.updateLayerPreview(state.activeLayerId);
+                }
+
                 socket.emit('draw', {
                     roomCode: state.currentRoom,
                     tool: 'fill',
@@ -507,6 +511,11 @@ export class CanvasManager {
 
             // Flush any pending draw actions
             this.flushDrawBuffer();
+
+            // Update layer preview
+            if (state.activeLayerId && state.layerManager) {
+                state.layerManager.updateLayerPreview(state.activeLayerId);
+            }
 
             // Always emit endStroke to ensure consistency
             socket.emit('endStroke', {

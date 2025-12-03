@@ -112,6 +112,8 @@ const layerManager = new LayerManager(
     () => playerListManager.getPlayerList()
 );
 
+state.layerManager = layerManager;
+
 // Initialize Managers
 new UIManager(avatarManager, animationSystem, gameSettingsManager, () => canvasManager.render(), cursorManager, layerManager);
 new SocketManager({

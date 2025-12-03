@@ -327,6 +327,12 @@ export class DrawingHandler {
         }
         
         if (this.render) this.render();
+
+        if (this.layerManager) {
+            Object.keys(state.layerCanvases).forEach(layerId => {
+                this.layerManager.updateLayerPreview(layerId);
+            });
+        }
     }
 
     applyBufferedStroke(actions) {
@@ -435,6 +441,9 @@ export class DrawingHandler {
             this.bufferRemoteStroke(data);
         } else {
             this.applyAction(data);
+            if (this.layerManager && data.layerId && !['clear-all', 'clear-layer'].includes(data.tool)) {
+                this.layerManager.updateLayerPreview(data.layerId);
+            }
         }
     }
 
@@ -544,6 +553,10 @@ export class DrawingHandler {
                 }
                 // Reset globalAlpha to be safe
                 targetCtx.globalAlpha = 1;
+
+                if (this.layerManager) {
+                    this.layerManager.updateLayerPreview(buffer.layerId);
+                }
             }
             
             delete state.remoteBuffers[strokeId];
@@ -556,12 +569,20 @@ export class DrawingHandler {
             l.ctx.clearRect(0, 0, CANVAS_CONFIG.width, CANVAS_CONFIG.height);
         });
         if (this.render) this.render();
+        if (this.layerManager) {
+            Object.keys(state.layerCanvases).forEach(layerId => {
+                this.layerManager.updateLayerPreview(layerId);
+            });
+        }
     }
 
     handleClearLayer(layerId) {
         if (state.layerCanvases[layerId]) {
             state.layerCanvases[layerId].ctx.clearRect(0, 0, CANVAS_CONFIG.width, CANVAS_CONFIG.height);
             if (this.render) this.render();
+            if (this.layerManager) {
+                this.layerManager.updateLayerPreview(layerId);
+            }
         }
     }
 }

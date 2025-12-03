@@ -29,6 +29,12 @@ export class LayerManager {
         if (this.addLayerBtn) {
             this.addLayerBtn.addEventListener('click', () => this.handleAddLayer());
         }
+        
+        // Add listeners to container for drag and drop
+        if (this.layersList) {
+            this.layersList.addEventListener('dragover', this.handleDragOver.bind(this));
+            this.layersList.addEventListener('drop', this.handleDrop.bind(this));
+        }
     }
 
     createLayerCanvas(layerId) {
@@ -142,67 +148,49 @@ export class LayerManager {
             }
 
             div.innerHTML = `
-                <span class="layer-visibility ${isVisible ? 'visible' : ''}" data-action="toggle-visibility" data-id="${layer.id}">
+                <div class="layer-drag-handle ${allowed ? '' : 'disabled'}">
+                    <svg viewBox="0 0 24 24" width="12" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.5;">
+                        <circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle>
+                        <circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle>
+                    </svg>
+                </div>
+
+                <div class="layer-info-col">
+                    <div class="layer-avatars-row">
+                        ${playersOnLayerHtml}
+                    </div>
+                    <div class="layer-controls">
+                        <button class="layer-btn delete" data-action="delete" data-id="${layer.id}" title="Supprimer">
+                            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="layer-preview-container">
+                    <canvas class="layer-preview-canvas" width="80" height="${80 * (CANVAS_CONFIG.height / CANVAS_CONFIG.width)}"></canvas>
+                </div>
+
+                <div class="layer-visibility-handle ${isVisible ? 'visible' : ''}" data-action="toggle-visibility" data-id="${layer.id}">
                     ${isVisible ? 
                         '<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>' : 
                         '<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>'
                     }
-                </span>
-                
-                ${playersOnLayerHtml}
-
-                <div class="layer-name-container">
-                    <span class="layer-name-display" id="name-display-${layer.id}">${layer.name}</span>
-                    <input type="text" class="layer-name" id="name-input-${layer.id}" value="${layer.name}">
-                    <button class="edit-layer-btn" data-action="rename" data-id="${layer.id}" title="Renommer">
-                        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                    </button>
-                </div>
-
-                <div class="layer-controls">
-                    <button class="layer-btn" data-action="move-up" data-id="${layer.id}" title="Monter">
-                        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
-                    </button>
-                    <button class="layer-btn" data-action="move-down" data-id="${layer.id}" title="Descendre">
-                        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
-                    </button>
-                    <button class="layer-btn delete" data-action="delete" data-id="${layer.id}" title="Supprimer">
-                        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                    </button>
                 </div>
             `;
             this.layersList.appendChild(div);
+
+            // Draw preview
+            const previewCanvas = div.querySelector('.layer-preview-canvas');
+            if (previewCanvas && this.layerCanvases[layer.id]) {
+                const ctx = previewCanvas.getContext('2d');
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+                ctx.drawImage(this.layerCanvases[layer.id].canvas, 0, 0, previewCanvas.width, previewCanvas.height);
+            }
             
             // Attach event listeners for buttons inside the layer item
             const visibilityBtn = div.querySelector('[data-action="toggle-visibility"]');
             visibilityBtn.onclick = () => this.toggleLayerVisibility(layer.id);
-
-            const renameBtn = div.querySelector('[data-action="rename"]');
-            if (!allowed) {
-                renameBtn.disabled = true;
-                renameBtn.style.opacity = '0.3';
-                renameBtn.style.cursor = 'not-allowed';
-            } else {
-                renameBtn.onclick = () => this.enableRenaming(layer.id);
-            }
-
-            const moveUpBtn = div.querySelector('[data-action="move-up"]');
-            if (!allowed) {
-                moveUpBtn.disabled = true;
-                moveUpBtn.style.opacity = '0.3';
-                moveUpBtn.style.cursor = 'not-allowed';
-            } else {
-                moveUpBtn.onclick = () => this.moveLayerUp(layer.id);
-            }
-
-            const moveDownBtn = div.querySelector('[data-action="move-down"]');
-            if (!allowed) {
-                moveDownBtn.disabled = true;
-                moveDownBtn.style.opacity = '0.3';
-                moveDownBtn.style.cursor = 'not-allowed';
-            } else {
-                moveDownBtn.onclick = () => this.moveLayerDown(layer.id);
-            }
 
             const deleteBtn = div.querySelector('[data-action="delete"]');
             if (!allowed) {
@@ -211,16 +199,6 @@ export class LayerManager {
                 deleteBtn.style.cursor = 'not-allowed';
             } else {
                 deleteBtn.onclick = () => this.deleteLayer(layer.id);
-            }
-
-            const input = div.querySelector(`#name-input-${layer.id}`);
-            if (!allowed) {
-                input.disabled = true;
-            } else {
-                input.addEventListener('blur', () => this.saveLayerName(layer.id, input.value));
-                input.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') this.saveLayerName(layer.id, input.value);
-                });
             }
         });
 
@@ -291,12 +269,28 @@ export class LayerManager {
         }
     }
 
+    createPlaceholder(height) {
+        const el = document.createElement('div');
+        el.className = 'layer-placeholder';
+        el.style.height = height + 'px';
+        return el;
+    }
+
     handleDragStart(e) {
         this.dragSrcEl = e.target;
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/html', e.target.innerHTML);
-        e.target.classList.add('dragging');
+        // e.target.classList.add('dragging');
         this.layersList.classList.add('dragging-mode');
+        
+        this.placeholder = this.createPlaceholder(e.target.offsetHeight);
+
+        // Defer hiding to allow drag image generation
+        setTimeout(() => {
+            e.target.style.display = 'none';
+            // Insert placeholder at original location
+            this.layersList.insertBefore(this.placeholder, e.target);
+        }, 0);
     }
 
     handleDragOver(e) {
@@ -304,15 +298,38 @@ export class LayerManager {
             e.preventDefault();
         }
         e.dataTransfer.dropEffect = 'move';
+        
+        const targetItem = e.target.closest('.layer-item');
+        
+        // If hovering over the list container but not an item (e.g. bottom empty space)
+        if (e.target === this.layersList) {
+             // Check if we are at the bottom
+             // Append placeholder
+             this.layersList.appendChild(this.placeholder);
+             return false;
+        }
+
+        if (targetItem && targetItem !== this.placeholder && targetItem !== this.dragSrcEl) {
+             const rect = targetItem.getBoundingClientRect();
+             const next = (e.clientY - rect.top) > (rect.height / 2);
+             
+             if (next) {
+                 // Insert after targetItem
+                 this.layersList.insertBefore(this.placeholder, targetItem.nextElementSibling);
+             } else {
+                 // Insert before targetItem
+                 this.layersList.insertBefore(this.placeholder, targetItem);
+             }
+        }
         return false;
     }
 
     handleDragEnter(e) {
-        e.target.classList.add('over');
+        // Handled in dragOver for finer control
     }
 
     handleDragLeave(e) {
-        e.target.classList.remove('over');
+        // Handled in dragOver
     }
 
     handleDrop(e) {
@@ -322,40 +339,60 @@ export class LayerManager {
         
         this.layersList.classList.remove('dragging-mode');
 
-        // e.target might be a child of the layer-item, we need to find the layer-item
-        const targetItem = e.target.closest('.layer-item');
-        if (!targetItem) return false;
-
-        if (this.dragSrcEl !== targetItem) {
-            const srcId = this.dragSrcEl.dataset.layerId;
-            const targetId = targetItem.dataset.layerId;
-            
-            const srcIndex = this.layers.findIndex(l => l.id === srcId);
-            const targetIndex = this.layers.findIndex(l => l.id === targetId);
-            
-            if (srcIndex !== -1 && targetIndex !== -1) {
-                const newLayers = [...this.layers];
-                const [movedLayer] = newLayers.splice(srcIndex, 1);
-                newLayers.splice(targetIndex, 0, movedLayer);
-                
-                if (globalState.settings && (globalState.settings.mode === 'telephone' || globalState.settings.mode === 'creative')) {
-                    this.layers.length = 0;
-                    this.layers.push(...newLayers);
-                    this.updateLayersUI();
-                    this.renderCallback();
-                } else {
-                    this.socket.emit('reorderLayers', { roomCode: this.currentRoomProvider(), layers: newLayers });
-                }
-            }
+        // If we don't have a placeholder, we can't determine position
+        if (!this.placeholder || !this.placeholder.parentNode) {
+            return false;
         }
+
+        // Find index of placeholder
+        const placeholderIndex = Array.from(this.layersList.children).indexOf(this.placeholder);
+        
+        const newLayerOrder = [];
+        const domChildren = Array.from(this.layersList.children);
+        
+        // Let's collect IDs from top to bottom (DOM order)
+        const domIds = [];
+        domChildren.forEach(child => {
+            if (child === this.placeholder) {
+                if (this.dragSrcEl && this.dragSrcEl.dataset.layerId) {
+                    domIds.push(this.dragSrcEl.dataset.layerId);
+                }
+            } else if (child !== this.dragSrcEl && child.dataset.layerId) {
+                domIds.push(child.dataset.layerId);
+            }
+        });
+        
+        // Now domIds is [TopLayerId, ..., BottomLayerId]
+        // We want [BottomLayerId, ..., TopLayerId] for the state.layers array
+        const newIds = domIds.reverse();
+        
+        // Reconstruct layer objects
+        const newLayers = newIds.map(id => this.layers.find(l => l.id === id)).filter(l => l);
+        
+        // Apply changes
+        if (globalState.settings && (globalState.settings.mode === 'telephone' || globalState.settings.mode === 'creative')) {
+            this.layers.length = 0;
+            this.layers.push(...newLayers);
+            this.updateLayersUI();
+            this.renderCallback();
+        } else {
+            this.socket.emit('reorderLayers', { roomCode: this.currentRoomProvider(), layers: newLayers });
+        }
+        
         return false;
     }
 
     handleDragEnd(e) {
+        e.target.style.display = ''; // Restore
+        if (this.placeholder && this.placeholder.parentNode) {
+            this.placeholder.parentNode.removeChild(this.placeholder);
+        }
+        this.placeholder = null;
+
         e.target.classList.remove('dragging');
         this.layersList.classList.remove('dragging-mode');
         document.querySelectorAll('.layer-item').forEach(item => {
-            item.classList.remove('over');
+            item.classList.remove('over', 'drag-over-top', 'drag-over-bottom');
         });
     }
 
@@ -467,40 +504,37 @@ export class LayerManager {
         }
     }
 
-    // Public API
-    setLayers(newLayers) { this.layers = newLayers; }
-    getLayers() { return this.layers; }
-    setActiveLayerId(id) { this.activeLayerId = id; }
-    getActiveLayerId() { return this.activeLayerId; }
-    getLayerCanvases() { return this.layerCanvases; }
-    deleteLayerCanvas(id) { delete this.layerCanvases[id]; }
-    getCompositeDataURL() {
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = CANVAS_CONFIG.width;
-        tempCanvas.height = CANVAS_CONFIG.height;
-        const ctx = tempCanvas.getContext('2d');
-        
-        // Fill white background
-        ctx.fillStyle = 'white';
-        ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-
-        // Draw layers in order (bottom to top)
-        this.layers.forEach(layer => {
-            const layerObj = this.layerCanvases[layer.id];
-            if (layerObj && layerObj.visible) {
-                ctx.drawImage(layerObj.canvas, 0, 0);
-            }
-        });
-        
-        return tempCanvas.toDataURL('image/jpeg', 0.8);
+    setLayers(layers) {
+        this.layers = layers;
     }
 
     updatePlayerLayer(userId, layerId) {
         this.playerLayers[userId] = layerId;
         this.updateLayersUI();
     }
-    setShowLayerAvatars(visible) {
-        this.showLayerAvatars = visible;
+
+    setActiveLayerId(layerId) {
+        this.activeLayerId = layerId;
         this.updateLayersUI();
+    }
+
+    deleteLayerCanvas(layerId) {
+        if (this.layerCanvases[layerId]) {
+            delete this.layerCanvases[layerId];
+        }
+    }
+
+    updateLayerPreview(layerId) {
+        const layerDiv = [...this.layersList.children].find(div => div.dataset.layerId === layerId);
+        if (layerDiv) {
+            const previewCanvas = layerDiv.querySelector('.layer-preview-canvas');
+            if (previewCanvas && this.layerCanvases[layerId]) {
+                const ctx = previewCanvas.getContext('2d');
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+                ctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+                ctx.drawImage(this.layerCanvases[layerId].canvas, 0, 0, previewCanvas.width, previewCanvas.height);
+            }
+        }
     }
 }

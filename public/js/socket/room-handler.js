@@ -187,6 +187,11 @@ export class RoomHandler {
                     }
                 }
             });
+
+            // Update all layer previews after replaying history
+            state.layers.forEach(layer => {
+                this.layerManager.updateLayerPreview(layer.id);
+            });
         }
 
         // We need to call render after replaying history

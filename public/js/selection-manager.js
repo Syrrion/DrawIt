@@ -121,6 +121,10 @@ function captureSelectionContent() {
     // Clear from source
     layerCtx.clearRect(x, y, w, h);
     
+    if (state.layerManager) {
+        state.layerManager.updateLayerPreview(state.activeLayerId);
+    }
+    
     // We need to broadcast this clear? 
     // For now, let's just handle local visual. 
     // To sync, we would need to send a "move" command that does clear + draw.
@@ -173,6 +177,10 @@ function commitSelectionMove() {
     layerCtx.globalCompositeOperation = 'source-over';
     layerCtx.drawImage(tempCanvas, Math.floor(dest.x), Math.floor(dest.y));
     
+    if (state.layerManager) {
+        state.layerManager.updateLayerPreview(state.activeLayerId);
+    }
+
     // Broadcast
     socket.emit('draw', {
         roomCode: state.currentRoom,
@@ -214,6 +222,10 @@ export function deleteSelection() {
         
         // Perform local clear
         layerCtx.clearRect(selectionRect.x, selectionRect.y, selectionRect.w, selectionRect.h);
+        
+        if (state.layerManager) {
+            state.layerManager.updateLayerPreview(state.activeLayerId);
+        }
     }
 
     // Reset selection
